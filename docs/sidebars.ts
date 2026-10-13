@@ -47,7 +47,7 @@ const sidebars: SidebarsConfig = {
     {
       type: 'link',
       label: 'GitHub',
-      href: 'https://github.com/yourorg/SecretsManager',
+      href: 'https://github.com/mrhamburg/SecretsManager',
     },
   ],
 };
