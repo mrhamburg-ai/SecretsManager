@@ -56,7 +56,7 @@ const config: Config = {
           label: 'Docs',
         },
         {
-          href: 'https://github.com/yourorg/SecretsManager',
+          href: 'https://github.com/mrhamburg/SecretsManager',
           label: 'GitHub',
           position: 'right',
         },
@@ -76,21 +76,21 @@ const config: Config = {
         {
           title: 'Resources',
           items: [
-            {label: 'GitHub', href: 'https://github.com/yourorg/SecretsManager'},
+            {label: 'GitHub', href: 'https://github.com/mrhamburg/SecretsManager'},
             {label: 'NuGet Packages', href: 'https://www.nuget.org/'},
           ],
         },
         {
           title: 'Community',
           items: [
-            {label: 'GitHub Discussions', href: 'https://github.com/yourorg/SecretsManager/discussions'},
+            {label: 'GitHub Discussions', href: 'https://github.com/mrhamburg/SecretsManager/discussions'},
             {label: 'Stack Overflow', href: 'https://stackoverflow.com/questions/tagged/secretsmanager'},
           ],
         },
         {
           title: 'Legal',
           items: [
-            {label: 'MIT License', href: 'https://github.com/yourorg/SecretsManager/blob/main/LICENSE'},
+            {label: 'MIT License', href: 'https://github.com/mrhamburg/SecretsManager/blob/main/LICENSE'},
           ],
         },
       ],
