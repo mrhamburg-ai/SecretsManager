@@ -4,7 +4,7 @@ description: Publish and run integration tests against a configured provider
 inputs:
   dotnet-version:
     description: .NET SDK version to use
-    default: '9.0.x'
+    default: '10.0.x'
   config:
     description: YAML config content for the provider
     required: true
