@@ -8,7 +8,7 @@ sidebar_position: 5
 # PostgreSQL Provider
 
 <span className="provider-badge provider-postgresql">PostgreSQL</span>
-<span className="badge-pill badge-dotnet">.NET 9.0</span>
+<span className="badge-pill badge-dotnet">.NET 10.0</span>
 
 ## Overview
 

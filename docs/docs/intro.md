@@ -8,7 +8,7 @@ slug: /intro
 
 # Introduction
 
-<span className="badge-pill badge-dotnet">.NET 9.0</span>
+<span className="badge-pill badge-dotnet">.NET 10.0</span>
 
 ## What is SecretsManager?
 

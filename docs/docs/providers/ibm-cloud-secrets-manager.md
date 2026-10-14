@@ -8,7 +8,7 @@ sidebar_position: 5
 # IBM Cloud Secrets Manager Provider
 
 <span className="provider-badge provider-ibm">IBM Cloud Secrets Manager</span>
-<span className="badge-pill badge-dotnet">.NET 9.0</span>
+<span className="badge-pill badge-dotnet">.NET 10.0</span>
 
 ## Overview
 

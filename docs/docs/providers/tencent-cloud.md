@@ -8,7 +8,7 @@ sidebar_position: 7
 # Tencent Cloud Secrets Manager Provider
 
 <span className="provider-badge provider-tencent">Tencent Cloud</span>
-<span className="badge-pill badge-dotnet">.NET 9.0</span>
+<span className="badge-pill badge-dotnet">.NET 10.0</span>
 
 ## Overview
 

@@ -8,7 +8,7 @@ sidebar_position: 15
 # HashiCorp Vault Provider
 
 <span className="provider-badge provider-vault">HashiCorp Vault</span>
-<span className="badge-pill badge-dotnet">.NET 9.0</span>
+<span className="badge-pill badge-dotnet">.NET 10.0</span>
 
 ## Overview
 

@@ -58,7 +58,7 @@ export default function HeroSection(): React.JSX.Element {
             {/* Left: Text */}
             <div>
               <div style={{display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1.5rem'}}>
-                <span className="badge-pill badge-dotnet">.NET 9.0</span>
+                <span className="badge-pill badge-dotnet">.NET 10.0</span>
                 <span className="badge-pill badge-license">MIT / Apache 2.0</span>
               </div>
 
@@ -75,7 +75,7 @@ export default function HeroSection(): React.JSX.Element {
               </h1>
 
                 <p style={{fontSize: '1.25rem', color: 'var(--ifm-color-emphasis-700)', marginBottom: '2rem', lineHeight: 1.6}}>
-                A unified .NET 9.0 abstraction layer for 14 secret backends including Azure Key Vault, AWS, Google Cloud, Oracle Vault, PostgreSQL, Scaleway, OVH, IBM Cloud, Aliyun KMS, Passbolt, Tencent Cloud, HashiCorp Vault, CyberArk Conjur, and local encrypted storage. Inspired by Kubernetes External Secrets.
+                A unified .NET 10.0 abstraction layer for 14 secret backends including Azure Key Vault, AWS, Google Cloud, Oracle Vault, PostgreSQL, Scaleway, OVH, IBM Cloud, Aliyun KMS, Passbolt, Tencent Cloud, HashiCorp Vault, CyberArk Conjur, and local encrypted storage. Inspired by Kubernetes External Secrets.
                 </p>
 
               <div style={{display: 'flex', flexWrap: 'wrap', gap: '1rem'}}>
