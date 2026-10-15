@@ -8,7 +8,7 @@ sidebar_position: 7
 # Google Cloud Secret Manager Provider
 
 <span className="provider-badge provider-gcp">Google Cloud</span>
-<span className="badge-pill badge-dotnet">.NET 9.0</span>
+<span className="badge-pill badge-dotnet">.NET 10.0</span>
 
 ## Overview
 

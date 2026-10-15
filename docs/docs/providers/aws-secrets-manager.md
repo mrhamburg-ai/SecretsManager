@@ -8,7 +8,7 @@ sidebar_position: 6
 # AWS Secrets Manager Provider
 
 <span className="provider-badge provider-aws">AWS</span>
-<span className="badge-pill badge-dotnet">.NET 9.0</span>
+<span className="badge-pill badge-dotnet">.NET 10.0</span>
 
 ## Overview
 

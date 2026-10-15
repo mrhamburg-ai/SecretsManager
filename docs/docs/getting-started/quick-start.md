@@ -11,7 +11,7 @@ Get up and running with SecretsManager in under 5 minutes.
 
 ## Prerequisites
 
-- .NET 9.0 SDK or later
+- .NET 10.0 SDK or later
 - A C# project (Console, Web API, or any .NET application)
 - Access to at least one secret backend (local filesystem works for testing)
 

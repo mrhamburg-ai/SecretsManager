@@ -8,7 +8,7 @@ sidebar_position: 3
 # Azure Key Vault Provider
 
 <span className="provider-badge provider-azure">Azure</span>
-<span className="badge-pill badge-dotnet">.NET 9.0</span>
+<span className="badge-pill badge-dotnet">.NET 10.0</span>
 
 ## Overview
 

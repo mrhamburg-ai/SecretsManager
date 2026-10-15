@@ -63,7 +63,7 @@ dotnet add package SecretsManager.AwsSecretsManager
 
 ## Requirements
 
-- **.NET 9.0** or later
+- **.NET 10.0** or later
 - Each provider may have additional requirements (e.g., Azure subscription for Azure Key Vault)
 
 :::info[Modular Design]

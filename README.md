@@ -2,7 +2,7 @@
   <img src="hero.svg" alt="SecretsManager - Unified .NET Secret Management" width="800">
 </p>
 
-[![.NET 9.0](https://img.shields.io/badge/.NET-9.0-512BD4)](https://dotnet.microsoft.com/)
+[![.NET 10.0](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com/)
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue.svg)](LICENSE-MIT)
 [![CI](https://github.com/mrhamburg/SecretsManager/actions/workflows/ci.yml/badge.svg)](https://github.com/mrhamburg/SecretsManager/actions/workflows/ci.yml)
 [![Integration Tests](https://github.com/mrhamburg/SecretsManager/actions/workflows/integration.yml/badge.svg)](https://github.com/mrhamburg/SecretsManager/actions/workflows/integration.yml)

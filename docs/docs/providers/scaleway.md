@@ -8,7 +8,7 @@ sidebar_position: 4
 # Scaleway Provider
 
 <span className="provider-badge provider-scaleway">Scaleway</span>
-<span className="badge-pill badge-dotnet">.NET 9.0</span>
+<span className="badge-pill badge-dotnet">.NET 10.0</span>
 
 ## Overview
 
