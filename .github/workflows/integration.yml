@@ -19,7 +19,7 @@ jobs:
     name: Filesystem
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - uses: ./.github/actions/integration-test
       with:
         config: |
@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     if: vars.HAS_AZURE_SECRETS == 'true'
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - uses: ./.github/actions/integration-test
       with:
         config: |
@@ -50,7 +50,7 @@ jobs:
     runs-on: ubuntu-latest
     if: vars.HAS_SCALEWAY_SECRETS == 'true'
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - uses: ./.github/actions/integration-test
       with:
         config: |
@@ -82,7 +82,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - uses: ./.github/actions/integration-test
       with:
         config: |
@@ -104,7 +104,7 @@ jobs:
     runs-on: ubuntu-latest
     if: vars.HAS_OVH_SECRETS == 'true'
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - uses: ./.github/actions/integration-test
       with:
         config: |
@@ -125,7 +125,7 @@ jobs:
     runs-on: ubuntu-latest
     if: vars.HAS_AWS_SECRETS == 'true'
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - uses: ./.github/actions/integration-test
       with:
         config: |
@@ -142,7 +142,7 @@ jobs:
     runs-on: ubuntu-latest
     if: vars.HAS_ORACLE_VAULT_SECRETS == 'true'
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - uses: ./.github/actions/integration-test
       with:
         config: |
@@ -162,7 +162,7 @@ jobs:
     runs-on: ubuntu-latest
     if: vars.HAS_GCP_SECRETS == 'true'
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - uses: ./.github/actions/integration-test
       with:
         config: |
@@ -203,7 +203,7 @@ jobs:
         ports:
           - 8080:80
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Bootstrap Passbolt test user
       id: passbolt-bootstrap
       shell: bash
@@ -299,7 +299,7 @@ jobs:
     runs-on: ubuntu-latest
     if: vars.HAS_ALIYUN_SECRETS == 'true'
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - uses: ./.github/actions/integration-test
       with:
         config: |
@@ -316,7 +316,7 @@ jobs:
     runs-on: ubuntu-latest
     if: vars.HAS_IBM_CLOUD_SECRETS == 'true'
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - uses: ./.github/actions/integration-test
       with:
         config: |
@@ -331,7 +331,7 @@ jobs:
     runs-on: ubuntu-latest
     if: vars.HAS_TENCENT_CLOUD_SECRETS == 'true'
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - uses: ./.github/actions/integration-test
       with:
         config: |
@@ -362,7 +362,7 @@ jobs:
           --health-retries 5
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - uses: ./.github/actions/integration-test
       with:
         config: |
@@ -394,7 +394,7 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
 
     - name: Start Conjur server
       shell: bash
