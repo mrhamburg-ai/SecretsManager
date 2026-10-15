@@ -5,9 +5,13 @@ HashiCorp Vault secret provider
 ## Usage
 
 ```csharp
-// Add the SecretsManager.Vault secret provider to your configuration
-services.AddSecretsManager()
-    .AddVault();
+var builder = new SecretProviderBuilder()
+    .WithVault(options =>
+    {
+        options.Url = "https://vault.example.com:8200";
+        options.Token = "your-vault-token";
+        options.MountPath = "secret";
+    });
 ```
 
 ## Installation

@@ -5,9 +5,13 @@ PostgreSQL secret provider
 ## Usage
 
 ```csharp
-// Add the SecretsManager.PostgreSql secret provider to your configuration
-services.AddSecretsManager()
-    .AddPostgreSql();
+var builder = new SecretProviderBuilder()
+    .WithPostgreSql(options =>
+    {
+        options.ConnectionString = "Host=localhost;Database=secrets;Username=postgres;";
+        options.Schema = "public";
+        options.TablePrefix = "secrets_";
+    });
 ```
 
 ## Installation

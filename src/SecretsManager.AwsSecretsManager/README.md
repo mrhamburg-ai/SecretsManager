@@ -5,9 +5,13 @@ AWS Secrets Manager provider
 ## Usage
 
 ```csharp
-// Add the SecretsManager.AwsSecretsManager secret provider to your configuration
-services.AddSecretsManager()
-    .AddAwsSecretsManager();
+var builder = new SecretProviderBuilder()
+    .WithAwsSecretsManager(options =>
+    {
+        options.Region = "eu-central-1";
+        options.AccessKey = "your-access-key";
+        options.SecretKey = "your-secret-key";
+    });
 ```
 
 ## Installation

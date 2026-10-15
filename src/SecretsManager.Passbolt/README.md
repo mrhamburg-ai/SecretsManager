@@ -5,9 +5,13 @@ Passbolt secret provider
 ## Usage
 
 ```csharp
-// Add the SecretsManager.Passbolt secret provider to your configuration
-services.AddSecretsManager()
-    .AddPassbolt();
+var builder = new SecretProviderBuilder()
+    .WithPassbolt(options =>
+    {
+        options.BaseUrl = "https://passbolt.example.com";
+        options.UserPrivateKey = "your-private-key";
+        options.UserPrivateKeyPassphrase = "your-passphrase";
+    });
 ```
 
 ## Installation

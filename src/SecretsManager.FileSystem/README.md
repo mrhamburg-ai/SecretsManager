@@ -5,9 +5,11 @@ File system secret provider
 ## Usage
 
 ```csharp
-// Add the SecretsManager.FileSystem secret provider to your configuration
-services.AddSecretsManager()
-    .AddFileSystem();
+var builder = new SecretProviderBuilder()
+    .WithFileSystem(options =>
+    {
+        options.BasePath = "/path/to/secrets";
+    });
 ```
 
 ## Installation

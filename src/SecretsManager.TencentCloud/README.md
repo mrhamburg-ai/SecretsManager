@@ -5,9 +5,13 @@ Tencent Cloud secret provider
 ## Usage
 
 ```csharp
-// Add the SecretsManager.TencentCloud secret provider to your configuration
-services.AddSecretsManager()
-    .AddTencentCloud();
+var builder = new SecretProviderBuilder()
+    .WithTencentCloud(options =>
+    {
+        options.Region = "ap-guangzhou";
+        options.SecretId = "your-secret-id";
+        options.SecretKey = "your-secret-key";
+    });
 ```
 
 ## Installation
