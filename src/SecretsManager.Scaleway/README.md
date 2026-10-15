@@ -5,9 +5,14 @@ Scaleway secret provider
 ## Usage
 
 ```csharp
-// Add the SecretsManager.Scaleway secret provider to your configuration
-services.AddSecretsManager()
-    .AddScaleway();
+var builder = new SecretProviderBuilder()
+    .WithScaleway(options =>
+    {
+        options.Region = "fr-par";
+        options.ProjectId = "your-project-id";
+        options.AccessKey = "your-access-key";
+        options.SecretKey = "your-secret-key";
+    });
 ```
 
 ## Installation

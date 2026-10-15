@@ -5,9 +5,13 @@ Oracle Vault secret provider
 ## Usage
 
 ```csharp
-// Add the SecretsManager.OracleVault secret provider to your configuration
-services.AddSecretsManager()
-    .AddOracleVault();
+var builder = new SecretProviderBuilder()
+    .WithOracleVault(options =>
+    {
+        options.Region = "eu-frankfurt-1";
+        options.VaultId = "your-vault-id";
+        options.CompartmentId = "your-compartment-id";
+    });
 ```
 
 ## Installation
