@@ -5,9 +5,14 @@ Azure Key Vault secret provider
 ## Usage
 
 ```csharp
-// Add the SecretsManager.AzureKeyVault secret provider to your configuration
-services.AddSecretsManager()
-    .AddAzureKeyVault();
+var builder = new SecretProviderBuilder()
+    .WithAzureKeyVault(options =>
+    {
+        options.VaultUrl = "https://your-vault.vault.azure.net/";
+        options.TenantId = "your-tenant-id";
+        options.ClientId = "your-client-id";
+        options.ClientSecret = "your-client-secret";
+    });
 ```
 
 ## Installation

@@ -5,9 +5,12 @@ Google Cloud Secret Manager provider
 ## Usage
 
 ```csharp
-// Add the SecretsManager.GoogleSecretManager secret provider to your configuration
-services.AddSecretsManager()
-    .AddGoogleSecretManager();
+var builder = new SecretProviderBuilder()
+    .WithGoogleSecretManager(options =>
+    {
+        options.ProjectId = "your-project-id";
+        options.CredentialsPath = "/path/to/credentials.json";
+    });
 ```
 
 ## Installation

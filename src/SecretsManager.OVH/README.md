@@ -5,9 +5,14 @@ OVH Secrets Manager provider
 ## Usage
 
 ```csharp
-// Add the SecretsManager.OVH secret provider to your configuration
-services.AddSecretsManager()
-    .AddOVH();
+var builder = new SecretProviderBuilder()
+    .WithOVH(options =>
+    {
+        options.Endpoint = "https://eu.api.ovh.com/1.0";
+        options.ApplicationKey = "your-application-key";
+        options.ApplicationSecret = "your-application-secret";
+        options.ConsumerKey = "your-consumer-key";
+    });
 ```
 
 ## Installation
