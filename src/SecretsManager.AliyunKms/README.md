@@ -5,9 +5,13 @@ Alibaba Cloud KMS secret provider
 ## Usage
 
 ```csharp
-// Add the SecretsManager.AliyunKms secret provider to your configuration
-services.AddSecretsManager()
-    .AddAliyunKms();
+var builder = new SecretProviderBuilder()
+    .WithAliyunKms(options =>
+    {
+        options.Region = "eu-central-1";
+        options.AccessKeyId = "your-access-key-id";
+        options.AccessKeySecret = "your-access-key-secret";
+    });
 ```
 
 ## Installation

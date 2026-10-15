@@ -5,9 +5,13 @@ IBM Cloud Secrets Manager provider
 ## Usage
 
 ```csharp
-// Add the SecretsManager.IBMCloudSecretsManager secret provider to your configuration
-services.AddSecretsManager()
-    .AddIBMCloudSecretsManager();
+var builder = new SecretProviderBuilder()
+    .WithIBMCloudSecretsManager(options =>
+    {
+        options.Region = "eu-de";
+        options.InstanceId = "your-instance-id";
+        options.ApiKey = "your-api-key";
+    });
 ```
 
 ## Installation
