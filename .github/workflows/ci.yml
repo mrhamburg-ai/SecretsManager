@@ -38,7 +38,7 @@ jobs:
     - name: Check API compatibility
       run: |
         dotnet build tools/ApiCompatChecker/ApiCompatChecker.csproj -c Release --no-restore
-        dotnet build -c Release --no-restore
+        dotnet build src/SecretsManager.Vault/SecretsManager.Vault.csproj -c Release --no-restore
         dotnet tools/ApiCompatChecker/bin/Release/net10.0/ApiCompatChecker.dll \
           "src/SecretsManager.Vault/bin/Release/net10.0" \
           "src/SecretsManager.Vault/bin/Release/net10.0"
