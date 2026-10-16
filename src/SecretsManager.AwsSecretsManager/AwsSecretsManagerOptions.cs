@@ -3,19 +3,22 @@ namespace SecretsManager.AwsSecretsManager;
 public sealed class AwsSecretsManagerOptions
 {
     /// <summary>
-    /// Alibaba Cloud region (e.g. "eu-central-1")
+    /// AWS region (e.g. "us-east-1", "eu-west-1").
     /// </summary>
     public string Region { get; set; } = "";
+
     /// <summary>
-    /// Access key ID. When null, the default credential chain is used
+    /// AWS access key ID. When null, the default credential chain is used.
     /// </summary>
     public string? AccessKey { get; set; }
+
     /// <summary>
-    /// Secret access key
+    /// AWS secret access key.
     /// </summary>
     public string? SecretKey { get; set; }
+
     /// <summary>
-    /// Optional session token for temporary credentials
+    /// Optional session token (for temporary credentials).
     /// </summary>
     public string? SessionToken { get; set; }
 

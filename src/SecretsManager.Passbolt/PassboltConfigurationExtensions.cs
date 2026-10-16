@@ -3,6 +3,9 @@ using SecretsManager.Builder;
 
 namespace SecretsManager.Passbolt;
 
+/// <summary>
+/// Configuration bridge for [A-Zaaz] provider.
+/// </summary>
 public static class PassboltConfigurationExtensions
 {
     public static SecretProviderBuilder ConfigurePassbolt(

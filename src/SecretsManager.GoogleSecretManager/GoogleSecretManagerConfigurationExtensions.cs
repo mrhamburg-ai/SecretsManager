@@ -3,6 +3,9 @@ using SecretsManager.Builder;
 
 namespace SecretsManager.GoogleSecretManager;
 
+/// <summary>
+/// Configuration bridge for [A-Zaaz] provider.
+/// </summary>
 public static class GoogleSecretManagerConfigurationExtensions
 {
     public static SecretProviderBuilder ConfigureGoogleSecretManager(

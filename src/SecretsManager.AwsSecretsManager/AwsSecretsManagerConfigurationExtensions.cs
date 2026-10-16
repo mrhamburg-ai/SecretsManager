@@ -3,6 +3,9 @@ using SecretsManager.Builder;
 
 namespace SecretsManager.AwsSecretsManager;
 
+/// <summary>
+/// Configuration bridge for [A-Zaaz] provider.
+/// </summary>
 public static class AwsSecretsManagerConfigurationExtensions
 {
     public static SecretProviderBuilder ConfigureAwsSecretsManager(

@@ -3,23 +3,27 @@ namespace SecretsManager.OVH;
 public sealed class OVHOptions
 {
     /// <summary>
-    /// Custom API endpoint (optional)
+    /// OVH endpoint region (e.g. "ovh-eu", "ovh-us", "ovh-ca").
     /// </summary>
     public string Endpoint { get; set; } = "";
+
     /// <summary>
-    /// OVH application key
+    /// OVH application key.
     /// </summary>
     public string ApplicationKey { get; set; } = "";
+
     /// <summary>
-    /// OVH application secret
+    /// OVH application secret.
     /// </summary>
     public string ApplicationSecret { get; set; } = "";
+
     /// <summary>
-    /// OVH consumer key
+    /// OVH consumer key.
     /// </summary>
     public string ConsumerKey { get; set; } = "";
+
     /// <summary>
-    /// OVH OKMS ID
+    /// OVH OKMS ID.
     /// </summary>
     public string OkmsId { get; set; } = "";
 

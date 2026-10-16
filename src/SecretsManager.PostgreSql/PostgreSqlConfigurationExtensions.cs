@@ -3,6 +3,9 @@ using SecretsManager.Builder;
 
 namespace SecretsManager.PostgreSql;
 
+/// <summary>
+/// Configuration bridge for [A-Zaaz] provider.
+/// </summary>
 public static class PostgreSqlConfigurationExtensions
 {
     public static SecretProviderBuilder ConfigurePostgreSql(

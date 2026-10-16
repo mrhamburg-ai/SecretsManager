@@ -3,6 +3,9 @@ using SecretsManager.Builder;
 
 namespace SecretsManager.OVH;
 
+/// <summary>
+/// Configuration bridge for [A-Zaaz] provider.
+/// </summary>
 public static class OVHConfigurationExtensions
 {
     public static SecretProviderBuilder ConfigureOVH(

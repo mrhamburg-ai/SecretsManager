@@ -3,6 +3,9 @@ using SecretsManager.Builder;
 
 namespace SecretsManager.IBMCloudSecretsManager;
 
+/// <summary>
+/// Configuration bridge for [A-Zaaz] provider.
+/// </summary>
 public static class IBMCloudSecretsManagerConfigurationExtensions
 {
     public static SecretProviderBuilder ConfigureIBMCloudSecretsManager(

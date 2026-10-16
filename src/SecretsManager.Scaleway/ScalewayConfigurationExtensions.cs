@@ -3,6 +3,9 @@ using SecretsManager.Builder;
 
 namespace SecretsManager.Scaleway;
 
+/// <summary>
+/// Configuration bridge for [A-Zaaz] provider.
+/// </summary>
 public static class ScalewayConfigurationExtensions
 {
     public static SecretProviderBuilder ConfigureScaleway(

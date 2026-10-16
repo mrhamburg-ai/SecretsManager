@@ -4,6 +4,9 @@ using SecretsManager.Builder;
 
 namespace SecretsManager;
 
+/// <summary>
+/// Extension methods for registering SecretsManager in dependency injection.
+/// </summary>
 public static class SecretsManagerServiceCollectionExtensions
 {
     public static IServiceCollection AddSecretsManager(this IServiceCollection services)

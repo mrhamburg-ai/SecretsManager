@@ -3,6 +3,9 @@ using SecretsManager.Builder;
 
 namespace SecretsManager.Vault;
 
+/// <summary>
+/// Configuration bridge for [A-Zaaz] provider.
+/// </summary>
 public static class VaultConfigurationExtensions
 {
     public static SecretProviderBuilder ConfigureVault(

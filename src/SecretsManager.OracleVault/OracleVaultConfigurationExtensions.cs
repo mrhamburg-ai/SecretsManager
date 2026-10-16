@@ -3,6 +3,9 @@ using SecretsManager.Builder;
 
 namespace SecretsManager.OracleVault;
 
+/// <summary>
+/// Configuration bridge for [A-Zaaz] provider.
+/// </summary>
 public static class OracleVaultConfigurationExtensions
 {
     public static SecretProviderBuilder ConfigureOracleVault(

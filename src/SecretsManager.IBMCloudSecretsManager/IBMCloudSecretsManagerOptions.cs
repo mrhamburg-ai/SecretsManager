@@ -3,19 +3,22 @@ namespace SecretsManager.IBMCloudSecretsManager;
 public sealed class IBMCloudSecretsManagerOptions
 {
     /// <summary>
-    /// Alibaba Cloud region (e.g. "eu-central-1")
+    /// IBM Cloud region (e.g. "us-south", "eu-de", "jp-tok").
     /// </summary>
     public string Region { get; set; } = "";
+
     /// <summary>
-    /// IBM Cloud instance ID for the Secrets Manager instance
+    /// IBM Cloud instance ID for the Secrets Manager instance.
     /// </summary>
     public string InstanceId { get; set; } = "";
+
     /// <summary>
-    /// IBM Cloud API key for authentication
+    /// IBM Cloud API key for authentication.
     /// </summary>
     public string ApiKey { get; set; } = "";
+
     /// <summary>
-    /// Service URL override (optional)
+    /// IBM Cloud service URL override (optional).
     /// </summary>
     public string? ServiceUrl { get; set; }
 

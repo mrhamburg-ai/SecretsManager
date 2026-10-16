@@ -3,6 +3,9 @@ using SecretsManager.Builder;
 
 namespace SecretsManager.FileSystem;
 
+/// <summary>
+/// Configuration bridge for [A-Zaaz] provider.
+/// </summary>
 public static class FileSystemConfigurationExtensions
 {
     public static SecretProviderBuilder ConfigureFileSystem(

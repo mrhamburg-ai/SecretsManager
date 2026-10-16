@@ -3,6 +3,9 @@ using SecretsManager.Builder;
 
 namespace SecretsManager.AliyunKms;
 
+/// <summary>
+/// Configuration bridge for [A-Zaaz] provider.
+/// </summary>
 public static class AliyunKmsConfigurationExtensions
 {
     public static SecretProviderBuilder ConfigureAliyunKms(

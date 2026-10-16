@@ -3,6 +3,9 @@ using SecretsManager.Builder;
 
 namespace SecretsManager.Conjur;
 
+/// <summary>
+/// Configuration bridge for [A-Zaaz] provider.
+/// </summary>
 public static class ConjurConfigurationExtensions
 {
     public static SecretProviderBuilder ConfigureConjur(

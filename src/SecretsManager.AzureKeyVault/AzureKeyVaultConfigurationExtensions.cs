@@ -3,6 +3,9 @@ using SecretsManager.Builder;
 
 namespace SecretsManager.AzureKeyVault;
 
+/// <summary>
+/// Configuration bridge for [A-Zaaz] provider.
+/// </summary>
 public static class AzureKeyVaultConfigurationExtensions
 {
     public static SecretProviderBuilder ConfigureAzureKeyVault(

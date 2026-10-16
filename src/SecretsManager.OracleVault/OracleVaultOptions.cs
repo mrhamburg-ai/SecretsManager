@@ -3,27 +3,37 @@ namespace SecretsManager.OracleVault;
 public sealed class OracleVaultOptions
 {
     /// <summary>
-    /// Authentication type: "configfile", "instanceprincipal", "securitytoken"
+    /// Authentication type: "configfile", "instanceprincipal", "securitytoken".
+    /// Defaults to "configfile" (reads from ~/.oci/config).
     /// </summary>
     public string AuthenticationType { get; set; } = "configfile";
+
     /// <summary>
-    /// OCI config profile name (e.g. "DEFAULT", "DEV")
+    /// OCI config profile name (e.g., "DEFAULT", "DEV", "PROD").
+    /// Only used when AuthenticationType is "configfile".
     /// </summary>
     public string? ProfileName { get; set; } = "DEFAULT";
+
     /// <summary>
-    /// Path to the OCI config file. Defaults to ~/.oci/config
+    /// Path to the OCI config file. Defaults to ~/.oci/config.
+    /// Only used when AuthenticationType is "configfile".
     /// </summary>
     public string? ConfigFilePath { get; set; }
+
     /// <summary>
-    /// Cloud region (e.g. "us-east-1", "eu-west-1")
+    /// OCI region (e.g., "us-phoenix-1", "eu-frankfurt-1").
     /// </summary>
     public string? Region { get; set; }
+
     /// <summary>
-    /// The OCID of the vault to use for write operations
+    /// The OCID of the vault to use for write operations (create/update/delete).
+    /// Required for PutSecretAsync and DeleteSecretAsync.
     /// </summary>
     public string? VaultId { get; set; }
+
     /// <summary>
-    /// The OCID of the compartment where secrets are created
+    /// The OCID of the compartment where secrets are created.
+    /// Required for PutSecretAsync.
     /// </summary>
     public string? CompartmentId { get; set; }
 

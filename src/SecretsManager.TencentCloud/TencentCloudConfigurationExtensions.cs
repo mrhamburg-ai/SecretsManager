@@ -3,6 +3,9 @@ using SecretsManager.Builder;
 
 namespace SecretsManager.TencentCloud;
 
+/// <summary>
+/// Configuration bridge for [A-Zaaz] provider.
+/// </summary>
 public static class TencentCloudConfigurationExtensions
 {
     public static SecretProviderBuilder ConfigureTencentCloud(

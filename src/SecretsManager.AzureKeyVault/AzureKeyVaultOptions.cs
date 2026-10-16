@@ -3,23 +3,29 @@ namespace SecretsManager.AzureKeyVault;
 public sealed class AzureKeyVaultOptions
 {
     /// <summary>
-    /// Base URL of the service endpoint
+    /// The Azure Key Vault URI (e.g. "https://myvault.vault.azure.net").
     /// </summary>
     public string VaultUrl { get; set; } = "";
+
     /// <summary>
-    /// Authentication type: "configfile", "instanceprincipal", "securitytoken"
+    /// Authentication type: "default", "serviceprincipal", "managedidentity", "workloadidentity".
+    /// Defaults to "default" (DefaultAzureCredential).
     /// </summary>
     public string AuthenticationType { get; set; } = "default";
+
     /// <summary>
-    /// Azure AD tenant ID. Required for service principal authentication
+    /// Azure AD tenant ID. Required for service principal authentication.
     /// </summary>
     public string? TenantId { get; set; }
+
     /// <summary>
-    /// Azure AD application (client) ID
+    /// Azure AD application (client) ID.
+    /// Required for service principal; optional for managed identity (user-assigned).
     /// </summary>
     public string? ClientId { get; set; }
+
     /// <summary>
-    /// Azure AD client secret. Required for service principal authentication
+    /// Azure AD client secret. Required for service principal authentication.
     /// </summary>
     public string? ClientSecret { get; set; }
 
