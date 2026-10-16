@@ -179,3 +179,15 @@ Ensure your service account has the `roles/secretmanager.admin` role (or at mini
 - Enable Cloud Audit Logs to track secret access patterns
 - Grant the principle of least privilege — only assign the IAM roles your application actually needs
 - Rotate service account keys regularly if using explicit credentials
+
+### Configuration via IOptions<T>
+
+You can also bind configuration from `IConfiguration`:
+
+```csharp
+var provider = new SecretProviderBuilder()
+    .ConfigureGoogleSecretManager(configuration)
+    .Build();
+```
+
+This reads from the `SecretsManager:GoogleSecretManager` section and validates all options.

@@ -110,3 +110,15 @@ await provider.PutSecretAsync("db-password", "second-value");
 var versions = await provider.GetSecretVersionsAsync("db-password");
 // Returns: v1 (first-value), v2 (second-value)
 ```
+
+### Configuration via IOptions<T>
+
+You can also bind configuration from `IConfiguration`:
+
+```csharp
+var provider = new SecretProviderBuilder()
+    .ConfigureFileSystem(configuration)
+    .Build();
+```
+
+This reads from the `SecretsManager:FileSystem` section and validates all options.

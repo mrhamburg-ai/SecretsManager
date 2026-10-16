@@ -173,3 +173,15 @@ Ensure your IAM identity has `secretsmanager:GetSecretValue`, `secretsmanager:Pu
 - Use separate secrets for each environment (dev, staging, production)
 - Tag secrets with environment and owner metadata for easier management
 - Monitor secret access via AWS CloudTrail for audit compliance
+
+### Configuration via IOptions<T>
+
+You can also bind configuration from `IConfiguration`:
+
+```csharp
+var provider = new SecretProviderBuilder()
+    .ConfigureAwsSecretsManager(configuration)
+    .Build();
+```
+
+This reads from the `SecretsManager:AwsSecretsManager` section and validates all options.

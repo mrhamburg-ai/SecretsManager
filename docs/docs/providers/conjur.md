@@ -122,3 +122,15 @@ await provider.DeleteSecretAsync("old-secret");
 - **Reading secrets:** Secrets are retrieved by their full identifier (e.g. `app/db-pass`). Conjur keeps up to 20 versions per variable.
 - **Deleting secrets:** Conjur has no REST delete endpoint. Deletion is performed by patching the configured policy path with a `!delete` statement, which requires the `update` privilege on the containing policy.
 - **Nested variables:** For variables declared inside a policy branch, set `PolicyPath` to that branch; the leading branch segment is stripped when the provider creates missing variables.
+
+### Configuration via IOptions<T>
+
+You can also bind configuration from `IConfiguration`:
+
+```csharp
+var provider = new SecretProviderBuilder()
+    .ConfigureConjur(configuration)
+    .Build();
+```
+
+This reads from the `SecretsManager:Conjur` section and validates all options.

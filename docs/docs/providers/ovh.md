@@ -95,3 +95,15 @@ await provider.PutSecretAsync("new-secret", "secret-value");
 var versions = await provider.GetSecretVersionsAsync("my-secret");
 await provider.DeleteSecretAsync("old-secret");
 ```
+
+### Configuration via IOptions<T>
+
+You can also bind configuration from `IConfiguration`:
+
+```csharp
+var provider = new SecretProviderBuilder()
+    .ConfigureOVH(configuration)
+    .Build();
+```
+
+This reads from the `SecretsManager:OVH` section and validates all options.
