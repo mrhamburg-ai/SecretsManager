@@ -1,13 +1,28 @@
 namespace SecretsManager.AliyunKms;
 
+/// <summary>
+/// Options for the Alibaba Cloud KMS secret provider.
+/// </summary>
 public sealed class AliyunKmsOptions
 {
+    /// <summary>
+    /// Alibaba Cloud region (e.g. "eu-central-1").
+    /// </summary>
     public string Region { get; set; } = "";
 
+    /// <summary>
+    /// Alibaba Cloud access key ID.
+    /// </summary>
     public string AccessKeyId { get; set; } = "";
 
+    /// <summary>
+    /// Alibaba Cloud access key secret.
+    /// </summary>
     public string AccessKeySecret { get; set; } = "";
 
+    /// <summary>
+    /// Custom API endpoint (optional).
+    /// </summary>
     public string? Endpoint { get; set; }
 
     public IEnumerable<string> Validate()
