@@ -1,0 +1,27 @@
+name: Release Please
+
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run release-please
+        uses: googleapis/release-please-action@v5
+        with:
+          # Optional: create a RELEASE_PLEASE_TOKEN secret (a personal access
+          # token) so the release pull requests and GitHub releases created
+          # here also trigger other workflows — e.g. CI on the release PR and
+          # the NuGet publish pipeline on `release: published`. Without it the
+          # action falls back to the built-in GITHUB_TOKEN, whose events do not
+          # start further workflow runs.
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
