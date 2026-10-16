@@ -24,4 +24,12 @@ public sealed class FileSystemOptions
     /// Mutually exclusive with <see cref="EncryptionKey"/>.
     /// </summary>
     public string? EncryptionKeyFile { get; set; }
+
+    public IEnumerable<string> Validate()
+    {
+        if (string.IsNullOrWhiteSpace(BasePath))
+            yield return "BasePath is required";
+        if (!string.IsNullOrEmpty(EncryptionKey) && !string.IsNullOrEmpty(EncryptionKeyFile))
+            yield return "EncryptionKey and EncryptionKeyFile are mutually exclusive";
+    }
 }

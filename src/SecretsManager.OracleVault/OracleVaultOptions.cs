@@ -36,4 +36,12 @@ public sealed class OracleVaultOptions
     /// Required for PutSecretAsync.
     /// </summary>
     public string? CompartmentId { get; set; }
+
+    public IEnumerable<string> Validate()
+    {
+        if (string.IsNullOrWhiteSpace(Region))
+            yield return "Region is required";
+        if (AuthenticationType == "configfile" && string.IsNullOrWhiteSpace(ConfigFilePath))
+            yield return "ConfigFilePath is required when AuthenticationType is configfile";
+    }
 }

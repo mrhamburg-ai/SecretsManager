@@ -160,3 +160,15 @@ The IBM Cloud Secrets Manager API uses standard HTTP status codes. All error res
 | 500 | Internal Server Error | Unexpected error on IBM's side |
 | 502 | Bad Gateway | Upstream service error |
 | 503 | Service Unavailable | Service temporarily unavailable |
+
+### Configuration via IOptions<T>
+
+You can also bind configuration from `IConfiguration`:
+
+```csharp
+var provider = new SecretProviderBuilder()
+    .ConfigureIBMCloudSecretsManager(configuration)
+    .Build();
+```
+
+This reads from the `SecretsManager:IBMCloudSecretsManager` section and validates all options.

@@ -34,4 +34,10 @@ public sealed class PostgreSqlOptions
     /// If the file is exactly 32 bytes it is used as-is; otherwise it is treated as base64.
     /// </summary>
     public string? EncryptionKeyFile { get; set; }
+
+    public IEnumerable<string> Validate()
+    {
+        if (string.IsNullOrWhiteSpace(ConnectionString))
+            yield return "ConnectionString is required";
+    }
 }

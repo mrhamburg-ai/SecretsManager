@@ -21,4 +21,14 @@ public sealed class IBMCloudSecretsManagerOptions
     /// IBM Cloud service URL override (optional).
     /// </summary>
     public string? ServiceUrl { get; set; }
+
+    public IEnumerable<string> Validate()
+    {
+        if (string.IsNullOrWhiteSpace(Region))
+            yield return "Region is required";
+        if (string.IsNullOrWhiteSpace(InstanceId))
+            yield return "InstanceId is required";
+        if (string.IsNullOrWhiteSpace(ApiKey))
+            yield return "ApiKey is required";
+    }
 }

@@ -26,4 +26,16 @@ public sealed class OVHOptions
     /// OVH OKMS ID.
     /// </summary>
     public string OkmsId { get; set; } = "";
+
+    public IEnumerable<string> Validate()
+    {
+        if (string.IsNullOrWhiteSpace(Endpoint))
+            yield return "Endpoint is required";
+        if (string.IsNullOrWhiteSpace(ApplicationKey))
+            yield return "ApplicationKey is required";
+        if (string.IsNullOrWhiteSpace(ApplicationSecret))
+            yield return "ApplicationSecret is required";
+        if (string.IsNullOrWhiteSpace(ConsumerKey))
+            yield return "ConsumerKey is required";
+    }
 }

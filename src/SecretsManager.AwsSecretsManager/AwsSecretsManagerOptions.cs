@@ -21,4 +21,10 @@ public sealed class AwsSecretsManagerOptions
     /// Optional session token (for temporary credentials).
     /// </summary>
     public string? SessionToken { get; set; }
+
+    public IEnumerable<string> Validate()
+    {
+        if (string.IsNullOrWhiteSpace(Region))
+            yield return "Region is required";
+    }
 }

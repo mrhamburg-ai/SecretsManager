@@ -24,4 +24,10 @@ public sealed class GoogleSecretManagerOptions
     /// If not set, uses the default secretmanager.googleapis.com.
     /// </summary>
     public string? Endpoint { get; set; }
+
+    public IEnumerable<string> Validate()
+    {
+        if (string.IsNullOrWhiteSpace(ProjectId))
+            yield return "ProjectId is required";
+    }
 }

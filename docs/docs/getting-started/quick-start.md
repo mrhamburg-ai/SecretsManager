@@ -75,6 +75,39 @@ builder.Services.AddSingleton<ISecretProvider>(sp =>
 });
 ```
 
+
+### Alternative: IOptions<T> with Configuration
+
+If you prefer the standard .NET configuration pattern, you can bind from `appsettings.json`:
+
+```csharp title="Program.cs"
+using SecretsManager;
+using SecretsManager.FileSystem;
+using Microsoft.Extensions.DependencyInjection;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddSecretsManager();
+
+var provider = new SecretProviderBuilder()
+    .ConfigureFileSystem(builder.Configuration)
+    .Build();
+```
+
+With this in `appsettings.json`:
+
+```json
+{
+  "SecretsManager": {
+    "FileSystem": {
+      "BasePath": "/var/secrets"
+    }
+  }
+}
+```
+
+All provider options are validated automatically. Invalid configuration throws at startup.
+
 :::info[Configuration Options]
 You can also configure providers using environment variables or YAML files. See the [Configuration guide](/docs/getting-started/configuration) for details.
 :::

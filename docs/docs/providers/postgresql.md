@@ -143,3 +143,15 @@ await provider.DeleteSecretAsync("old-secret");
 :::info[Connection Pooling]
 The provider uses `NpgsqlDataSource` internally, which manages connection pooling automatically. You do not need to configure pooling separately.
 :::
+
+### Configuration via IOptions<T>
+
+You can also bind configuration from `IConfiguration`:
+
+```csharp
+var provider = new SecretProviderBuilder()
+    .ConfigurePostgreSql(configuration)
+    .Build();
+```
+
+This reads from the `SecretsManager:PostgreSql` section and validates all options.

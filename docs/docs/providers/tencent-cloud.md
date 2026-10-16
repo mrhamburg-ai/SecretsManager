@@ -119,3 +119,15 @@ var versions = await provider.GetSecretVersionsAsync("my-secret");
 // Delete (immediate, no recovery window)
 await provider.DeleteSecretAsync("old-secret");
 ```
+
+### Configuration via IOptions<T>
+
+You can also bind configuration from `IConfiguration`:
+
+```csharp
+var provider = new SecretProviderBuilder()
+    .ConfigureTencentCloud(configuration)
+    .Build();
+```
+
+This reads from the `SecretsManager:TencentCloud` section and validates all options.
