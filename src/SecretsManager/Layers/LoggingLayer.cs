@@ -13,6 +13,13 @@ public sealed class LoggingLayer : ISecretProviderLayer
 {
     private readonly LoggingLayerOptions _options;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="LoggingLayer"/> class.
+    /// </summary>
+    /// <param name="options">Layer options, including the log sink. Defaults to <see cref="LoggingLayerOptions"/>.</param>
+    /// <exception cref="ArgumentNullException">
+    /// Thrown when <see cref="LoggingLayerOptions.Logger"/> is null.
+    /// </exception>
     public LoggingLayer(LoggingLayerOptions? options = null)
     {
         _options = options ?? new LoggingLayerOptions();
@@ -20,6 +27,12 @@ public sealed class LoggingLayer : ISecretProviderLayer
             throw new ArgumentNullException(nameof(LoggingLayerOptions.Logger));
     }
 
+    /// <summary>
+    /// Wraps the given provider so that every operation is reported to the configured
+    /// <see cref="ISecretProviderLogger"/>.
+    /// </summary>
+    /// <param name="inner">The provider to wrap.</param>
+    /// <returns>The wrapped provider.</returns>
     public ISecretProvider Wrap(ISecretProvider inner)
     {
         ArgumentNullException.ThrowIfNull(inner);

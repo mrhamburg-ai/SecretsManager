@@ -12,6 +12,13 @@ public sealed class ConcurrentLimiterLayer : ISecretProviderLayer
 {
     private readonly ConcurrentLimiterLayerOptions _options;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ConcurrentLimiterLayer"/> class.
+    /// </summary>
+    /// <param name="options">Layer options. Defaults to <see cref="ConcurrentLimiterLayerOptions"/>.</param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when <see cref="ConcurrentLimiterLayerOptions.MaxConcurrentRequests"/> is not positive.
+    /// </exception>
     public ConcurrentLimiterLayer(ConcurrentLimiterLayerOptions? options = null)
     {
         _options = options ?? new ConcurrentLimiterLayerOptions();
@@ -19,6 +26,12 @@ public sealed class ConcurrentLimiterLayer : ISecretProviderLayer
             throw new ArgumentOutOfRangeException(nameof(ConcurrentLimiterLayerOptions.MaxConcurrentRequests));
     }
 
+    /// <summary>
+    /// Wraps the given provider so that at most
+    /// <see cref="ConcurrentLimiterLayerOptions.MaxConcurrentRequests"/> operations run at once.
+    /// </summary>
+    /// <param name="inner">The provider to wrap.</param>
+    /// <returns>The wrapped provider.</returns>
     public ISecretProvider Wrap(ISecretProvider inner)
     {
         ArgumentNullException.ThrowIfNull(inner);

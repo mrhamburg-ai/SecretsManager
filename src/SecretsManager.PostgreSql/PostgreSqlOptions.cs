@@ -1,5 +1,8 @@
 namespace SecretsManager.PostgreSql;
 
+/// <summary>
+/// Configuration options for the PostgreSQL secret provider.
+/// </summary>
 public sealed class PostgreSqlOptions
 {
     /// <summary>
@@ -35,6 +38,11 @@ public sealed class PostgreSqlOptions
     /// </summary>
     public string? EncryptionKeyFile { get; set; }
 
+    /// <summary>
+    /// Validates the options and returns a collection of error messages.
+    /// An empty collection indicates the options are valid.
+    /// </summary>
+    /// <returns>Validation error messages; empty when the options are valid.</returns>
     public IEnumerable<string> Validate()
     {
         if (string.IsNullOrWhiteSpace(ConnectionString))

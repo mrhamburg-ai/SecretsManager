@@ -25,6 +25,10 @@ public sealed class TencentCloudOptions
     /// </summary>
     public string? Endpoint { get; set; }
 
+    /// <summary>
+    /// Validates the options and returns a collection of error messages.
+    /// </summary>
+    /// <returns>An enumerable of validation error messages. Empty when the options are valid.</returns>
     public IEnumerable<string> Validate()
     {
         if (string.IsNullOrWhiteSpace(Region))

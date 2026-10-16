@@ -2,10 +2,21 @@ using SecretsManager.Builder;
 
 namespace SecretsManager.AwsSecretsManager;
 
+/// <summary>
+/// Factory for creating <see cref="AwsSecretsManagerSecretProvider"/> instances from configuration.
+/// </summary>
 public sealed class AwsSecretsManagerSecretProviderFactory : ISecretProviderFactory
 {
+    /// <summary>
+    /// The provider name used in YAML/env configuration: <c>awssecretsmanager</c>.
+    /// </summary>
     public string ProviderName => "awssecretsmanager";
 
+    /// <summary>
+    /// Creates an <see cref="AwsSecretsManagerSecretProvider"/> from the flat settings dictionary.
+    /// </summary>
+    /// <param name="configuration">The configuration settings.</param>
+    /// <returns>A configured <see cref="AwsSecretsManagerSecretProvider"/> instance.</returns>
     public ISecretProvider Create(IReadOnlyDictionary<string, string> configuration)
     {
         var options = MapConfiguration(configuration);

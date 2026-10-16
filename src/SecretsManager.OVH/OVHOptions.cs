@@ -1,5 +1,8 @@
 namespace SecretsManager.OVH;
 
+/// <summary>
+/// Configuration options for the OVHcloud Secrets Management provider.
+/// </summary>
 public sealed class OVHOptions
 {
     /// <summary>
@@ -27,6 +30,10 @@ public sealed class OVHOptions
     /// </summary>
     public string OkmsId { get; set; } = "";
 
+    /// <summary>
+    /// Validates the options and returns a collection of error messages.
+    /// </summary>
+    /// <returns>An enumerable of validation error messages. An empty collection indicates the options are valid.</returns>
     public IEnumerable<string> Validate()
     {
         if (string.IsNullOrWhiteSpace(Endpoint))

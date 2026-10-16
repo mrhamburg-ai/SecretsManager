@@ -1,5 +1,8 @@
 namespace SecretsManager.OracleVault;
 
+/// <summary>
+/// Configuration options for the Oracle Vault secret provider.
+/// </summary>
 public sealed class OracleVaultOptions
 {
     /// <summary>
@@ -37,6 +40,10 @@ public sealed class OracleVaultOptions
     /// </summary>
     public string? CompartmentId { get; set; }
 
+    /// <summary>
+    /// Validates the options and returns any error messages.
+    /// </summary>
+    /// <returns>An error message for each invalid setting; empty when the configuration is valid.</returns>
     public IEnumerable<string> Validate()
     {
         if (string.IsNullOrWhiteSpace(Region))

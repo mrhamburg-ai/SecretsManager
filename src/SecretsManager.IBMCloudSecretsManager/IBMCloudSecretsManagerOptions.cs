@@ -1,5 +1,8 @@
 namespace SecretsManager.IBMCloudSecretsManager;
 
+/// <summary>
+/// Configuration options for the IBM Cloud Secrets Manager provider.
+/// </summary>
 public sealed class IBMCloudSecretsManagerOptions
 {
     /// <summary>
@@ -22,6 +25,10 @@ public sealed class IBMCloudSecretsManagerOptions
     /// </summary>
     public string? ServiceUrl { get; set; }
 
+    /// <summary>
+    /// Validates the options and returns a collection of error messages.
+    /// </summary>
+    /// <returns>An enumerable of validation error messages. An empty collection indicates the options are valid.</returns>
     public IEnumerable<string> Validate()
     {
         if (string.IsNullOrWhiteSpace(Region))

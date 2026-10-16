@@ -4,10 +4,18 @@ using SecretsManager.Builder;
 namespace SecretsManager.AwsSecretsManager;
 
 /// <summary>
-/// Configuration bridge for [A-Zaaz] provider.
+/// Configuration bridge for the AWS Secrets Manager secret provider.
 /// </summary>
 public static class AwsSecretsManagerConfigurationExtensions
 {
+    /// <summary>
+    /// Binds the <c>SecretsManager:awssecretsmanager</c> configuration section to <see cref="AwsSecretsManagerOptions"/>,
+    /// validates the options, and registers the provider.
+    /// </summary>
+    /// <param name="builder">The secret provider builder.</param>
+    /// <param name="configuration">The application configuration.</param>
+    /// <returns>The same builder instance for method chaining.</returns>
+    /// <exception cref="ArgumentException">Thrown when validation fails.</exception>
     public static SecretProviderBuilder ConfigureAwsSecretsManager(
         this SecretProviderBuilder builder,
         IConfiguration configuration)

@@ -37,6 +37,12 @@ public sealed class ConjurOptions
     /// </summary>
     public bool SkipTlsVerify { get; set; }
 
+    /// <summary>
+    /// Returns the validation errors for the current options; an empty sequence means the options
+    /// are valid. Requires <see cref="Url"/>, <see cref="Account"/>, <see cref="Login"/> and
+    /// <see cref="ApiKey"/> to be set.
+    /// </summary>
+    /// <returns>One message per invalid setting.</returns>
     public IEnumerable<string> Validate()
     {
         if (string.IsNullOrWhiteSpace(Url))

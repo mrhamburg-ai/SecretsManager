@@ -12,6 +12,13 @@ public sealed class TimeoutLayer : ISecretProviderLayer
 {
     private readonly TimeoutLayerOptions _options;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="TimeoutLayer"/> class.
+    /// </summary>
+    /// <param name="options">Layer options, including the timeout. Defaults to <see cref="TimeoutLayerOptions"/>.</param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when <see cref="TimeoutLayerOptions.Timeout"/> is not positive.
+    /// </exception>
     public TimeoutLayer(TimeoutLayerOptions? options = null)
     {
         _options = options ?? new TimeoutLayerOptions();
@@ -20,6 +27,12 @@ public sealed class TimeoutLayer : ISecretProviderLayer
             throw new ArgumentOutOfRangeException(nameof(TimeoutLayerOptions.Timeout));
     }
 
+    /// <summary>
+    /// Wraps the given provider so that every operation is cancelled after
+    /// <see cref="TimeoutLayerOptions.Timeout"/> and surfaced as a <see cref="TimeoutException"/>.
+    /// </summary>
+    /// <param name="inner">The provider to wrap.</param>
+    /// <returns>The wrapped provider.</returns>
     public ISecretProvider Wrap(ISecretProvider inner)
     {
         ArgumentNullException.ThrowIfNull(inner);

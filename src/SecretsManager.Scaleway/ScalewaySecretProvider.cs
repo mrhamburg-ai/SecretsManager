@@ -3,10 +3,17 @@ using SecretsManager.Scaleway.Internal;
 
 namespace SecretsManager.Scaleway;
 
+/// <summary>
+/// An <see cref="ISecretProvider"/> backed by the Scaleway Secret Manager API.
+/// </summary>
 public sealed class ScalewaySecretProvider : ISecretProvider
 {
     private readonly IScalewayApiClient _client;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ScalewaySecretProvider"/> class.
+    /// </summary>
+    /// <param name="options">The Scaleway API connection options.</param>
     public ScalewaySecretProvider(ScalewayOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -23,6 +30,18 @@ public sealed class ScalewaySecretProvider : ISecretProvider
     internal ScalewaySecretProvider(IScalewayApiClient client) =>
         _client = client;
 
+    /// <summary>
+    /// Retrieves a secret by name from Scaleway Secret Manager.
+    /// When <paramref name="query"/> specifies a version, that revision is returned;
+    /// otherwise the latest enabled revision is returned. When <paramref name="query"/>
+    /// specifies a property, only that property is extracted from the (JSON) value.
+    /// </summary>
+    /// <param name="key">The secret name to look up.</param>
+    /// <param name="query">Optional version or property filter.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>The secret value with metadata.</returns>
+    /// <exception cref="SecretNotFoundException">The secret does not exist.</exception>
+    /// <exception cref="SecretProviderException">A Scaleway API error occurred.</exception>
     public async Task<SecretValue> GetSecretAsync(
         string key, SecretQuery? query = null, CancellationToken cancellationToken = default)
     {
@@ -54,6 +73,16 @@ public sealed class ScalewaySecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Creates or updates a secret in Scaleway Secret Manager.
+    /// If the secret does not exist it is created; otherwise a new version is added.
+    /// </summary>
+    /// <param name="key">The secret name.</param>
+    /// <param name="value">The secret value to store.</param>
+    /// <param name="metadata">Optional tags to attach on creation.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>The stored secret value with the new version information.</returns>
+    /// <exception cref="SecretProviderException">A Scaleway API error occurred.</exception>
     public async Task<SecretValue> PutSecretAsync(
         string key, string value, SecretMetadata? metadata = null,
         CancellationToken cancellationToken = default)
@@ -86,6 +115,13 @@ public sealed class ScalewaySecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Deletes a secret and all its versions from Scaleway Secret Manager.
+    /// </summary>
+    /// <param name="key">The secret name to delete.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <exception cref="SecretNotFoundException">The secret does not exist.</exception>
+    /// <exception cref="SecretProviderException">A Scaleway API error occurred.</exception>
     public async Task DeleteSecretAsync(string key, CancellationToken cancellationToken = default)
     {
         try
@@ -102,6 +138,14 @@ public sealed class ScalewaySecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Lists all versions of a secret stored in Scaleway Secret Manager.
+    /// </summary>
+    /// <param name="key">The secret name.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>A read-only list of version information.</returns>
+    /// <exception cref="SecretNotFoundException">The secret does not exist.</exception>
+    /// <exception cref="SecretProviderException">A Scaleway API error occurred.</exception>
     public async Task<IReadOnlyList<SecretVersionInfo>> GetSecretVersionsAsync(
         string key, CancellationToken cancellationToken = default)
     {
@@ -129,6 +173,13 @@ public sealed class ScalewaySecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Checks whether a secret exists in Scaleway Secret Manager without retrieving its value.
+    /// </summary>
+    /// <param name="key">The secret name to check.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns><see langword="true"/> if the secret exists; otherwise, <see langword="false"/>.</returns>
+    /// <exception cref="SecretProviderException">A Scaleway API error occurred.</exception>
     public async Task<bool> SecretExistsAsync(string key, CancellationToken cancellationToken = default)
     {
         try
@@ -143,6 +194,9 @@ public sealed class ScalewaySecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Asynchronously releases the underlying Scaleway API client resources.
+    /// </summary>
     public async ValueTask DisposeAsync()
     {
         await _client.DisposeAsync();

@@ -18,6 +18,15 @@ namespace SecretsManager.Builder;
 /// </summary>
 public static class YamlConfigurationReader
 {
+    /// <summary>
+    /// Parses a YAML document into a <see cref="SecretProviderConfiguration"/>.
+    /// </summary>
+    /// <param name="yaml">The YAML document to parse.</param>
+    /// <returns>The provider name and its flattened settings.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the document is empty, has no top-level <c>provider</c> block, or declares
+    /// anything other than exactly one provider.
+    /// </exception>
     public static SecretProviderConfiguration Read(string yaml)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(yaml);

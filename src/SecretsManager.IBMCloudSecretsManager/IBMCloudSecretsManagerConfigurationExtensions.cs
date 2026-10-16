@@ -4,10 +4,17 @@ using SecretsManager.Builder;
 namespace SecretsManager.IBMCloudSecretsManager;
 
 /// <summary>
-/// Configuration bridge for [A-Zaaz] provider.
+/// Provides configuration binding for the IBM Cloud Secrets Manager provider from <see cref="IConfiguration"/>.
 /// </summary>
 public static class IBMCloudSecretsManagerConfigurationExtensions
 {
+    /// <summary>
+    /// Binds the <c>SecretsManager:ibmcloudsecretsmanager</c> configuration section, validates the options, and registers the provider.
+    /// </summary>
+    /// <param name="builder">The <see cref="SecretProviderBuilder"/> to extend.</param>
+    /// <param name="configuration">The configuration containing the provider settings.</param>
+    /// <returns>The same <see cref="SecretProviderBuilder"/> instance for method chaining.</returns>
+    /// <exception cref="ArgumentException">One or more configuration values are invalid.</exception>
     public static SecretProviderBuilder ConfigureIBMCloudSecretsManager(
         this SecretProviderBuilder builder,
         IConfiguration configuration)

@@ -2,10 +2,21 @@ using SecretsManager.Builder;
 
 namespace SecretsManager.IBMCloudSecretsManager;
 
+/// <summary>
+/// A factory that creates <see cref="IBMCloudSecretsManagerSecretProvider"/> instances from a flat configuration dictionary.
+/// </summary>
 public sealed class IBMCloudSecretsManagerSecretProviderFactory : ISecretProviderFactory
 {
+    /// <summary>
+    /// Gets the provider name used in YAML or environment configuration: <c>ibmcloud-secrets-manager</c>.
+    /// </summary>
     public string ProviderName => "ibmcloud-secrets-manager";
 
+    /// <summary>
+    /// Creates an <see cref="IBMCloudSecretsManagerSecretProvider"/> from the specified configuration dictionary.
+    /// </summary>
+    /// <param name="configuration">A dictionary of setting keys and values. Recognized keys: <c>region</c>, <c>instance.id</c>, <c>api.key</c>, and <c>service.url</c>.</param>
+    /// <returns>A configured <see cref="IBMCloudSecretsManagerSecretProvider"/> instance.</returns>
     public ISecretProvider Create(IReadOnlyDictionary<string, string> configuration)
     {
         var options = MapConfiguration(configuration);

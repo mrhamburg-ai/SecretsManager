@@ -2,8 +2,17 @@ using SecretsManager.Builder;
 
 namespace SecretsManager.AwsSecretsManager;
 
+/// <summary>
+/// Extension methods for registering the AWS Secrets Manager secret provider.
+/// </summary>
 public static class SecretProviderBuilderExtensions
 {
+    /// <summary>
+    /// Registers the AWS Secrets Manager secret provider factory and optionally applies fluent configuration.
+    /// </summary>
+    /// <param name="builder">The secret provider builder.</param>
+    /// <param name="configure">Optional configuration action for <see cref="AwsSecretsManagerOptions"/>.</param>
+    /// <returns>The same builder instance for method chaining.</returns>
     public static SecretProviderBuilder WithAwsSecretsManager(
         this SecretProviderBuilder builder,
         Action<AwsSecretsManagerOptions>? configure = null)

@@ -6,11 +6,22 @@ using SecretsManager.OracleVault.Internal;
 
 namespace SecretsManager.OracleVault;
 
+/// <summary>
+/// Stores and retrieves secrets from an Oracle Cloud Infrastructure (OCI) Vault.
+/// Uses the OCI SDK secret client with configurable authentication
+/// (config file, instance principal, or session token).
+/// </summary>
 public sealed class OracleVaultSecretProvider : ISecretProvider
 {
     private readonly ISecretClientWrapper _client;
     private readonly OracleVaultOptions _options;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="OracleVaultSecretProvider"/> class.
+    /// </summary>
+    /// <param name="options">The Oracle Vault configuration options.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="options"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException"><see cref="OracleVaultOptions.AuthenticationType"/> is required.</exception>
     public OracleVaultSecretProvider(OracleVaultOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -34,6 +45,15 @@ public sealed class OracleVaultSecretProvider : ISecretProvider
         _options = options;
     }
 
+    /// <summary>
+    /// Retrieves a secret from the Oracle Vault by key.
+    /// </summary>
+    /// <param name="key">The secret name or OCID.</param>
+    /// <param name="query">Optional query specifying the version and/or JSON property to extract.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The secret value with version, content type, and tags.</returns>
+    /// <exception cref="SecretNotFoundException">The secret was not found.</exception>
+    /// <exception cref="SecretProviderException">The Oracle Vault request failed.</exception>
     public async Task<SecretValue> GetSecretAsync(
         string key, SecretQuery? query = null, CancellationToken cancellationToken = default)
     {
@@ -67,6 +87,16 @@ public sealed class OracleVaultSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Creates or updates a secret in the Oracle Vault.
+    /// </summary>
+    /// <param name="key">The secret name. When the key contains a slash, the last segment is used as the vault secret name.</param>
+    /// <param name="value">The secret value to store.</param>
+    /// <param name="metadata">Optional metadata (content type and tags).</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The stored secret value with its new version number.</returns>
+    /// <exception cref="SecretNotFoundException">The secret was not found.</exception>
+    /// <exception cref="SecretProviderException">The Oracle Vault request failed, or required vault/compartment configuration is missing.</exception>
     public async Task<SecretValue> PutSecretAsync(
         string key, string value, SecretMetadata? metadata = null,
         CancellationToken cancellationToken = default)
@@ -131,6 +161,13 @@ public sealed class OracleVaultSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Deletes a secret from the Oracle Vault.
+    /// </summary>
+    /// <param name="key">The secret name or OCID to delete.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <exception cref="SecretNotFoundException">The secret was not found.</exception>
+    /// <exception cref="SecretProviderException">The Oracle Vault request failed.</exception>
     public async Task DeleteSecretAsync(string key, CancellationToken cancellationToken = default)
     {
         try
@@ -148,6 +185,14 @@ public sealed class OracleVaultSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Lists all versions of a secret in the Oracle Vault.
+    /// </summary>
+    /// <param name="key">The secret name or OCID.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The read-only list of secret version information.</returns>
+    /// <exception cref="SecretNotFoundException">The secret was not found.</exception>
+    /// <exception cref="SecretProviderException">The Oracle Vault request failed.</exception>
     public async Task<IReadOnlyList<SecretVersionInfo>> GetSecretVersionsAsync(
         string key, CancellationToken cancellationToken = default)
     {
@@ -181,6 +226,13 @@ public sealed class OracleVaultSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Checks whether a secret exists in the Oracle Vault.
+    /// </summary>
+    /// <param name="key">The secret name or OCID.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns><see langword="true"/> if the secret exists; otherwise, <see langword="false"/>.</returns>
+    /// <exception cref="SecretProviderException">The Oracle Vault request failed.</exception>
     public async Task<bool> SecretExistsAsync(string key, CancellationToken cancellationToken = default)
     {
         try
@@ -199,6 +251,9 @@ public sealed class OracleVaultSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Releases the underlying OCI secret client and its resources.
+    /// </summary>
     public async ValueTask DisposeAsync()
     {
         await _client.DisposeAsync();

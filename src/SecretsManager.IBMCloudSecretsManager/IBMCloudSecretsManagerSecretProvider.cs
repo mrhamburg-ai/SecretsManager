@@ -3,10 +3,19 @@ using SecretsManager.IBMCloudSecretsManager.Internal;
 
 namespace SecretsManager.IBMCloudSecretsManager;
 
+/// <summary>
+/// An <see cref="ISecretProvider"/> implementation that stores and retrieves secrets using IBM Cloud Secrets Manager.
+/// </summary>
 public sealed class IBMCloudSecretsManagerSecretProvider : ISecretProvider
 {
     private readonly IIBMCloudSecretsManagerApiClient _client;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="IBMCloudSecretsManagerSecretProvider"/> class.
+    /// </summary>
+    /// <param name="options">The options containing the IBM Cloud region, instance ID, and API key.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="options"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException">A required option value is missing or empty.</exception>
     public IBMCloudSecretsManagerSecretProvider(IBMCloudSecretsManagerOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -23,6 +32,15 @@ public sealed class IBMCloudSecretsManagerSecretProvider : ISecretProvider
     internal IBMCloudSecretsManagerSecretProvider(IIBMCloudSecretsManagerApiClient client) =>
         _client = client;
 
+    /// <summary>
+    /// Retrieves a secret by name from IBM Cloud Secrets Manager.
+    /// </summary>
+    /// <param name="key">The name of the secret to retrieve.</param>
+    /// <param name="query">Optional query parameters to select a specific version or extract a property.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>The secret value with metadata.</returns>
+    /// <exception cref="SecretNotFoundException">The secret was not found.</exception>
+    /// <exception cref="SecretProviderException">An error occurred while accessing IBM Cloud Secrets Manager.</exception>
     public async Task<SecretValue> GetSecretAsync(
         string key, SecretQuery? query = null, CancellationToken cancellationToken = default)
     {
@@ -30,7 +48,6 @@ public sealed class IBMCloudSecretsManagerSecretProvider : ISecretProvider
         {
             var secret = await _client.FindSecretByNameAsync(key, cancellationToken)
                 ?? throw new SecretNotFoundException(key);
-
             var revision = query?.Version ?? "latest";
             var access = await _client.AccessVersionAsync(secret.Id, revision, cancellationToken);
             var value = access.Data;
@@ -54,6 +71,15 @@ public sealed class IBMCloudSecretsManagerSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Creates or updates a secret in IBM Cloud Secrets Manager.
+    /// </summary>
+    /// <param name="key">The name of the secret.</param>
+    /// <param name="value">The secret value to store.</param>
+    /// <param name="metadata">Optional metadata including tags to apply when creating the secret.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>The stored secret value with version information.</returns>
+    /// <exception cref="SecretProviderException">An error occurred while accessing IBM Cloud Secrets Manager.</exception>
     public async Task<SecretValue> PutSecretAsync(
         string key, string value, SecretMetadata? metadata = null,
         CancellationToken cancellationToken = default)
@@ -86,6 +112,13 @@ public sealed class IBMCloudSecretsManagerSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Deletes a secret from IBM Cloud Secrets Manager.
+    /// </summary>
+    /// <param name="key">The name of the secret to delete.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <exception cref="SecretNotFoundException">The secret was not found.</exception>
+    /// <exception cref="SecretProviderException">An error occurred while accessing IBM Cloud Secrets Manager.</exception>
     public async Task DeleteSecretAsync(string key, CancellationToken cancellationToken = default)
     {
         try
@@ -102,6 +135,14 @@ public sealed class IBMCloudSecretsManagerSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Lists all versions of a secret in IBM Cloud Secrets Manager.
+    /// </summary>
+    /// <param name="key">The name of the secret.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>A read-only list of version information.</returns>
+    /// <exception cref="SecretNotFoundException">The secret was not found.</exception>
+    /// <exception cref="SecretProviderException">An error occurred while accessing IBM Cloud Secrets Manager.</exception>
     public async Task<IReadOnlyList<SecretVersionInfo>> GetSecretVersionsAsync(
         string key, CancellationToken cancellationToken = default)
     {
@@ -129,6 +170,13 @@ public sealed class IBMCloudSecretsManagerSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Checks whether a secret exists in IBM Cloud Secrets Manager.
+    /// </summary>
+    /// <param name="key">The name of the secret to check.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns><see langword="true"/> if the secret exists; otherwise, <see langword="false"/>.</returns>
+    /// <exception cref="SecretProviderException">An error occurred while accessing IBM Cloud Secrets Manager.</exception>
     public async Task<bool> SecretExistsAsync(string key, CancellationToken cancellationToken = default)
     {
         try
@@ -143,6 +191,9 @@ public sealed class IBMCloudSecretsManagerSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Asynchronously releases the underlying API client and its resources.
+    /// </summary>
     public async ValueTask DisposeAsync()
     {
         await _client.DisposeAsync();

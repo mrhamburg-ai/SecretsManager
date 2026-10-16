@@ -13,6 +13,10 @@ public sealed class FileSystemSecretProvider : ISecretProvider
     private readonly SecretFileStore _store;
     private readonly ISecretEncryptor _encryptor;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="FileSystemSecretProvider"/> class.
+    /// </summary>
+    /// <param name="options">The filesystem options.</param>
     public FileSystemSecretProvider(FileSystemOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -20,6 +24,14 @@ public sealed class FileSystemSecretProvider : ISecretProvider
         _encryptor = CreateEncryptor(options);
     }
 
+    /// <summary>
+    /// Reads a secret from the local filesystem, optionally extracting a JSON property.
+    /// </summary>
+    /// <param name="key">The secret key.</param>
+    /// <param name="query">The secret query.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The secret value.</returns>
+    /// <exception cref="SecretNotFoundException">The secret was not found.</exception>
     public async Task<SecretValue> GetSecretAsync(
         string key, SecretQuery? query = null, CancellationToken cancellationToken = default)
     {
@@ -52,6 +64,14 @@ public sealed class FileSystemSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Writes a secret to the local filesystem with optional AES-256-GCM encryption.
+    /// </summary>
+    /// <param name="key">The secret key.</param>
+    /// <param name="value">The secret value.</param>
+    /// <param name="metadata">The secret metadata.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The secret value.</returns>
     public async Task<SecretValue> PutSecretAsync(
         string key, string value, SecretMetadata? metadata = null, CancellationToken cancellationToken = default)
     {
@@ -103,6 +123,12 @@ public sealed class FileSystemSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Deletes a secret and all its versions from the local filesystem.
+    /// </summary>
+    /// <param name="key">The secret key.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <exception cref="SecretNotFoundException">The secret was not found.</exception>
     public async Task DeleteSecretAsync(string key, CancellationToken cancellationToken = default)
     {
         var semaphore = _store.GetLock(key);
@@ -120,6 +146,13 @@ public sealed class FileSystemSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Lists all versions of a secret stored on the local filesystem.
+    /// </summary>
+    /// <param name="key">The secret key.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The list of secret versions.</returns>
+    /// <exception cref="SecretNotFoundException">The secret was not found.</exception>
     public async Task<IReadOnlyList<SecretVersionInfo>> GetSecretVersionsAsync(
         string key, CancellationToken cancellationToken = default)
     {
@@ -153,11 +186,20 @@ public sealed class FileSystemSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Checks whether a secret exists on the local filesystem.
+    /// </summary>
+    /// <param name="key">The secret key.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns><see langword="true"/> if the secret exists; otherwise, <see langword="false"/>.</returns>
     public Task<bool> SecretExistsAsync(string key, CancellationToken cancellationToken = default)
     {
         return Task.FromResult(_store.SecretExists(key));
     }
 
+    /// <summary>
+    /// Releases the underlying file store and encryptor resources.
+    /// </summary>
     public ValueTask DisposeAsync()
     {
         _encryptor.Dispose();

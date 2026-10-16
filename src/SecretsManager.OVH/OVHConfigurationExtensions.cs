@@ -4,10 +4,17 @@ using SecretsManager.Builder;
 namespace SecretsManager.OVH;
 
 /// <summary>
-/// Configuration bridge for [A-Zaaz] provider.
+/// Provides configuration binding for the OVHcloud Secrets Management provider from <see cref="IConfiguration"/>.
 /// </summary>
 public static class OVHConfigurationExtensions
 {
+    /// <summary>
+    /// Binds the <c>SecretsManager:ovh</c> configuration section, validates the options, and registers the provider.
+    /// </summary>
+    /// <param name="builder">The <see cref="SecretProviderBuilder"/> to extend.</param>
+    /// <param name="configuration">The configuration containing the provider settings.</param>
+    /// <returns>The same <see cref="SecretProviderBuilder"/> instance for method chaining.</returns>
+    /// <exception cref="ArgumentException">One or more configuration values are invalid.</exception>
     public static SecretProviderBuilder ConfigureOVH(
         this SecretProviderBuilder builder,
         IConfiguration configuration)
