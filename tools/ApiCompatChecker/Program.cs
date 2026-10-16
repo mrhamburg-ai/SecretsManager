@@ -138,7 +138,7 @@ static HashSet<string> ExtractApiSurface(string assemblyPath)
                     ConstructorInfo c => $"ctor({string.Join(", ", c.GetParameters().Select(p => p.ParameterType.Name))})",
                     _ => member.Name
                 };
-                
+
                 api.Add($"MEMBER:{typeName}.{signature}");
             }
         }
@@ -147,6 +147,6 @@ static HashSet<string> ExtractApiSurface(string assemblyPath)
     {
         Console.WriteLine($"  WARNING: Could not load {Path.GetFileName(assemblyPath)}: {ex.Message}");
     }
-    
+
     return api;
 }
