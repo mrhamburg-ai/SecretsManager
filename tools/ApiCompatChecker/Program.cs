@@ -46,22 +46,22 @@ foreach (var kvp in baseApis)
 {
     var name = kvp.Key;
     var baseApi = kvp.Value;
-    
+
     if (!currentApis.ContainsKey(name))
     {
         breakingChanges.Add($"  ASSEMBLY REMOVED: {name}");
         continue;
     }
-    
+
     var currentApi = currentApis[name];
-    
+
     // Check for removed members
     var removed = baseApi.Except(currentApi).ToList();
     foreach (var member in removed)
     {
         breakingChanges.Add($"  REMOVED: {name}.{member}");
     }
-    
+
     // Check for added members (informational)
     var added = currentApi.Except(baseApi).ToList();
     foreach (var member in added)
@@ -107,20 +107,20 @@ return 0;
 static HashSet<string> ExtractApiSurface(string assemblyPath)
 {
     var api = new HashSet<string>();
-    
+
     try
     {
         var assembly = Assembly.LoadFrom(assemblyPath);
-        
+
         foreach (var type in assembly.GetTypes())
         {
             // Only public and protected types
             if (!type.IsPublic && !type.IsNestedPublic && !type.IsNestedFamily)
                 continue;
-            
+
             var typeName = type.FullName ?? type.Name;
             api.Add($"TYPE:{typeName}");
-            
+
             foreach (var member in type.GetMembers(
                 BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static |
                 BindingFlags.DeclaredOnly))
@@ -129,7 +129,7 @@ static HashSet<string> ExtractApiSurface(string assemblyPath)
                     continue;
                 if (member is FieldInfo fi && (fi.IsPrivate || fi.IsAssembly))
                     continue;
-                
+
                 var signature = member switch
                 {
                     MethodInfo m => $"{m.ReturnType.Name} {m.Name}({string.Join(", ", m.GetParameters().Select(p => p.ParameterType.Name))})",
