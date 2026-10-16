@@ -130,11 +130,17 @@ You can combine configuration sources. For example, use YAML for base configurat
 
 Each provider has its own set of configuration options. See the individual provider documentation for details:
 
-- [FileSystem Provider](/docs/providers/filesystem)
-- [Azure Key Vault Provider](/docs/providers/azure-key-vault)
-- [Scaleway Provider](/docs/providers/scaleway)
-- [PostgreSQL Provider](/docs/providers/postgresql)
-- [OVH Provider](/docs/providers/ovh)
+- [Aliyun KMS Provider](/docs/providers/aliyun-kms)
 - [AWS Secrets Manager Provider](/docs/providers/aws-secrets-manager)
-- [HashiCorp Vault Provider](/docs/providers/vault)
+- [Azure Key Vault Provider](/docs/providers/azure-key-vault)
 - [CyberArk Conjur Provider](/docs/providers/conjur)
+- [FileSystem Provider](/docs/providers/filesystem)
+- [Google Secret Manager Provider](/docs/providers/google-secret-manager)
+- [IBM Cloud Secrets Manager Provider](/docs/providers/ibm-cloud-secrets-manager)
+- [Oracle Vault Provider](/docs/providers/oracle-vault)
+- [OVH Provider](/docs/providers/ovh)
+- [Passbolt Provider](/docs/providers/passbolt)
+- [PostgreSQL Provider](/docs/providers/postgresql)
+- [Scaleway Provider](/docs/providers/scaleway)
+- [Tencent Cloud Provider](/docs/providers/tencent-cloud)
+- [HashiCorp Vault Provider](/docs/providers/vault)
