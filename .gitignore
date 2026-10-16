@@ -32,3 +32,4 @@ DocumentIndex*.json
 # Mac
 .DS_Store
 Thumbs.db
+CLAUDE_LOCAL.md
