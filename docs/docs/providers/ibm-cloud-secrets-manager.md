@@ -161,7 +161,7 @@ The IBM Cloud Secrets Manager API uses standard HTTP status codes. All error res
 | 502 | Bad Gateway | Upstream service error |
 | 503 | Service Unavailable | Service temporarily unavailable |
 
-### Configuration via IOptions<T>
+### Configuration via IOptions&lt;T&gt;
 
 You can also bind configuration from `IConfiguration`:
 

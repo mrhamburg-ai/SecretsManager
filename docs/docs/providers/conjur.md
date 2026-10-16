@@ -123,7 +123,7 @@ await provider.DeleteSecretAsync("old-secret");
 - **Deleting secrets:** Conjur has no REST delete endpoint. Deletion is performed by patching the configured policy path with a `!delete` statement, which requires the `update` privilege on the containing policy.
 - **Nested variables:** For variables declared inside a policy branch, set `PolicyPath` to that branch; the leading branch segment is stripped when the provider creates missing variables.
 
-### Configuration via IOptions<T>
+### Configuration via IOptions&lt;T&gt;
 
 You can also bind configuration from `IConfiguration`:
 

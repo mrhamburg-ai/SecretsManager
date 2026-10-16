@@ -84,7 +84,7 @@ ISecretProvider provider = new SecretProviderBuilder()
     .WithFileSystem(options => options.BasePath = "/tmp/secrets")
     .Build();
 
-// Or with IOptions<T>
+// Or with IOptions&lt;T&gt;
 ISecretProvider provider2 = new SecretProviderBuilder()
     .ConfigureFileSystem(configuration)
     .Build();

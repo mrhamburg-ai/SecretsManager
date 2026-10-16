@@ -29,7 +29,7 @@ This approach works well for:
 - Unit testing with mock providers
 
 
-## Dependency Injection (IOptions<T>)
+## Dependency Injection (IOptions&lt;T&gt;)
 
 For applications using `Microsoft.Extensions.DependencyInjection`, register SecretsManager and bind configuration from `IConfiguration`:
 

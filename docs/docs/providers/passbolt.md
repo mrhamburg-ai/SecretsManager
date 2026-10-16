@@ -125,7 +125,7 @@ await provider.DeleteSecretAsync("old-secret");
 Passbolt does not support native secret versioning. Each update replaces the previous secret value. `GetSecretVersionsAsync` always returns a single version marked as current.
 :::
 
-### Configuration via IOptions<T>
+### Configuration via IOptions&lt;T&gt;
 
 You can also bind configuration from `IConfiguration`:
 

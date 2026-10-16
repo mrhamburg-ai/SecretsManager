@@ -144,7 +144,7 @@ await provider.DeleteSecretAsync("old-secret");
 The provider uses `NpgsqlDataSource` internally, which manages connection pooling automatically. You do not need to configure pooling separately.
 :::
 
-### Configuration via IOptions<T>
+### Configuration via IOptions&lt;T&gt;
 
 You can also bind configuration from `IConfiguration`:
 

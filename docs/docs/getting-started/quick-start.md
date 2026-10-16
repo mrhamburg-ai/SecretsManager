@@ -76,7 +76,7 @@ builder.Services.AddSingleton<ISecretProvider>(sp =>
 ```
 
 
-### Alternative: IOptions<T> with Configuration
+### Alternative: IOptions&lt;T&gt; with Configuration
 
 If you prefer the standard .NET configuration pattern, you can bind from `appsettings.json`:
 

@@ -180,7 +180,7 @@ Ensure your service account has the `roles/secretmanager.admin` role (or at mini
 - Grant the principle of least privilege — only assign the IAM roles your application actually needs
 - Rotate service account keys regularly if using explicit credentials
 
-### Configuration via IOptions<T>
+### Configuration via IOptions&lt;T&gt;
 
 You can also bind configuration from `IConfiguration`:
 
