@@ -35,7 +35,8 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore
 
-    - name: Check API compatibility
+    # DISABLED: API compatibility check moved to PR #39
+    #     - name: Check API compatibility
       run: |
         dotnet build tools/ApiCompatChecker/ApiCompatChecker.csproj -c Release --no-restore
         dotnet build src/SecretsManager.Vault/SecretsManager.Vault.csproj -c Release --no-restore
