@@ -98,7 +98,7 @@ var versions = await provider.GetSecretVersionsAsync("my-secret");
 await provider.DeleteSecretAsync("old-secret");
 ```
 
-### Configuration via IOptions<T>
+### Configuration via IOptions&lt;T&gt;
 
 You can also bind configuration from `IConfiguration`:
 

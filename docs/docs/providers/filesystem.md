@@ -111,7 +111,7 @@ var versions = await provider.GetSecretVersionsAsync("db-password");
 // Returns: v1 (first-value), v2 (second-value)
 ```
 
-### Configuration via IOptions<T>
+### Configuration via IOptions&lt;T&gt;
 
 You can also bind configuration from `IConfiguration`:
 
