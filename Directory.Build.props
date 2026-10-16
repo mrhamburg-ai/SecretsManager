@@ -5,5 +5,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
+    <!--
+      Fail the build on any compiler warning so warnings cannot accumulate again. This is what
+      keeps CS1591 ("Missing XML comment for publicly visible type or member") from creeping
+      back in: an undocumented public member now breaks the build instead of adding a line to a
+      warning list nobody reads. The solution builds clean in both Debug and Release.
+    -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 </Project>
