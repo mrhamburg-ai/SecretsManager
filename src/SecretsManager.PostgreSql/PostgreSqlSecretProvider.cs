@@ -5,11 +5,19 @@ using SecretsManager.PostgreSql.Internal;
 
 namespace SecretsManager.PostgreSql;
 
+/// <summary>
+/// An <see cref="ISecretProvider"/> backed by a PostgreSQL database.
+/// Secrets are stored in dedicated tables with optional AES-256-GCM encryption at rest.
+/// </summary>
 public sealed class PostgreSqlSecretProvider : ISecretProvider
 {
     private readonly IPostgreSqlSecretStore _store;
     private readonly ISecretEncryptor _encryptor;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="PostgreSqlSecretProvider"/> class.
+    /// </summary>
+    /// <param name="options">The PostgreSQL connection and behavior options.</param>
     public PostgreSqlSecretProvider(PostgreSqlOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -26,6 +34,18 @@ public sealed class PostgreSqlSecretProvider : ISecretProvider
         _encryptor = encryptor;
     }
 
+    /// <summary>
+    /// Retrieves a secret by key from the PostgreSQL store.
+    /// When <paramref name="query"/> specifies a version, that version is returned;
+    /// otherwise the latest version is returned. When <paramref name="query"/> specifies
+    /// a property, only that property is extracted from the (JSON) value.
+    /// </summary>
+    /// <param name="key">The secret key to look up.</param>
+    /// <param name="query">Optional version or property filter.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>The secret value with metadata.</returns>
+    /// <exception cref="SecretNotFoundException">The secret does not exist.</exception>
+    /// <exception cref="SecretProviderException">A PostgreSQL error occurred.</exception>
     public async Task<SecretValue> GetSecretAsync(
         string key, SecretQuery? query = null, CancellationToken cancellationToken = default)
     {
@@ -69,6 +89,17 @@ public sealed class PostgreSqlSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Creates or updates a secret in the PostgreSQL store.
+    /// If the secret does not exist it is created; otherwise a new version is appended.
+    /// The value is encrypted at rest when an encryption key is configured.
+    /// </summary>
+    /// <param name="key">The secret key.</param>
+    /// <param name="value">The secret value to store.</param>
+    /// <param name="metadata">Optional content type and tags.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>The stored secret value with the new version information.</returns>
+    /// <exception cref="SecretProviderException">A PostgreSQL error occurred.</exception>
     public async Task<SecretValue> PutSecretAsync(
         string key, string value, SecretMetadata? metadata = null,
         CancellationToken cancellationToken = default)
@@ -99,6 +130,13 @@ public sealed class PostgreSqlSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Deletes a secret and all its versions from the PostgreSQL store.
+    /// </summary>
+    /// <param name="key">The secret key to delete.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <exception cref="SecretNotFoundException">The secret does not exist.</exception>
+    /// <exception cref="SecretProviderException">A PostgreSQL error occurred.</exception>
     public async Task DeleteSecretAsync(string key, CancellationToken cancellationToken = default)
     {
         try
@@ -114,6 +152,14 @@ public sealed class PostgreSqlSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Lists all versions of a secret stored in PostgreSQL.
+    /// </summary>
+    /// <param name="key">The secret key.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>A read-only list of version information.</returns>
+    /// <exception cref="SecretNotFoundException">The secret does not exist.</exception>
+    /// <exception cref="SecretProviderException">A PostgreSQL error occurred.</exception>
     public async Task<IReadOnlyList<SecretVersionInfo>> GetSecretVersionsAsync(
         string key, CancellationToken cancellationToken = default)
     {
@@ -141,6 +187,13 @@ public sealed class PostgreSqlSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Checks whether a secret exists in the PostgreSQL store without retrieving its value.
+    /// </summary>
+    /// <param name="key">The secret key to check.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns><see langword="true"/> if the secret exists; otherwise, <see langword="false"/>.</returns>
+    /// <exception cref="SecretProviderException">A PostgreSQL error occurred.</exception>
     public async Task<bool> SecretExistsAsync(string key, CancellationToken cancellationToken = default)
     {
         try
@@ -154,6 +207,9 @@ public sealed class PostgreSqlSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Asynchronously releases the underlying PostgreSQL store and encryptor resources.
+    /// </summary>
     public async ValueTask DisposeAsync()
     {
         _encryptor.Dispose();

@@ -1,5 +1,8 @@
 namespace SecretsManager.Scaleway;
 
+/// <summary>
+/// Configuration options for the Scaleway secret provider.
+/// </summary>
 public sealed class ScalewayOptions
 {
     /// <summary>
@@ -22,6 +25,13 @@ public sealed class ScalewayOptions
     /// </summary>
     public string SecretKey { get; set; } = "";
 
+    /// <summary>
+    /// Validates the options and returns a collection of error messages.
+    /// An empty collection indicates the options are valid.
+    /// Checks that <see cref="Region"/>, <see cref="ProjectId"/>, <see cref="AccessKey"/>,
+    /// and <see cref="SecretKey"/> are non-empty.
+    /// </summary>
+    /// <returns>Validation error messages; empty when the options are valid.</returns>
     public IEnumerable<string> Validate()
     {
         if (string.IsNullOrWhiteSpace(Region))

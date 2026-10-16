@@ -4,11 +4,25 @@ using SecretsManager.Passbolt.Internal;
 
 namespace SecretsManager.Passbolt;
 
+/// <summary>
+/// Stores and retrieves secrets from a Passbolt server using its GPG-encrypted resource API.
+/// Secrets are mapped to Passbolt resources and encrypted with the user's key.
+/// </summary>
 public sealed class PassboltSecretProvider : ISecretProvider
 {
     private readonly IPassboltApiClient _client;
     private readonly string? _defaultResourceTypeId;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="PassboltSecretProvider"/> class.
+    /// </summary>
+    /// <param name="options">The Passbolt configuration options.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="options"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="options"/> is missing a required value
+    /// (<see cref="PassboltOptions.BaseUrl"/>, <see cref="PassboltOptions.UserPrivateKey"/>,
+    /// <see cref="PassboltOptions.UserPrivateKeyPassphrase"/>, or <see cref="PassboltOptions.UserKeyFingerprint"/>).
+    /// </exception>
     public PassboltSecretProvider(PassboltOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -31,6 +45,15 @@ public sealed class PassboltSecretProvider : ISecretProvider
         _defaultResourceTypeId = defaultResourceTypeId;
     }
 
+    /// <summary>
+    /// Retrieves a secret from Passbolt by resource name.
+    /// </summary>
+    /// <param name="key">The Passbolt resource name.</param>
+    /// <param name="query">Optional query specifying a JSON property to extract from the decrypted secret.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The secret value with version and timestamps.</returns>
+    /// <exception cref="SecretNotFoundException">The resource was not found.</exception>
+    /// <exception cref="SecretProviderException">The Passbolt request failed.</exception>
     public async Task<SecretValue> GetSecretAsync(
         string key, SecretQuery? query = null, CancellationToken cancellationToken = default)
     {
@@ -60,6 +83,15 @@ public sealed class PassboltSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Creates or updates a Passbolt resource with the supplied secret value.
+    /// </summary>
+    /// <param name="key">The resource name.</param>
+    /// <param name="value">The secret value to store.</param>
+    /// <param name="metadata">Optional metadata (not currently used by this provider).</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The stored secret value.</returns>
+    /// <exception cref="SecretProviderException">The Passbolt request failed.</exception>
     public async Task<SecretValue> PutSecretAsync(
         string key, string value, SecretMetadata? metadata = null,
         CancellationToken cancellationToken = default)
@@ -103,6 +135,13 @@ public sealed class PassboltSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Deletes a Passbolt resource by name.
+    /// </summary>
+    /// <param name="key">The resource name to delete.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <exception cref="SecretNotFoundException">The resource was not found.</exception>
+    /// <exception cref="SecretProviderException">The Passbolt request failed.</exception>
     public async Task DeleteSecretAsync(string key, CancellationToken cancellationToken = default)
     {
         try
@@ -119,6 +158,14 @@ public sealed class PassboltSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Lists the versions of a Passbolt resource.
+    /// </summary>
+    /// <param name="key">The resource name.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A single-entry read-only list representing the current resource version.</returns>
+    /// <exception cref="SecretNotFoundException">The resource was not found.</exception>
+    /// <exception cref="SecretProviderException">The Passbolt request failed.</exception>
     public async Task<IReadOnlyList<SecretVersionInfo>> GetSecretVersionsAsync(
         string key, CancellationToken cancellationToken = default)
     {
@@ -144,6 +191,13 @@ public sealed class PassboltSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Checks whether a Passbolt resource with the given name exists.
+    /// </summary>
+    /// <param name="key">The resource name.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns><see langword="true"/> if the resource exists; otherwise, <see langword="false"/>.</returns>
+    /// <exception cref="SecretProviderException">The Passbolt request failed.</exception>
     public async Task<bool> SecretExistsAsync(string key, CancellationToken cancellationToken = default)
     {
         try
@@ -158,6 +212,9 @@ public sealed class PassboltSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Releases the underlying Passbolt API client and its resources.
+    /// </summary>
     public async ValueTask DisposeAsync()
     {
         await _client.DisposeAsync();

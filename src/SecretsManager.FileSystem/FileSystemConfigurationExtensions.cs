@@ -4,10 +4,17 @@ using SecretsManager.Builder;
 namespace SecretsManager.FileSystem;
 
 /// <summary>
-/// Configuration bridge for [A-Zaaz] provider.
+/// Configuration bridge for the filesystem secret provider.
 /// </summary>
 public static class FileSystemConfigurationExtensions
 {
+    /// <summary>
+    /// Binds the <c>SecretsManager:filesystem</c> configuration section to <see cref="FileSystemOptions"/>,
+    /// validates the options, and returns the builder.
+    /// </summary>
+    /// <param name="builder">The secret provider builder.</param>
+    /// <param name="configuration">The configuration instance.</param>
+    /// <returns>The secret provider builder.</returns>
     public static SecretProviderBuilder ConfigureFileSystem(
         this SecretProviderBuilder builder,
         IConfiguration configuration)

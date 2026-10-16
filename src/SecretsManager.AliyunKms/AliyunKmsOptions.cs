@@ -25,6 +25,10 @@ public sealed class AliyunKmsOptions
     /// </summary>
     public string? Endpoint { get; set; }
 
+    /// <summary>
+    /// Validates the options and returns error messages for any missing required fields.
+    /// </summary>
+    /// <returns>An enumerable of validation error messages; empty if the options are valid.</returns>
     public IEnumerable<string> Validate()
     {
         if (string.IsNullOrWhiteSpace(Region))

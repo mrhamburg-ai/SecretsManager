@@ -7,6 +7,21 @@ namespace SecretsManager.Internal;
 /// </summary>
 public static class JsonPropertyExtractor
 {
+    /// <summary>
+    /// Extracts a nested property from a JSON secret value.
+    /// </summary>
+    /// <param name="json">The JSON document to read from.</param>
+    /// <param name="propertyPath">
+    /// Dot-separated path to the property, for example <c>database.password</c>.
+    /// </param>
+    /// <returns>
+    /// The value at the given path: strings are returned as-is, numbers and booleans as their
+    /// raw JSON text, and objects or arrays as raw JSON.
+    /// </returns>
+    /// <exception cref="SecretProviderException">
+    /// Thrown when <paramref name="json"/> is not valid JSON, when an intermediate segment is not
+    /// an object, or when a segment is missing.
+    /// </exception>
     public static string Extract(string json, string propertyPath)
     {
         JsonDocument doc;

@@ -1,5 +1,8 @@
 namespace SecretsManager.AzureKeyVault;
 
+/// <summary>
+/// Options for the Azure Key Vault secret provider.
+/// </summary>
 public sealed class AzureKeyVaultOptions
 {
     /// <summary>
@@ -29,6 +32,13 @@ public sealed class AzureKeyVaultOptions
     /// </summary>
     public string? ClientSecret { get; set; }
 
+    /// <summary>
+    /// Returns the validation errors for the current options; an empty sequence means the options
+    /// are valid. Requires <see cref="VaultUrl"/> to be an absolute URI, and additionally requires
+    /// <see cref="TenantId"/>, <see cref="ClientId"/> and <see cref="ClientSecret"/> when
+    /// <see cref="AuthenticationType"/> is <c>serviceprincipal</c>.
+    /// </summary>
+    /// <returns>One message per invalid setting.</returns>
     public IEnumerable<string> Validate()
     {
         if (string.IsNullOrWhiteSpace(VaultUrl))

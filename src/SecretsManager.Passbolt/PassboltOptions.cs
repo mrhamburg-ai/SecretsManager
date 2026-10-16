@@ -25,6 +25,10 @@ public sealed class PassboltOptions
     /// </summary>
     public string UserKeyFingerprint { get; set; } = "";
 
+    /// <summary>
+    /// Validates the options and returns any error messages.
+    /// </summary>
+    /// <returns>An error message for each invalid setting; empty when the configuration is valid.</returns>
     public IEnumerable<string> Validate()
     {
         if (string.IsNullOrWhiteSpace(BaseUrl))

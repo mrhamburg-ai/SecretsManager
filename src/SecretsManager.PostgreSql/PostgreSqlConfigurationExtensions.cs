@@ -4,10 +4,18 @@ using SecretsManager.Builder;
 namespace SecretsManager.PostgreSql;
 
 /// <summary>
-/// Configuration bridge for [A-Zaaz] provider.
+/// Extension methods for binding the PostgreSQL provider configuration from <see cref="IConfiguration"/>.
 /// </summary>
 public static class PostgreSqlConfigurationExtensions
 {
+    /// <summary>
+    /// Binds the <c>SecretsManager:postgresql</c> configuration section to <see cref="PostgreSqlOptions"/>,
+    /// validates the options, and registers the PostgreSQL provider.
+    /// </summary>
+    /// <param name="builder">The secret provider builder.</param>
+    /// <param name="configuration">The configuration to bind.</param>
+    /// <returns>The same builder for method chaining.</returns>
+    /// <exception cref="ArgumentException">The configuration is invalid.</exception>
     public static SecretProviderBuilder ConfigurePostgreSql(
         this SecretProviderBuilder builder,
         IConfiguration configuration)

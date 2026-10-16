@@ -8,8 +8,16 @@ namespace SecretsManager.FileSystem;
 /// </summary>
 public sealed class FileSystemSecretProviderFactory : ISecretProviderFactory
 {
+    /// <summary>
+    /// Gets the provider name used in YAML and environment configuration.
+    /// </summary>
     public string ProviderName => "filesystem";
 
+    /// <summary>
+    /// Creates a <see cref="FileSystemSecretProvider"/> from a flat configuration dictionary.
+    /// </summary>
+    /// <param name="configuration">The configuration dictionary containing the keys <c>path</c>, <c>encryption.key</c>, and <c>encryption.keyfile</c>.</param>
+    /// <returns>The filesystem secret provider.</returns>
     public ISecretProvider Create(IReadOnlyDictionary<string, string> configuration)
     {
         var options = new FileSystemOptions();

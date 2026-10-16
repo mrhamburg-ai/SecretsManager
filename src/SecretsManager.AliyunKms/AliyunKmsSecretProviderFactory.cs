@@ -2,10 +2,21 @@ using SecretsManager.Builder;
 
 namespace SecretsManager.AliyunKms;
 
+/// <summary>
+/// Factory for creating <see cref="AliyunKmsSecretProvider"/> instances from configuration.
+/// </summary>
 public sealed class AliyunKmsSecretProviderFactory : ISecretProviderFactory
 {
+    /// <summary>
+    /// The provider name used in YAML/env configuration: <c>aliyunKms</c>.
+    /// </summary>
     public string ProviderName => "aliyunKms";
 
+    /// <summary>
+    /// Creates an <see cref="AliyunKmsSecretProvider"/> from the flat settings dictionary.
+    /// </summary>
+    /// <param name="configuration">The configuration settings.</param>
+    /// <returns>A configured <see cref="AliyunKmsSecretProvider"/> instance.</returns>
     public ISecretProvider Create(IReadOnlyDictionary<string, string> configuration)
     {
         var options = MapConfiguration(configuration);

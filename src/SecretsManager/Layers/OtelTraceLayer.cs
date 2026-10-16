@@ -13,6 +13,13 @@ public sealed class OtelTraceLayer : ISecretProviderLayer
 {
     private readonly OtelTraceLayerOptions _options;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="OtelTraceLayer"/> class.
+    /// </summary>
+    /// <param name="options">Layer options, including the activity source name. Defaults to <see cref="OtelTraceLayerOptions"/>.</param>
+    /// <exception cref="ArgumentException">
+    /// Thrown when <see cref="OtelTraceLayerOptions.ActivitySourceName"/> is empty.
+    /// </exception>
     public OtelTraceLayer(OtelTraceLayerOptions? options = null)
     {
         _options = options ?? new OtelTraceLayerOptions();
@@ -21,6 +28,12 @@ public sealed class OtelTraceLayer : ISecretProviderLayer
             throw new ArgumentException("ActivitySourceName is required.", nameof(OtelTraceLayerOptions.ActivitySourceName));
     }
 
+    /// <summary>
+    /// Wraps the given provider so that every operation runs inside a client
+    /// <see cref="System.Diagnostics.Activity"/> span tagged with the operation and key.
+    /// </summary>
+    /// <param name="inner">The provider to wrap.</param>
+    /// <returns>The wrapped provider.</returns>
     public ISecretProvider Wrap(ISecretProvider inner)
     {
         ArgumentNullException.ThrowIfNull(inner);

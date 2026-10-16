@@ -7,6 +7,14 @@ public sealed class RetryLayer : ISecretProviderLayer
 {
     private readonly RetryLayerOptions _options;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="RetryLayer"/> class.
+    /// </summary>
+    /// <param name="options">Layer options. Defaults to <see cref="RetryLayerOptions"/>.</param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when <see cref="RetryLayerOptions.MaxAttempts"/>, <see cref="RetryLayerOptions.MaxDelay"/>,
+    /// <see cref="RetryLayerOptions.BaseDelay"/> or <see cref="RetryLayerOptions.JitterFactor"/> is out of range.
+    /// </exception>
     public RetryLayer(RetryLayerOptions? options = null)
     {
         _options = options ?? new RetryLayerOptions();
@@ -24,6 +32,12 @@ public sealed class RetryLayer : ISecretProviderLayer
             throw new ArgumentOutOfRangeException(nameof(RetryLayerOptions.JitterFactor));
     }
 
+    /// <summary>
+    /// Wraps the given provider so that transient failures are retried with exponential backoff
+    /// and optional jitter.
+    /// </summary>
+    /// <param name="inner">The provider to wrap.</param>
+    /// <returns>The wrapped provider.</returns>
     public ISecretProvider Wrap(ISecretProvider inner)
     {
         ArgumentNullException.ThrowIfNull(inner);

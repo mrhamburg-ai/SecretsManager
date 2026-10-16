@@ -18,6 +18,14 @@ namespace SecretsManager.Builder;
 /// </summary>
 public static class EnvironmentVariableConfigurationReader
 {
+    /// <summary>
+    /// Reads provider configuration from environment variables.
+    /// </summary>
+    /// <param name="prefix">Variable prefix to read from. Defaults to <c>SECRETS</c>.</param>
+    /// <returns>The provider name and its flattened settings.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the <c>{prefix}_PROVIDER</c> variable is not set.
+    /// </exception>
     public static SecretProviderConfiguration Read(string prefix = "SECRETS")
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(prefix);

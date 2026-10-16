@@ -3,10 +3,19 @@ using SecretsManager.OVH.Internal;
 
 namespace SecretsManager.OVH;
 
+/// <summary>
+/// An <see cref="ISecretProvider"/> implementation that stores and retrieves secrets using OVHcloud Secrets Management.
+/// </summary>
 public sealed class OVHSecretProvider : ISecretProvider
 {
     private readonly IOVHApiClient _client;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="OVHSecretProvider"/> class.
+    /// </summary>
+    /// <param name="options">The options containing the OVH endpoint, application credentials, consumer key, and OKMS ID.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="options"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentException">A required option value is missing or empty.</exception>
     public OVHSecretProvider(OVHOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -27,6 +36,15 @@ public sealed class OVHSecretProvider : ISecretProvider
     internal OVHSecretProvider(IOVHApiClient client) =>
         _client = client;
 
+    /// <summary>
+    /// Retrieves a secret by name from OVHcloud Secrets Management.
+    /// </summary>
+    /// <param name="key">The name of the secret to retrieve.</param>
+    /// <param name="query">Optional query parameters to select a specific version or extract a property.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>The secret value with metadata.</returns>
+    /// <exception cref="SecretNotFoundException">The secret was not found.</exception>
+    /// <exception cref="SecretProviderException">An error occurred while accessing OVHcloud.</exception>
     public async Task<SecretValue> GetSecretAsync(
         string key, SecretQuery? query = null, CancellationToken cancellationToken = default)
     {
@@ -62,6 +80,15 @@ public sealed class OVHSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Creates or updates a secret in OVHcloud Secrets Management.
+    /// </summary>
+    /// <param name="key">The name of the secret.</param>
+    /// <param name="value">The secret value to store.</param>
+    /// <param name="metadata">Optional metadata (not currently used by this provider).</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>The stored secret value with version information.</returns>
+    /// <exception cref="SecretProviderException">An error occurred while accessing OVHcloud.</exception>
     public async Task<SecretValue> PutSecretAsync(
         string key, string value, SecretMetadata? metadata = null,
         CancellationToken cancellationToken = default)
@@ -104,6 +131,12 @@ public sealed class OVHSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Deletes a secret from OVHcloud Secrets Management.
+    /// </summary>
+    /// <param name="key">The name of the secret to delete.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <exception cref="SecretProviderException">An error occurred while accessing OVHcloud.</exception>
     public async Task DeleteSecretAsync(string key, CancellationToken cancellationToken = default)
     {
         try
@@ -117,6 +150,13 @@ public sealed class OVHSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Lists all versions of a secret in OVHcloud Secrets Management.
+    /// </summary>
+    /// <param name="key">The name of the secret.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>A read-only list of version information.</returns>
+    /// <exception cref="SecretProviderException">An error occurred while accessing OVHcloud.</exception>
     public async Task<IReadOnlyList<SecretVersionInfo>> GetSecretVersionsAsync(
         string key, CancellationToken cancellationToken = default)
     {
@@ -143,6 +183,13 @@ public sealed class OVHSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Checks whether a secret exists in OVHcloud Secrets Management.
+    /// </summary>
+    /// <param name="key">The name of the secret to check.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns><see langword="true"/> if the secret exists; otherwise, <see langword="false"/>.</returns>
+    /// <exception cref="SecretProviderException">An error occurred while accessing OVHcloud.</exception>
     public async Task<bool> SecretExistsAsync(string key, CancellationToken cancellationToken = default)
     {
         try
@@ -157,6 +204,9 @@ public sealed class OVHSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Asynchronously releases the underlying API client and its resources.
+    /// </summary>
     public async ValueTask DisposeAsync()
     {
         await _client.DisposeAsync();

@@ -6,10 +6,18 @@ using SecretsManager.Internal;
 
 namespace SecretsManager.AzureKeyVault;
 
+/// <summary>
+/// An <see cref="ISecretProvider"/> implementation that stores and retrieves secrets in Azure Key Vault
+/// using the <see cref="Azure.Security.KeyVault.Secrets.SecretClient"/>.
+/// </summary>
 public sealed class AzureKeyVaultSecretProvider : ISecretProvider
 {
     private readonly ISecretClientWrapper _client;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AzureKeyVaultSecretProvider"/> class.
+    /// </summary>
+    /// <param name="options">The Azure Key Vault configuration options.</param>
     public AzureKeyVaultSecretProvider(AzureKeyVaultOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -26,6 +34,15 @@ public sealed class AzureKeyVaultSecretProvider : ISecretProvider
         _client = client;
     }
 
+    /// <summary>
+    /// Retrieves a secret from Azure Key Vault by key.
+    /// </summary>
+    /// <param name="key">The name of the secret to retrieve.</param>
+    /// <param name="query">Optional query parameters to select a specific version or extract a JSON property.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>A <see cref="SecretValue"/> containing the secret data and metadata.</returns>
+    /// <exception cref="SecretNotFoundException">The secret does not exist in the vault.</exception>
+    /// <exception cref="SecretProviderException">An error occurred while communicating with Azure Key Vault.</exception>
     public async Task<SecretValue> GetSecretAsync(
         string key, SecretQuery? query = null, CancellationToken cancellationToken = default)
     {
@@ -59,6 +76,15 @@ public sealed class AzureKeyVaultSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Creates or updates a secret in Azure Key Vault.
+    /// </summary>
+    /// <param name="key">The name of the secret to create or update.</param>
+    /// <param name="value">The secret value to store.</param>
+    /// <param name="metadata">Optional metadata including content type and tags.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>A <see cref="SecretValue"/> containing the stored secret data and metadata.</returns>
+    /// <exception cref="SecretProviderException">An error occurred while communicating with Azure Key Vault.</exception>
     public async Task<SecretValue> PutSecretAsync(
         string key, string value, SecretMetadata? metadata = null,
         CancellationToken cancellationToken = default)
@@ -87,6 +113,13 @@ public sealed class AzureKeyVaultSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Deletes a secret from Azure Key Vault.
+    /// </summary>
+    /// <param name="key">The name of the secret to delete.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <exception cref="SecretNotFoundException">The secret does not exist in the vault.</exception>
+    /// <exception cref="SecretProviderException">An error occurred while communicating with Azure Key Vault.</exception>
     public async Task DeleteSecretAsync(string key, CancellationToken cancellationToken = default)
     {
         try
@@ -104,6 +137,14 @@ public sealed class AzureKeyVaultSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Lists all versions of a secret in Azure Key Vault.
+    /// </summary>
+    /// <param name="key">The name of the secret.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>A read-only list of <see cref="SecretVersionInfo"/> objects representing each version.</returns>
+    /// <exception cref="SecretNotFoundException">The secret does not exist in the vault.</exception>
+    /// <exception cref="SecretProviderException">An error occurred while communicating with Azure Key Vault.</exception>
     public async Task<IReadOnlyList<SecretVersionInfo>> GetSecretVersionsAsync(
         string key, CancellationToken cancellationToken = default)
     {
@@ -141,6 +182,13 @@ public sealed class AzureKeyVaultSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Checks whether a secret exists in Azure Key Vault.
+    /// </summary>
+    /// <param name="key">The name of the secret to check.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns><see langword="true"/> if the secret exists; otherwise, <see langword="false"/>.</returns>
+    /// <exception cref="SecretProviderException">An error occurred while communicating with Azure Key Vault.</exception>
     public async Task<bool> SecretExistsAsync(string key, CancellationToken cancellationToken = default)
     {
         try
@@ -159,6 +207,9 @@ public sealed class AzureKeyVaultSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Asynchronously releases the underlying <see cref="Azure.Security.KeyVault.Secrets.SecretClient"/> resources.
+    /// </summary>
     public async ValueTask DisposeAsync()
     {
         await _client.DisposeAsync();

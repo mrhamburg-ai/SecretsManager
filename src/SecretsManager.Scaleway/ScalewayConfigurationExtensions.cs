@@ -4,10 +4,18 @@ using SecretsManager.Builder;
 namespace SecretsManager.Scaleway;
 
 /// <summary>
-/// Configuration bridge for [A-Zaaz] provider.
+/// Extension methods for binding the Scaleway provider configuration from <see cref="IConfiguration"/>.
 /// </summary>
 public static class ScalewayConfigurationExtensions
 {
+    /// <summary>
+    /// Binds the <c>SecretsManager:scaleway</c> configuration section to <see cref="ScalewayOptions"/>,
+    /// validates the options, and registers the Scaleway provider.
+    /// </summary>
+    /// <param name="builder">The secret provider builder.</param>
+    /// <param name="configuration">The configuration to bind.</param>
+    /// <returns>The same builder for method chaining.</returns>
+    /// <exception cref="ArgumentException">The configuration is invalid.</exception>
     public static SecretProviderBuilder ConfigureScaleway(
         this SecretProviderBuilder builder,
         IConfiguration configuration)

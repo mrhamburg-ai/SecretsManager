@@ -1,5 +1,8 @@
 namespace SecretsManager.GoogleSecretManager;
 
+/// <summary>
+/// Configuration options for the Google Cloud Secret Manager secret provider.
+/// </summary>
 public sealed class GoogleSecretManagerOptions
 {
     /// <summary>
@@ -25,6 +28,10 @@ public sealed class GoogleSecretManagerOptions
     /// </summary>
     public string? Endpoint { get; set; }
 
+    /// <summary>
+    /// Validates the options and returns error messages.
+    /// </summary>
+    /// <returns>Validation error messages. An empty collection indicates the options are valid.</returns>
     public IEnumerable<string> Validate()
     {
         if (string.IsNullOrWhiteSpace(ProjectId))

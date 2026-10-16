@@ -3,10 +3,23 @@ using SecretsManager.Internal;
 
 namespace SecretsManager.Conjur;
 
+/// <summary>
+/// Stores and retrieves secrets in CyberArk Conjur, authenticating with a login and API key to
+/// obtain a short-lived access token. Supports numeric version selection and JSON property extraction.
+/// </summary>
 public sealed class ConjurSecretProvider : ISecretProvider
 {
     private readonly IConjurApiClient _client;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ConjurSecretProvider"/> class.
+    /// </summary>
+    /// <param name="options">Connection and authentication options for the Conjur server.</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="options"/> is null.</exception>
+    /// <exception cref="ArgumentException">
+    /// Thrown when <see cref="ConjurOptions.Url"/>, <see cref="ConjurOptions.Account"/>,
+    /// <see cref="ConjurOptions.Login"/> or <see cref="ConjurOptions.ApiKey"/> is empty.
+    /// </exception>
     public ConjurSecretProvider(ConjurOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -25,6 +38,16 @@ public sealed class ConjurSecretProvider : ISecretProvider
     internal ConjurSecretProvider(IConjurApiClient client) =>
         _client = client;
 
+    /// <summary>
+    /// Retrieves a secret from Conjur, optionally selecting a numeric version and/or extracting a
+    /// JSON property from the stored value.
+    /// </summary>
+    /// <param name="key">The Conjur secret path.</param>
+    /// <param name="query">Optional version and/or JSON property selector.</param>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
+    /// <returns>The secret value, with its resolved version and creation time.</returns>
+    /// <exception cref="SecretNotFoundException">Thrown when the secret does not exist.</exception>
+    /// <exception cref="SecretProviderException">Thrown when the Conjur API call fails.</exception>
     public async Task<SecretValue> GetSecretAsync(
         string key, SecretQuery? query = null, CancellationToken cancellationToken = default)
     {
@@ -59,6 +82,15 @@ public sealed class ConjurSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Creates or replaces a secret in Conjur and returns the newly created version.
+    /// </summary>
+    /// <param name="key">The Conjur secret path.</param>
+    /// <param name="value">The value to store.</param>
+    /// <param name="metadata">Optional metadata; not persisted by Conjur.</param>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
+    /// <returns>The stored value, with its resolved version and creation time.</returns>
+    /// <exception cref="SecretProviderException">Thrown when the Conjur API call fails.</exception>
     public async Task<SecretValue> PutSecretAsync(
         string key, string value, SecretMetadata? metadata = null,
         CancellationToken cancellationToken = default)
@@ -84,6 +116,13 @@ public sealed class ConjurSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Deletes a secret by patching the target policy with a <c>!delete</c> statement, since Conjur
+    /// exposes no direct delete API.
+    /// </summary>
+    /// <param name="key">The Conjur secret path.</param>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
+    /// <exception cref="SecretProviderException">Thrown when the Conjur API call fails.</exception>
     public async Task DeleteSecretAsync(string key, CancellationToken cancellationToken = default)
     {
         try
@@ -97,6 +136,13 @@ public sealed class ConjurSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Lists all versions of a secret in Conjur.
+    /// </summary>
+    /// <param name="key">The Conjur secret path.</param>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
+    /// <returns>One entry per version, with the current version flagged.</returns>
+    /// <exception cref="SecretProviderException">Thrown when the Conjur API call fails.</exception>
     public async Task<IReadOnlyList<SecretVersionInfo>> GetSecretVersionsAsync(
         string key, CancellationToken cancellationToken = default)
     {
@@ -121,6 +167,13 @@ public sealed class ConjurSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Checks whether a secret exists in Conjur without retrieving its value.
+    /// </summary>
+    /// <param name="key">The Conjur secret path.</param>
+    /// <param name="cancellationToken">Token to cancel the operation.</param>
+    /// <returns><see langword="true"/> if the secret exists; otherwise, <see langword="false"/>.</returns>
+    /// <exception cref="SecretProviderException">Thrown when the Conjur API call fails.</exception>
     public async Task<bool> SecretExistsAsync(string key, CancellationToken cancellationToken = default)
     {
         try
@@ -147,6 +200,9 @@ public sealed class ConjurSecretProvider : ISecretProvider
         return versions.FirstOrDefault(v => v.Version == version);
     }
 
+    /// <summary>
+    /// Disposes the underlying Conjur API client.
+    /// </summary>
     public async ValueTask DisposeAsync() =>
         await _client.DisposeAsync();
 }

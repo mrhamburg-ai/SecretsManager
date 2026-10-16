@@ -2,10 +2,23 @@ using SecretsManager.Builder;
 
 namespace SecretsManager.PostgreSql;
 
+/// <summary>
+/// Factory that creates <see cref="PostgreSqlSecretProvider"/> instances from a flat settings dictionary.
+/// </summary>
 public sealed class PostgreSqlSecretProviderFactory : ISecretProviderFactory
 {
+    /// <summary>
+    /// The provider name used in YAML/env configuration: <c>"postgresql"</c>.
+    /// </summary>
     public string ProviderName => "postgresql";
 
+    /// <summary>
+    /// Creates a <see cref="PostgreSqlSecretProvider"/> from the flat settings dictionary.
+    /// Recognized keys: <c>connection.string</c>, <c>schema</c>, <c>table.prefix</c>,
+    /// <c>auto.create.schema</c>, <c>encryption.key</c>, <c>encryption.keyfile</c>.
+    /// </summary>
+    /// <param name="configuration">The flat settings dictionary.</param>
+    /// <returns>A configured <see cref="PostgreSqlSecretProvider"/> instance.</returns>
     public ISecretProvider Create(IReadOnlyDictionary<string, string> configuration)
     {
         var options = MapConfiguration(configuration);

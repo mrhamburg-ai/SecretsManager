@@ -4,10 +4,18 @@ using SecretsManager.AliyunKms.Internal;
 
 namespace SecretsManager.AliyunKms;
 
+/// <summary>
+/// Secret provider that stores and retrieves secrets using Alibaba Cloud KMS.
+/// </summary>
 public sealed class AliyunKmsSecretProvider : ISecretProvider
 {
     private readonly IAliyunKmsApiClient _client;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AliyunKmsSecretProvider"/> class.
+    /// </summary>
+    /// <param name="options">The Alibaba Cloud KMS configuration options.</param>
+    /// <exception cref="ArgumentException">Thrown when required options are missing.</exception>
     public AliyunKmsSecretProvider(AliyunKmsOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -26,6 +34,15 @@ public sealed class AliyunKmsSecretProvider : ISecretProvider
         _client = client;
     }
 
+    /// <summary>
+    /// Retrieves a secret value from Alibaba Cloud KMS by key.
+    /// </summary>
+    /// <param name="key">The secret key.</param>
+    /// <param name="query">Optional query parameters for version or property selection.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The secret value with version and timestamp metadata.</returns>
+    /// <exception cref="SecretNotFoundException">Thrown when the secret does not exist.</exception>
+    /// <exception cref="SecretProviderException">Thrown when the KMS API call fails.</exception>
     public async Task<SecretValue> GetSecretAsync(
         string key, SecretQuery? query = null, CancellationToken cancellationToken = default)
     {
@@ -61,6 +78,15 @@ public sealed class AliyunKmsSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Creates or updates a secret in Alibaba Cloud KMS.
+    /// </summary>
+    /// <param name="key">The secret key.</param>
+    /// <param name="value">The secret value to store.</param>
+    /// <param name="metadata">Optional secret metadata.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The stored secret value with the new version ID.</returns>
+    /// <exception cref="SecretProviderException">Thrown when the KMS API call fails.</exception>
     public async Task<SecretValue> PutSecretAsync(
         string key, string value, SecretMetadata? metadata = null,
         CancellationToken cancellationToken = default)
@@ -99,6 +125,12 @@ public sealed class AliyunKmsSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Deletes a secret from Alibaba Cloud KMS.
+    /// </summary>
+    /// <param name="key">The secret key to delete.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <exception cref="SecretProviderException">Thrown when the KMS API call fails.</exception>
     public async Task DeleteSecretAsync(
         string key, CancellationToken cancellationToken = default)
     {
@@ -113,6 +145,13 @@ public sealed class AliyunKmsSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Lists all versions of a secret in Alibaba Cloud KMS, ordered by creation time (newest first).
+    /// </summary>
+    /// <param name="key">The secret key.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A read-only list of version information.</returns>
+    /// <exception cref="SecretProviderException">Thrown when the KMS API call fails.</exception>
     public async Task<IReadOnlyList<SecretVersionInfo>> GetSecretVersionsAsync(
         string key, CancellationToken cancellationToken = default)
     {
@@ -138,6 +177,13 @@ public sealed class AliyunKmsSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Checks whether a secret exists in Alibaba Cloud KMS.
+    /// </summary>
+    /// <param name="key">The secret key to check.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns><see langword="true"/> if the secret exists; otherwise, <see langword="false"/>.</returns>
+    /// <exception cref="SecretProviderException">Thrown when the KMS API call fails.</exception>
     public async Task<bool> SecretExistsAsync(
         string key, CancellationToken cancellationToken = default)
     {
@@ -154,6 +200,9 @@ public sealed class AliyunKmsSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Asynchronously releases the underlying Alibaba Cloud KMS API client.
+    /// </summary>
     public async ValueTask DisposeAsync()
     {
         await _client.DisposeAsync();

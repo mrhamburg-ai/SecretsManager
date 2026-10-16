@@ -4,10 +4,18 @@ using SecretsManager.Builder;
 namespace SecretsManager.Passbolt;
 
 /// <summary>
-/// Configuration bridge for [A-Zaaz] provider.
+/// Provides the <see cref="ConfigurePassbolt"/> configuration-section extension for the Passbolt provider.
 /// </summary>
 public static class PassboltConfigurationExtensions
 {
+    /// <summary>
+    /// Binds the <c>SecretsManager:passbolt</c> configuration section, validates the options,
+    /// and registers the Passbolt provider.
+    /// </summary>
+    /// <param name="builder">The secret provider builder.</param>
+    /// <param name="configuration">The configuration root.</param>
+    /// <returns>The same <see cref="SecretProviderBuilder"/> for chaining.</returns>
+    /// <exception cref="ArgumentException">The bound options failed validation.</exception>
     public static SecretProviderBuilder ConfigurePassbolt(
         this SecretProviderBuilder builder,
         IConfiguration configuration)
