@@ -43,7 +43,7 @@ public sealed class FileSystemSecretProvider : ISecretProvider
                 ?? await _store.ReadCurrentVersionAsync(key, cancellationToken);
 
             var envelope = await _store.ReadEnvelopeAsync(key, version, cancellationToken);
-            var value = DecryptValue(envelope);
+            var value = DecryptValue(key, envelope);
 
             if (query?.Property is { } property)
                 value = JsonPropertyExtractor.Extract(value, property);
@@ -207,8 +207,21 @@ public sealed class FileSystemSecretProvider : ISecretProvider
         return ValueTask.CompletedTask;
     }
 
-    private string DecryptValue(VersionedSecretEnvelope envelope)
+    private string DecryptValue(string key, VersionedSecretEnvelope envelope)
     {
+        // An envelope that is not encrypted while a key is configured has either been tampered with
+        // or written by a misconfigured process. Returning it would let anyone with write access to
+        // the store plant an attacker-chosen value, which is the whole point of authenticated
+        // encryption being lost.
+        if (_encryptor.IsEnabled && !envelope.Encrypted)
+            throw new SecretProviderException(
+                $"Secret '{key}' version '{envelope.Version}' is stored unencrypted, but an " +
+                "encryption key is configured. Refusing to return a value that may have been tampered with.");
+
+        if (!_encryptor.IsEnabled && envelope.Encrypted)
+            throw new SecretProviderException(
+                $"Secret '{key}' version '{envelope.Version}' is encrypted, but no encryption key is configured.");
+
         if (!envelope.Encrypted)
             return envelope.Value ?? "";
 

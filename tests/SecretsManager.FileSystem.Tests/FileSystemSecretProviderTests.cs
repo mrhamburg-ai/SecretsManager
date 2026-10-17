@@ -284,4 +284,36 @@ public sealed class FileSystemSecretProviderTests : IAsyncLifetime
         await Assert.ThrowsAnyAsync<ArgumentException>(
             () => provider.GetSecretAsync("versioned", new SecretQuery { Version = version }));
     }
+
+    // --- security: encryption downgrade / missing-key mismatch (audit FS-3) ---
+
+    [Fact]
+    public async Task GetSecret_EncryptionConfiguredButEnvelopePlaintext_Throws()
+    {
+        // A store written without a key, then read with one configured: the planted-plaintext attack.
+        // Anyone able to write to the store could set "encrypted": false and a chosen value.
+        await using (var plaintextProvider = CreateProvider())
+            await plaintextProvider.PutSecretAsync("planted", "attacker-value");
+
+        await using var keyedProvider = CreateProvider(encrypt: true);
+
+        var ex = await Assert.ThrowsAsync<SecretProviderException>(
+            () => keyedProvider.GetSecretAsync("planted"));
+
+        Assert.Contains("unencrypted", ex.Message);
+    }
+
+    [Fact]
+    public async Task GetSecret_EncryptedEnvelopeButNoKeyConfigured_Throws()
+    {
+        await using (var keyedProvider = CreateProvider(encrypt: true))
+            await keyedProvider.PutSecretAsync("cipher", "cipher-value");
+
+        await using var plaintextProvider = CreateProvider();
+
+        var ex = await Assert.ThrowsAsync<SecretProviderException>(
+            () => plaintextProvider.GetSecretAsync("cipher"));
+
+        Assert.Contains("no encryption key is configured", ex.Message);
+    }
 }
