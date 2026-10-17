@@ -120,7 +120,7 @@ Layers are processed in registration order (outermost to innermost). The first r
 
 ## Configuration
 
-SecretsManager supports three ways to configure a provider.
+SecretsManager supports four ways to configure a provider.
 
 ### Fluent API
 
@@ -132,6 +132,34 @@ var provider = new SecretProviderBuilder()
         opts.EncryptionKey = "base64encodedkey==";
     })
     .Build();
+```
+
+### Dependency Injection (`IOptions<T>`)
+
+Bind options from `appsettings.json` through the DI container:
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddSecretsManager();
+builder.Services.Configure<FileSystemOptions>(
+    builder.Configuration.GetSection("SecretsManager:FileSystem"));
+
+// Or bind and build in one step
+var provider = new SecretProviderBuilder()
+    .ConfigureFileSystem(builder.Configuration)
+    .Build();
+```
+
+```json
+{
+  "SecretsManager": {
+    "FileSystem": {
+      "BasePath": "/secrets",
+      "EncryptionKey": "base64encodedkey=="
+    }
+  }
+}
 ```
 
 ### Environment Variables
