@@ -234,4 +234,54 @@ public sealed class FileSystemSecretProviderTests : IAsyncLifetime
         await Assert.ThrowsAsync<SecretNotFoundException>(
             () => provider.GetSecretVersionsAsync("nonexistent"));
     }
+
+    // --- security: path traversal via the key (audit FS-2) ---
+
+    [Theory]
+    [InlineData("..")]
+    [InlineData(".")]
+    [InlineData("")]
+    public async Task GetSecret_RejectsTraversingKey(string key)
+    {
+        await using var provider = CreateProvider();
+
+        await Assert.ThrowsAnyAsync<ArgumentException>(() => provider.GetSecretAsync(key));
+    }
+
+    [Fact]
+    public async Task PutSecret_WithDotKey_DoesNotWriteOutsideStore()
+    {
+        await using var provider = CreateProvider();
+
+        await Assert.ThrowsAnyAsync<ArgumentException>(() => provider.PutSecretAsync(".", "value"));
+    }
+
+    [Fact]
+    public async Task DeleteSecret_WithDotKey_DoesNotDeleteStore()
+    {
+        await using var provider = CreateProvider();
+        await provider.PutSecretAsync("real-secret", "keep-me");
+
+        await Assert.ThrowsAnyAsync<ArgumentException>(() => provider.DeleteSecretAsync("."));
+
+        // A "." key used to resolve to BasePath itself, so the recursive delete wiped the store.
+        Assert.True(await provider.SecretExistsAsync("real-secret"));
+    }
+
+    // --- security: path traversal via the version query parameter (audit FS-1) ---
+
+    [Theory]
+    [InlineData("../other/v1")]
+    [InlineData("/etc/hosts")]
+    [InlineData("current")]
+    [InlineData("v1/../v2")]
+    [InlineData("1")]
+    public async Task GetSecret_RejectsInvalidVersion(string version)
+    {
+        await using var provider = CreateProvider();
+        await provider.PutSecretAsync("versioned", "value");
+
+        await Assert.ThrowsAnyAsync<ArgumentException>(
+            () => provider.GetSecretAsync("versioned", new SecretQuery { Version = version }));
+    }
 }

@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace SecretsManager.FileSystem.Internal;
 
@@ -8,7 +9,7 @@ namespace SecretsManager.FileSystem.Internal;
 /// Handles all file I/O for the filesystem secret provider.
 /// Provides per-key locking for thread safety and atomic writes via temp-file-then-rename.
 /// </summary>
-internal sealed class SecretFileStore : IDisposable
+internal sealed partial class SecretFileStore : IDisposable
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -134,14 +135,56 @@ internal sealed class SecretFileStore : IDisposable
         _locks.Clear();
     }
 
-    private string GetSecretDirectory(string key) =>
-        Path.Combine(_basePath, SanitizeKey(key));
+    /// <summary>
+    /// Versions are always <c>v</c> followed by digits. Validating here closes traversal through
+    /// the version query parameter, which previously reached the filesystem unchecked.
+    /// </summary>
+    [GeneratedRegex(@"^v[1-9][0-9]{0,9}$")]
+    private static partial Regex VersionPattern();
 
-    private string GetVersionPath(string key, string version) =>
-        Path.Combine(GetSecretDirectory(key), $"{version}.json");
+    private string GetSecretDirectory(string key)
+    {
+        if (string.IsNullOrEmpty(key))
+            throw new ArgumentException("Secret key must not be null or empty.", nameof(key));
+
+        // '.' and '..' contain no separator, so SanitizeKey leaves them intact and Path.Combine
+        // resolves them to the store root or its parent. Reject them explicitly.
+        if (key is "." or "..")
+            throw new ArgumentException(
+                $"Invalid secret key '{key}': relative path segments are not allowed.", nameof(key));
+
+        return EnsureUnderBase(Path.Combine(_basePath, SanitizeKey(key)));
+    }
+
+    private string GetVersionPath(string key, string version)
+    {
+        if (!VersionPattern().IsMatch(version))
+            throw new ArgumentException(
+                $"Invalid version '{version}': versions must match 'v<number>', for example 'v1'.",
+                nameof(version));
+
+        return EnsureUnderBase(Path.Combine(GetSecretDirectory(key), version + ".json"));
+    }
 
     private string GetCurrentPointerPath(string key) =>
-        Path.Combine(GetSecretDirectory(key), "current.json");
+        EnsureUnderBase(Path.Combine(GetSecretDirectory(key), "current.json"));
+
+    /// <summary>
+    /// Canonicalises the path and confirms it is inside the store root. Belt-and-braces: the checks
+    /// above should already prevent escape, but this makes the invariant explicit and local.
+    /// </summary>
+    private string EnsureUnderBase(string path)
+    {
+        var full = Path.GetFullPath(path);
+        var root = Path.GetFullPath(_basePath)
+                       .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                   + Path.DirectorySeparatorChar;
+
+        if (!full.StartsWith(root, StringComparison.Ordinal))
+            throw new ArgumentException($"Path '{full}' escapes the secret store root.");
+
+        return full;
+    }
 
     internal static string SanitizeKey(string key)
     {
