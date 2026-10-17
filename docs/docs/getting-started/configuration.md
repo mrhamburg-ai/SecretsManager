@@ -7,7 +7,7 @@ sidebar_position: 2
 
 # Configuration
 
-SecretsManager supports three configuration approaches. Choose the one that best fits your workflow.
+SecretsManager supports four configuration approaches. Choose the one that best fits your workflow.
 
 ## Fluent API
 

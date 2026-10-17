@@ -14,6 +14,28 @@ const fluentCode = `var provider = new SecretProviderBuilder()
 var secret = await provider.GetSecretAsync("db-password");
 Console.WriteLine(secret.Value);`;
 
+const ioptionsJson = `{
+  "SecretsManager": {
+    "FileSystem": {
+      "BasePath": "/etc/secrets",
+      "EncryptionKey": "base64-encoded-key"
+    }
+  }
+}`;
+
+const ioptionsCode = `var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddSecretsManager();
+builder.Services.Configure<FileSystemOptions>(
+    builder.Configuration.GetSection("SecretsManager:FileSystem"));
+
+// Or bind and build in one step
+var provider = new SecretProviderBuilder()
+    .ConfigureFileSystem(builder.Configuration)
+    .Build();
+
+var secret = await provider.GetSecretAsync("db-password");`;
+
 const envCode = `export SECRETS_PROVIDER=filesystem
 export SECRETS_FILESYSTEM_PATH=/etc/secrets
 export SECRETS_FILESYSTEM_ENCRYPTION_KEY=my-key
@@ -55,6 +77,14 @@ export default function CodeShowcase(): React.JSX.Element {
           <TabItem value="fluent" label="Fluent API" default>
             <CodeBlock language="csharp" title="Program.cs">
               {fluentCode}
+            </CodeBlock>
+          </TabItem>
+          <TabItem value="ioptions" label={'IOptions<T>'}>
+            <CodeBlock language="json" title="appsettings.json">
+              {ioptionsJson}
+            </CodeBlock>
+            <CodeBlock language="csharp" title="Program.cs">
+              {ioptionsCode}
             </CodeBlock>
           </TabItem>
           <TabItem value="env" label="Environment">
