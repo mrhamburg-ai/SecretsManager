@@ -51,9 +51,27 @@ public sealed class PostgreSqlOptions
     /// An empty collection indicates the options are valid.
     /// </summary>
     /// <returns>Validation error messages; empty when the options are valid.</returns>
+    /// <summary>
+    /// PostgreSQL truncates identifiers at 63 bytes. The longest name this provider builds is
+    /// "{prefix}secret_versions", so the prefix must leave room for that suffix or the two table
+    /// names can collapse into the same identifier.
+    /// </summary>
+    private const int MaxTablePrefixLength = 40;
+
+    /// <summary>
+    /// Validates the options and returns a collection of error messages.
+    /// An empty collection indicates the options are valid.
+    /// </summary>
+    /// <returns>Validation error messages; empty when the options are valid.</returns>
     public IEnumerable<string> Validate()
     {
         if (string.IsNullOrWhiteSpace(ConnectionString))
             yield return "ConnectionString is required";
+
+        if (!string.IsNullOrEmpty(EncryptionKey) && !string.IsNullOrEmpty(EncryptionKeyFile))
+            yield return "EncryptionKey and EncryptionKeyFile are mutually exclusive";
+
+        if (TablePrefix.Length > MaxTablePrefixLength)
+            yield return $"TablePrefix must be {MaxTablePrefixLength} characters or fewer";
     }
 }

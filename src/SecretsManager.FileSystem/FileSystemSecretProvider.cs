@@ -20,6 +20,12 @@ public sealed class FileSystemSecretProvider : ISecretProvider
     public FileSystemSecretProvider(FileSystemOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
+
+        var errors = options.Validate().ToList();
+        if (errors.Count > 0)
+            throw new ArgumentException(
+                $"Invalid {nameof(FileSystemOptions)}: {string.Join("; ", errors)}", nameof(options));
+
         _store = new SecretFileStore(options.BasePath);
         _encryptor = CreateEncryptor(options);
     }

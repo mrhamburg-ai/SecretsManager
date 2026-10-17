@@ -21,8 +21,11 @@ public sealed class PostgreSqlSecretProvider : ISecretProvider
     public PostgreSqlSecretProvider(PostgreSqlOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
-        if (string.IsNullOrWhiteSpace(options.ConnectionString))
-            throw new ArgumentException("ConnectionString is required.", nameof(options));
+
+        var errors = options.Validate().ToList();
+        if (errors.Count > 0)
+            throw new ArgumentException(
+                $"Invalid {nameof(PostgreSqlOptions)}: {string.Join("; ", errors)}", nameof(options));
 
         _store = new PostgreSqlSecretStore(options);
         _encryptor = CreateEncryptor(options);
