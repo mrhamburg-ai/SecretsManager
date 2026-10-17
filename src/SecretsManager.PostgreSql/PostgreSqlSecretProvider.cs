@@ -66,7 +66,7 @@ public sealed class PostgreSqlSecretProvider : ISecretProvider
             var version = await _store.GetVersionAsync(secret.Id, versionNumber, cancellationToken)
                 ?? throw new SecretNotFoundException(key);
 
-            var value = DecryptValue(version);
+            var value = DecryptValue(key, version);
 
             if (query?.Property is { } property)
                 value = JsonPropertyExtractor.Extract(value, property);
@@ -234,8 +234,20 @@ public sealed class PostgreSqlSecretProvider : ISecretProvider
         });
     }
 
-    private string DecryptValue(PostgreSqlVersionRow version)
+    private string DecryptValue(string key, PostgreSqlVersionRow version)
     {
+        // The point of encrypting at rest is that someone with database access cannot read or tamper
+        // with secrets. A row marked unencrypted while a key is configured is exactly what
+        // UPDATE ... SET encrypted = false, value = 'attacker-value' produces.
+        if (_encryptor.IsEnabled && !version.Encrypted)
+            throw new SecretProviderException(
+                $"Secret '{key}' version {version.Version} is stored unencrypted, but an encryption " +
+                "key is configured. Refusing to return a value that may have been tampered with.");
+
+        if (!_encryptor.IsEnabled && version.Encrypted)
+            throw new SecretProviderException(
+                $"Secret '{key}' version {version.Version} is encrypted, but no encryption key is configured.");
+
         if (!version.Encrypted)
             return version.Value;
 
