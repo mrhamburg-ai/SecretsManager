@@ -93,6 +93,14 @@ All package versions are in `Directory.Packages.props`. Never specify `Version` 
 - **docs-build.yml:** `npm ci && npm run build` in `docs/` (Docusaurus)
 - **integration.yml:** Runs integration tests against real services (PostgreSQL, Vault, Conjur)
 - **release.yml:** Packs and publishes NuGet packages
+- **pr-agent.yml:** Runs PR-Agent (OpenRouter) on every PR — advisory review only, not a merge gate
+
+### AI pull request review
+
+`pr-agent.yml` runs [PR-Agent](https://github.com/The-PR-Agent/pr-agent) against OpenRouter on every
+pull request. It is **advisory only** — it posts comments and never blocks a merge, so it is not a
+required status check. The OpenRouter key is the `OPENROUTER_API_KEY` repository secret and is never
+committed. Model selection lives in `.pr_agent.toml` (no secrets in that file).
 
 ## Gotchas
 
