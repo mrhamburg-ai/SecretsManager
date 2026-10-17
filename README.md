@@ -89,7 +89,11 @@ Layers are decorators that wrap a provider to add operational capabilities like 
 
 ```csharp
 await using var provider = new SecretProviderBuilder()
-    .WithFileSystem(opts => opts.BasePath = "/secrets")
+    .WithFileSystem(opts =>
+    {
+        opts.BasePath = "/secrets";
+        opts.EncryptionKey = "base64encodedkey==";   // omit only for throwaway local development
+    })
     .WithConcurrentLimiter(opts => {
         opts.MaxConcurrentRequests = 10;
         opts.AcquireTimeout = TimeSpan.FromSeconds(5);

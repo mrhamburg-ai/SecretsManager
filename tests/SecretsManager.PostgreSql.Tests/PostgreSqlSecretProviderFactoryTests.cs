@@ -42,7 +42,7 @@ public sealed class PostgreSqlSecretProviderFactoryTests
         Assert.Equal("", options.ConnectionString);
         Assert.Equal("public", options.Schema);
         Assert.Equal("sm_", options.TablePrefix);
-        Assert.True(options.AutoCreateSchema);
+        Assert.False(options.AutoCreateSchema);
         Assert.Null(options.EncryptionKey);
         Assert.Null(options.EncryptionKeyFile);
     }
@@ -82,7 +82,7 @@ public sealed class PostgreSqlSecretProviderFactoryTests
         Assert.Equal("Host=db.local", options.ConnectionString);
         Assert.Equal("public", options.Schema);
         Assert.Equal("sm_", options.TablePrefix);
-        Assert.True(options.AutoCreateSchema);
+        Assert.False(options.AutoCreateSchema);
         Assert.Equal("somekey", options.EncryptionKey);
         Assert.Null(options.EncryptionKeyFile);
     }

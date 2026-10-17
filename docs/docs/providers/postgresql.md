@@ -18,7 +18,7 @@ The PostgreSQL provider stores secrets in a PostgreSQL database with optional AE
 - Use your existing PostgreSQL infrastructure for secrets
 - AES-256-GCM encryption at rest (optional)
 - Auto-versioning with per-secret version history
-- Auto-creates tables on first use
+- Optional table auto-creation, with an ownership check on the tables it uses
 - Tags stored as JSONB for flexible querying
 
 ## Installation
@@ -37,11 +37,12 @@ dotnet add package SecretsManager.PostgreSql
 | `ConnectionString` | `string` | Yes | `""` | PostgreSQL connection string, e.g. `Host=localhost;Database=secrets;Username=app;Password=pass` |
 | `Schema` | `string` | No | `"public"` | Database schema for the tables |
 | `TablePrefix` | `string` | No | `"sm_"` | Prefix for table names, to avoid collisions |
-| `AutoCreateSchema` | `bool` | No | `true` | Create the tables automatically on first use |
+| `AutoCreateSchema` | `bool` | No | `false` | Create the tables automatically on first use. Requires `CREATE` on the schema |
+| `SchemaOwner` | `string?` | No | `null` | Role expected to own the secrets tables. When `null`, the connected role must own them |
 | `EncryptionKey` | `string?` | No | `null` | Base64-encoded AES-256 key (32 bytes). When set, values are encrypted at rest with AES-256-GCM |
 | `EncryptionKeyFile` | `string?` | No | `null` | Path to a file containing the encryption key. A 32-byte file is used as-is, otherwise it is treated as base64 |
 
-`PostgreSqlOptions.Validate()` requires `ConnectionString`.
+`PostgreSqlOptions.Validate()` requires `ConnectionString`, rejects `EncryptionKey` and `EncryptionKeyFile` being set together, and caps `TablePrefix` at 40 characters (PostgreSQL truncates identifiers at 63 bytes, which can collapse the two table names into one). Validation runs on every construction path.
 
 ### Fluent API
 
@@ -107,6 +108,42 @@ var provider = new SecretProviderBuilder()
 
 This reads from the `SecretsManager:PostgreSql` section and validates all options.
 
+### Transport security
+
+Npgsql defaults to `SslMode=Prefer`, which permits an unencrypted connection and does not verify the
+server certificate. Add `SSL Mode=VerifyFull` to the connection string in any environment that is not
+a trusted local socket:
+
+```text
+Host=db.example.com;Database=secrets;Username=app;Password=...;SSL Mode=VerifyFull
+```
+
+Without it, the database password, secret keys, tags and any unencrypted values can be read or
+modified in transit.
+
+### Least-privilege setup
+
+`AutoCreateSchema` defaults to `false` so the runtime account does not need `CREATE` on the schema.
+Create the tables from a migration role and grant the application only DML rights on the two tables:
+
+```sql
+CREATE SCHEMA secrets AUTHORIZATION secrets_owner;
+REVOKE ALL ON SCHEMA secrets FROM PUBLIC;
+GRANT USAGE ON SCHEMA secrets TO secrets_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON secrets.sm_secrets, secrets.sm_secret_versions TO secrets_app;
+GRANT USAGE ON ALL SEQUENCES IN SCHEMA secrets TO secrets_app;
+```
+
+```csharp
+options.AutoCreateSchema = false;          // the migration role creates the tables
+options.SchemaOwner = "secrets_owner";     // the app connects as secrets_app
+```
+
+When `AutoCreateSchema` is `true`, the provider checks `pg_class.relowner` for both tables after the
+DDL and throws if the owner is not `SchemaOwner` (or the connected role when it is unset). A role that
+can create objects in the target schema could otherwise create the tables first, own them, and read
+every secret written afterwards — or add a trigger that copies values elsewhere.
+
 ## Encryption
 
 When `EncryptionKey` or `EncryptionKeyFile` is configured, secret values are encrypted before storage using AES-256-GCM.
@@ -117,7 +154,7 @@ Encrypted values are stored as JSON in the `value` column:
 {"n":"<nonce-base64>","c":"<ciphertext-base64>","t":"<tag-base64>"}
 ```
 
-Each version row has an `encrypted` boolean column, allowing mixed encrypted and plaintext versions. This supports key rotation scenarios where new versions are encrypted while old versions remain readable.
+Each version row has an `encrypted` boolean column. The provider refuses to mix the two states: a row marked unencrypted while a key is configured, or an encrypted row with no key configured, both throw `SecretProviderException`. This closes the downgrade attack — `UPDATE ... SET encrypted = false, value = 'attacker-value'`, which anyone with database access could otherwise use to forge a secret such as a connection string pointing at their own server. It also means a key cannot simply be added to a database that already holds plaintext rows; those rows must be rewritten.
 
 :::tip
 Generate a 32-byte encryption key with:

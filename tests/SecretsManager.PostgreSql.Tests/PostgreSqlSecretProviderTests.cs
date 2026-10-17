@@ -340,8 +340,11 @@ public sealed class PostgreSqlSecretProviderTests
     }
 
     [Fact]
-    public async Task GetSecretAsync_UnencryptedValue_ReturnsDirectly()
+    public async Task GetSecretAsync_EncryptionConfiguredButRowPlaintext_Throws()
     {
+        // Regression test for the downgrade attack. This used to assert that the plaintext row was
+        // returned, which is exactly what UPDATE ... SET encrypted = false, value = 'attacker-value'
+        // achieves for anyone with database access.
         _mockEncryptor.IsEnabled.Returns(true);
         _mockStore.GetSecretByKeyAsync("plain", Arg.Any<CancellationToken>())
             .Returns(MakeSecret(key: "plain"));
@@ -349,9 +352,28 @@ public sealed class PostgreSqlSecretProviderTests
             .Returns(MakeVersion(value: "plaintext", encrypted: false));
 
         await using var provider = CreateProvider();
-        var result = await provider.GetSecretAsync("plain");
 
-        Assert.Equal("plaintext", result.Value);
+        var ex = await Assert.ThrowsAsync<SecretProviderException>(
+            () => provider.GetSecretAsync("plain"));
+
+        Assert.Contains("unencrypted", ex.Message);
         _mockEncryptor.DidNotReceive().Decrypt(Arg.Any<EncryptedPayload>());
+    }
+
+    [Fact]
+    public async Task GetSecretAsync_EncryptedRowButNoKeyConfigured_Throws()
+    {
+        _mockEncryptor.IsEnabled.Returns(false);
+        _mockStore.GetSecretByKeyAsync("cipher", Arg.Any<CancellationToken>())
+            .Returns(MakeSecret(key: "cipher"));
+        _mockStore.GetVersionAsync(1, null, Arg.Any<CancellationToken>())
+            .Returns(MakeVersion(value: """{"n":"","c":"","t":""}""", encrypted: true));
+
+        await using var provider = CreateProvider();
+
+        var ex = await Assert.ThrowsAsync<SecretProviderException>(
+            () => provider.GetSecretAsync("cipher"));
+
+        Assert.Contains("no encryption key is configured", ex.Message);
     }
 }

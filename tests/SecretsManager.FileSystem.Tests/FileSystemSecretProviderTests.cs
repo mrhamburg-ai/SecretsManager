@@ -234,4 +234,86 @@ public sealed class FileSystemSecretProviderTests : IAsyncLifetime
         await Assert.ThrowsAsync<SecretNotFoundException>(
             () => provider.GetSecretVersionsAsync("nonexistent"));
     }
+
+    // --- security: path traversal via the key (audit FS-2) ---
+
+    [Theory]
+    [InlineData("..")]
+    [InlineData(".")]
+    [InlineData("")]
+    public async Task GetSecret_RejectsTraversingKey(string key)
+    {
+        await using var provider = CreateProvider();
+
+        await Assert.ThrowsAnyAsync<ArgumentException>(() => provider.GetSecretAsync(key));
+    }
+
+    [Fact]
+    public async Task PutSecret_WithDotKey_DoesNotWriteOutsideStore()
+    {
+        await using var provider = CreateProvider();
+
+        await Assert.ThrowsAnyAsync<ArgumentException>(() => provider.PutSecretAsync(".", "value"));
+    }
+
+    [Fact]
+    public async Task DeleteSecret_WithDotKey_DoesNotDeleteStore()
+    {
+        await using var provider = CreateProvider();
+        await provider.PutSecretAsync("real-secret", "keep-me");
+
+        await Assert.ThrowsAnyAsync<ArgumentException>(() => provider.DeleteSecretAsync("."));
+
+        // A "." key used to resolve to BasePath itself, so the recursive delete wiped the store.
+        Assert.True(await provider.SecretExistsAsync("real-secret"));
+    }
+
+    // --- security: path traversal via the version query parameter (audit FS-1) ---
+
+    [Theory]
+    [InlineData("../other/v1")]
+    [InlineData("/etc/hosts")]
+    [InlineData("current")]
+    [InlineData("v1/../v2")]
+    [InlineData("1")]
+    public async Task GetSecret_RejectsInvalidVersion(string version)
+    {
+        await using var provider = CreateProvider();
+        await provider.PutSecretAsync("versioned", "value");
+
+        await Assert.ThrowsAnyAsync<ArgumentException>(
+            () => provider.GetSecretAsync("versioned", new SecretQuery { Version = version }));
+    }
+
+    // --- security: encryption downgrade / missing-key mismatch (audit FS-3) ---
+
+    [Fact]
+    public async Task GetSecret_EncryptionConfiguredButEnvelopePlaintext_Throws()
+    {
+        // A store written without a key, then read with one configured: the planted-plaintext attack.
+        // Anyone able to write to the store could set "encrypted": false and a chosen value.
+        await using (var plaintextProvider = CreateProvider())
+            await plaintextProvider.PutSecretAsync("planted", "attacker-value");
+
+        await using var keyedProvider = CreateProvider(encrypt: true);
+
+        var ex = await Assert.ThrowsAsync<SecretProviderException>(
+            () => keyedProvider.GetSecretAsync("planted"));
+
+        Assert.Contains("unencrypted", ex.Message);
+    }
+
+    [Fact]
+    public async Task GetSecret_EncryptedEnvelopeButNoKeyConfigured_Throws()
+    {
+        await using (var keyedProvider = CreateProvider(encrypt: true))
+            await keyedProvider.PutSecretAsync("cipher", "cipher-value");
+
+        await using var plaintextProvider = CreateProvider();
+
+        var ex = await Assert.ThrowsAsync<SecretProviderException>(
+            () => plaintextProvider.GetSecretAsync("cipher"));
+
+        Assert.Contains("no encryption key is configured", ex.Message);
+    }
 }

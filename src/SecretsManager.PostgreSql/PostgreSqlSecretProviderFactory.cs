@@ -14,8 +14,8 @@ public sealed class PostgreSqlSecretProviderFactory : ISecretProviderFactory
 
     /// <summary>
     /// Creates a <see cref="PostgreSqlSecretProvider"/> from the flat settings dictionary.
-    /// Recognized keys: <c>connection.string</c>, <c>schema</c>, <c>table.prefix</c>,
-    /// <c>auto.create.schema</c>, <c>encryption.key</c>, <c>encryption.keyfile</c>.
+    /// Recognized keys: <c>connection.string</c>, <c>schema</c>, <c>schema.owner</c>,
+    /// <c>table.prefix</c>, <c>auto.create.schema</c>, <c>encryption.key</c>, <c>encryption.keyfile</c>.
     /// </summary>
     /// <param name="configuration">The flat settings dictionary.</param>
     /// <returns>A configured <see cref="PostgreSqlSecretProvider"/> instance.</returns>
@@ -40,6 +40,9 @@ public sealed class PostgreSqlSecretProviderFactory : ISecretProviderFactory
 
         if (configuration.TryGetValue("auto.create.schema", out var autoCreate) && !string.IsNullOrWhiteSpace(autoCreate))
             options.AutoCreateSchema = bool.Parse(autoCreate);
+
+        if (configuration.TryGetValue("schema.owner", out var schemaOwner) && !string.IsNullOrWhiteSpace(schemaOwner))
+            options.SchemaOwner = schemaOwner;
 
         if (configuration.TryGetValue("encryption.key", out var encKey) && !string.IsNullOrWhiteSpace(encKey))
             options.EncryptionKey = encKey;
