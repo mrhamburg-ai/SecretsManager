@@ -30,6 +30,17 @@ dotnet add package SecretsManager.IBMCloudSecretsManager
 
 ## Configuration
 
+### Options Reference
+
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `Region` | `string` | Yes | `""` | IBM Cloud region, e.g. `us-south`, `eu-de` or `jp-tok` |
+| `InstanceId` | `string` | Yes | `""` | Instance ID of the Secrets Manager instance |
+| `ApiKey` | `string` | Yes | `""` | IBM Cloud API key for authentication |
+| `ServiceUrl` | `string?` | No | `null` | Service URL override |
+
+`IBMCloudSecretsManagerOptions.Validate()` requires `Region`, `InstanceId` and `ApiKey`.
+
 ### Fluent API
 
 ```csharp title="Program.cs"
@@ -61,6 +72,30 @@ provider:
     instance.id: your-instance-id
     api.key: your-api-key
 ```
+
+### Dependency Injection (IOptions&lt;T&gt;)
+
+Bind the same settings from `appsettings.json` through the DI container:
+
+```csharp
+var provider = new SecretProviderBuilder()
+    .ConfigureIBMCloudSecretsManager(configuration)
+    .Build();
+```
+
+```json
+{
+  "SecretsManager": {
+    "IBMCloudSecretsManager": {
+      "Region": "us-south",
+      "InstanceId": "your-instance-id",
+      "ApiKey": "your-api-key"
+    }
+  }
+}
+```
+
+This reads from the `SecretsManager:IBMCloudSecretsManager` section and validates all options.
 
 ## Authentication
 
@@ -160,15 +195,3 @@ The IBM Cloud Secrets Manager API uses standard HTTP status codes. All error res
 | 500 | Internal Server Error | Unexpected error on IBM's side |
 | 502 | Bad Gateway | Upstream service error |
 | 503 | Service Unavailable | Service temporarily unavailable |
-
-### Configuration via IOptions&lt;T&gt;
-
-You can also bind configuration from `IConfiguration`:
-
-```csharp
-var provider = new SecretProviderBuilder()
-    .ConfigureIBMCloudSecretsManager(configuration)
-    .Build();
-```
-
-This reads from the `SecretsManager:IBMCloudSecretsManager` section and validates all options.

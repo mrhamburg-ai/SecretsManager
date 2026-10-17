@@ -30,6 +30,19 @@ dotnet add package SecretsManager.PostgreSql
 
 ## Configuration
 
+### Options Reference
+
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `ConnectionString` | `string` | Yes | `""` | PostgreSQL connection string, e.g. `Host=localhost;Database=secrets;Username=app;Password=pass` |
+| `Schema` | `string` | No | `"public"` | Database schema for the tables |
+| `TablePrefix` | `string` | No | `"sm_"` | Prefix for table names, to avoid collisions |
+| `AutoCreateSchema` | `bool` | No | `true` | Create the tables automatically on first use |
+| `EncryptionKey` | `string?` | No | `null` | Base64-encoded AES-256 key (32 bytes). When set, values are encrypted at rest with AES-256-GCM |
+| `EncryptionKeyFile` | `string?` | No | `null` | Path to a file containing the encryption key. A 32-byte file is used as-is, otherwise it is treated as base64 |
+
+`PostgreSqlOptions.Validate()` requires `ConnectionString`.
+
 ### Fluent API
 
 ```csharp title="Program.cs"
@@ -72,16 +85,27 @@ provider:
       key: base64encodedkey    # or keyFile: /path/to/keyfile
 ```
 
-## Options Reference
+### Dependency Injection (IOptions&lt;T&gt;)
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `ConnectionString` | *(required)* | PostgreSQL connection string |
-| `Schema` | `public` | Database schema for the tables |
-| `TablePrefix` | `sm_` | Prefix for table names to avoid collisions |
-| `AutoCreateSchema` | `true` | Auto-create tables on first use |
-| `EncryptionKey` | `null` | Base64-encoded AES-256 key (32 bytes) |
-| `EncryptionKeyFile` | `null` | Path to file containing the encryption key |
+Bind the same settings from `appsettings.json` through the DI container:
+
+```csharp
+var provider = new SecretProviderBuilder()
+    .ConfigurePostgreSql(configuration)
+    .Build();
+```
+
+```json
+{
+  "SecretsManager": {
+    "PostgreSql": {
+      "ConnectionString": "Host=localhost;Database=secrets;Username=app;Password=pass"
+    }
+  }
+}
+```
+
+This reads from the `SecretsManager:PostgreSql` section and validates all options.
 
 ## Encryption
 
@@ -143,15 +167,3 @@ await provider.DeleteSecretAsync("old-secret");
 :::info[Connection Pooling]
 The provider uses `NpgsqlDataSource` internally, which manages connection pooling automatically. You do not need to configure pooling separately.
 :::
-
-### Configuration via IOptions&lt;T&gt;
-
-You can also bind configuration from `IConfiguration`:
-
-```csharp
-var provider = new SecretProviderBuilder()
-    .ConfigurePostgreSql(configuration)
-    .Build();
-```
-
-This reads from the `SecretsManager:PostgreSql` section and validates all options.

@@ -30,6 +30,17 @@ dotnet add package SecretsManager.Passbolt
 
 ## Configuration
 
+### Options Reference
+
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `BaseUrl` | `string` | Yes | `""` | Base URL of the Passbolt instance |
+| `UserPrivateKey` | `string` | Yes | `""` | User's private key, for authentication |
+| `UserPrivateKeyPassphrase` | `string` | Conditional | `""` | Passphrase for the user's private key. Required only if the key is passphrase-protected |
+| `UserKeyFingerprint` | `string` | Yes | `""` | Fingerprint of the user's public key |
+
+`PassboltOptions.Validate()` requires `BaseUrl`, `UserPrivateKey` and `UserKeyFingerprint`.
+
 ### Fluent API
 
 ```csharp title="Program.cs"
@@ -71,6 +82,30 @@ provider:
       key:
         fingerprint: ABCDEF1234567890
 ```
+
+### Dependency Injection (IOptions&lt;T&gt;)
+
+Bind the same settings from `appsettings.json` through the DI container:
+
+```csharp
+var provider = new SecretProviderBuilder()
+    .ConfigurePassbolt(configuration)
+    .Build();
+```
+
+```json
+{
+  "SecretsManager": {
+    "Passbolt": {
+      "BaseUrl": "https://passbolt.example.com",
+      "UserPrivateKey": "-----BEGIN PGP PRIVATE KEY BLOCK-----...",
+      "UserKeyFingerprint": "ABCD1234..."
+    }
+  }
+}
+```
+
+This reads from the `SecretsManager:Passbolt` section and validates all options.
 
 ## Authentication
 
@@ -124,15 +159,3 @@ await provider.DeleteSecretAsync("old-secret");
 :::info[Versioning]
 Passbolt does not support native secret versioning. Each update replaces the previous secret value. `GetSecretVersionsAsync` always returns a single version marked as current.
 :::
-
-### Configuration via IOptions&lt;T&gt;
-
-You can also bind configuration from `IConfiguration`:
-
-```csharp
-var provider = new SecretProviderBuilder()
-    .ConfigurePassbolt(configuration)
-    .Build();
-```
-
-This reads from the `SecretsManager:Passbolt` section and validates all options.

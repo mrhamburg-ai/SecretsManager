@@ -87,6 +87,17 @@ var provider = new SecretProviderBuilder()
 
 You can configure Google Cloud Secret Manager using the Fluent API, environment variables, or YAML.
 
+### Options Reference
+
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `ProjectId` | `string` | Yes | `""` | Google Cloud project ID |
+| `CredentialsPath` | `string?` | No | `null` | Path to a service account credentials JSON file. Falls back to Application Default Credentials |
+| `CredentialsJson` | `string?` | No | `null` | Inline service account credentials JSON. Falls back to `CredentialsPath`, then Application Default Credentials |
+| `Endpoint` | `string?` | No | `null` | Custom API endpoint, e.g. for emulators. Defaults to `secretmanager.googleapis.com` |
+
+`GoogleSecretManagerOptions.Validate()` requires `ProjectId`. Credentials are resolved from `CredentialsJson`, then `CredentialsPath`, then Application Default Credentials.
+
 ### Fluent API
 
 ```csharp
@@ -124,6 +135,28 @@ provider:
     credentials:
       path: /path/to/service-account-key.json
 ```
+
+### Dependency Injection (IOptions&lt;T&gt;)
+
+Bind the same settings from `appsettings.json` through the DI container:
+
+```csharp
+var provider = new SecretProviderBuilder()
+    .ConfigureGoogleSecretManager(configuration)
+    .Build();
+```
+
+```json
+{
+  "SecretsManager": {
+    "GoogleSecretManager": {
+      "ProjectId": "my-gcp-project"
+    }
+  }
+}
+```
+
+This reads from the `SecretsManager:GoogleSecretManager` section and validates all options.
 
 ## Google Cloud-Specific Features
 
@@ -179,15 +212,3 @@ Ensure your service account has the `roles/secretmanager.admin` role (or at mini
 - Enable Cloud Audit Logs to track secret access patterns
 - Grant the principle of least privilege — only assign the IAM roles your application actually needs
 - Rotate service account keys regularly if using explicit credentials
-
-### Configuration via IOptions&lt;T&gt;
-
-You can also bind configuration from `IConfiguration`:
-
-```csharp
-var provider = new SecretProviderBuilder()
-    .ConfigureGoogleSecretManager(configuration)
-    .Build();
-```
-
-This reads from the `SecretsManager:GoogleSecretManager` section and validates all options.

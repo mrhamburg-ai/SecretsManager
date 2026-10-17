@@ -30,6 +30,17 @@ dotnet add package SecretsManager.AliyunKms
 
 ## Configuration
 
+### Options Reference
+
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `Region` | `string` | Yes | `""` | Alibaba Cloud region ID, e.g. `cn-hangzhou` or `eu-central-1` |
+| `AccessKeyId` | `string` | Yes | `""` | Alibaba Cloud AccessKey ID (`LTAI5t...`) |
+| `AccessKeySecret` | `string` | Yes | `""` | Alibaba Cloud AccessKey secret |
+| `Endpoint` | `string?` | No | `null` | Custom API endpoint override; omit to use the regional default |
+
+`AliyunKmsOptions.Validate()` requires `Region`, `AccessKeyId` and `AccessKeySecret`.
+
 ### Fluent API
 
 ```csharp title="Program.cs"
@@ -63,6 +74,30 @@ provider:
     secret:
       key: abc123...
 ```
+
+### Dependency Injection (IOptions&lt;T&gt;)
+
+Bind the same settings from `appsettings.json` through the DI container:
+
+```csharp
+var provider = new SecretProviderBuilder()
+    .ConfigureAliyunKms(configuration)
+    .Build();
+```
+
+```json
+{
+  "SecretsManager": {
+    "AliyunKms": {
+      "Region": "cn-hangzhou",
+      "AccessKeyId": "LTAI5t...",
+      "AccessKeySecret": "abc123..."
+    }
+  }
+}
+```
+
+This reads from the `SecretsManager:AliyunKms` section and validates all options.
 
 ## Authentication
 
@@ -125,15 +160,3 @@ var versions = await provider.GetSecretVersionsAsync("my-secret");
 // Delete (immediate, no recovery window)
 await provider.DeleteSecretAsync("old-secret");
 ```
-
-### Configuration via IOptions&lt;T&gt;
-
-You can also bind configuration from `IConfiguration`:
-
-```csharp
-var provider = new SecretProviderBuilder()
-    .ConfigureAliyunKms(configuration)
-    .Build();
-```
-
-This reads from the `SecretsManager:AliyunKms` section and validates all options.
