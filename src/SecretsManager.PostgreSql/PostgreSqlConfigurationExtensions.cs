@@ -34,6 +34,7 @@ public static class PostgreSqlConfigurationExtensions
             o.Schema = options.Schema;
             o.TablePrefix = options.TablePrefix;
             o.AutoCreateSchema = options.AutoCreateSchema;
+            o.SchemaOwner = options.SchemaOwner;
             o.EncryptionKey = options.EncryptionKey;
             o.EncryptionKeyFile = options.EncryptionKeyFile;
         });

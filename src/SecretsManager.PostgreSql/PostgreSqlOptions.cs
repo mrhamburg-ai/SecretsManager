@@ -22,9 +22,17 @@ public sealed class PostgreSqlOptions
     public string TablePrefix { get; set; } = "sm_";
 
     /// <summary>
-    /// Whether to automatically create tables on first use. Defaults to true.
+    /// Whether to automatically create tables on first use. Defaults to false: prefer creating them
+    /// from a migration role so the runtime account does not need CREATE rights on the schema.
     /// </summary>
-    public bool AutoCreateSchema { get; set; } = true;
+    public bool AutoCreateSchema { get; set; }
+
+    /// <summary>
+    /// Role expected to own the secrets tables. When null, the connected role must own them. Set this
+    /// when a migration role creates the tables and the application connects as a different,
+    /// lower-privileged role.
+    /// </summary>
+    public string? SchemaOwner { get; set; }
 
     /// <summary>
     /// Base64-encoded AES-256 encryption key (32 bytes).
