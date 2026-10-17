@@ -84,7 +84,7 @@ All package versions are in `Directory.Packages.props`. Never specify `Version` 
 
 - **XML docs required** on all public properties in options classes
 - **MDX escaping:** In markdown docs, escape `IOptions<T>` as `IOptions&lt;T&gt;` — MDX parses `<T>` as a JSX tag
-- **Provider docs:** Each provider has a doc page at `docs/docs/providers/<name>.md` with a "Configuration via IOptions<T>" subsection
+- **Provider docs:** Each provider has a doc page at `docs/docs/providers/<name>.md`. Its `## Configuration` section must contain, in order: an `### Options Reference` table listing every setting from that provider's options class with type, required status (`Yes` / `Conditional` / `No`), default and description; then the `### Fluent API`, `### Environment Variables` and `### YAML Configuration` examples; then a `### Dependency Injection (IOptions<T>)` subsection. Required-ness comes from the options class's `Validate()` method — never from prose
 - **Configuration guide:** `docs/docs/getting-started/configuration.md` lists all providers — keep in sync with actual providers
 
 ## CI/CD

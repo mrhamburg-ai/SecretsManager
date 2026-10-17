@@ -29,6 +29,19 @@ dotnet add package SecretsManager.Conjur
 
 ## Configuration
 
+### Options Reference
+
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `Url` | `string` | Yes | `"https://localhost:443"` | Base URL of the Conjur server, e.g. `https://conjur.example.com:443` |
+| `Account` | `string` | Yes | `""` | Organization account name the server was configured with |
+| `Login` | `string` | Yes | `""` | Login name to authenticate with. For a host, prefix the host id with `host/` |
+| `ApiKey` | `string` | Yes | `""` | API key (or user password) used to obtain a short-lived access token |
+| `PolicyPath` | `string` | No | `"root"` | Policy branch targeted when deleting secrets — Conjur has no direct delete API |
+| `SkipTlsVerify` | `bool` | No | `false` | When `true`, disables TLS certificate validation. Testing only |
+
+`ConjurOptions.Validate()` requires `Url`, `Account`, `Login` and `ApiKey`.
+
 ### Fluent API
 
 ```csharp title="Program.cs"
@@ -72,6 +85,31 @@ provider:
       tls:
         verify: false
 ```
+
+### Dependency Injection (IOptions&lt;T&gt;)
+
+Bind the same settings from `appsettings.json` through the DI container:
+
+```csharp
+var provider = new SecretProviderBuilder()
+    .ConfigureConjur(configuration)
+    .Build();
+```
+
+```json
+{
+  "SecretsManager": {
+    "Conjur": {
+      "Url": "https://conjur.example.com:443",
+      "Account": "my-org",
+      "Login": "host/my-app",
+      "ApiKey": "your-api-key"
+    }
+  }
+}
+```
+
+This reads from the `SecretsManager:Conjur` section and validates all options.
 
 ## Authentication
 
@@ -122,15 +160,3 @@ await provider.DeleteSecretAsync("old-secret");
 - **Reading secrets:** Secrets are retrieved by their full identifier (e.g. `app/db-pass`). Conjur keeps up to 20 versions per variable.
 - **Deleting secrets:** Conjur has no REST delete endpoint. Deletion is performed by patching the configured policy path with a `!delete` statement, which requires the `update` privilege on the containing policy.
 - **Nested variables:** For variables declared inside a policy branch, set `PolicyPath` to that branch; the leading branch segment is stripped when the provider creates missing variables.
-
-### Configuration via IOptions&lt;T&gt;
-
-You can also bind configuration from `IConfiguration`:
-
-```csharp
-var provider = new SecretProviderBuilder()
-    .ConfigureConjur(configuration)
-    .Build();
-```
-
-This reads from the `SecretsManager:Conjur` section and validates all options.

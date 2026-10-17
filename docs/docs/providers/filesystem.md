@@ -29,6 +29,16 @@ dotnet add package SecretsManager.FileSystem
 
 ## Configuration
 
+### Options Reference
+
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `BasePath` | `string` | Yes | `{LocalApplicationData}/SecretsManager` | Root directory where secrets are stored. Each secret gets a subdirectory |
+| `EncryptionKey` | `string?` | No | `null` | Base64-encoded AES-256 key (32 bytes). When set, secrets are encrypted at rest |
+| `EncryptionKeyFile` | `string?` | No | `null` | Path to a file containing the raw or base64-encoded AES-256 key |
+
+`FileSystemOptions.Validate()` requires `BasePath`. `EncryptionKey` and `EncryptionKeyFile` are **mutually exclusive** — setting both is a validation error. With neither set, secrets are stored in plaintext (development only).
+
 ### Fluent API
 
 ```csharp title="Program.cs"
@@ -82,6 +92,29 @@ var provider = new SecretProviderBuilder()
 Never use unencrypted mode in production. Always provide an encryption key for any environment that handles real secrets.
 :::
 
+### Dependency Injection (IOptions&lt;T&gt;)
+
+Bind the same settings from `appsettings.json` through the DI container:
+
+```csharp
+var provider = new SecretProviderBuilder()
+    .ConfigureFileSystem(configuration)
+    .Build();
+```
+
+```json
+{
+  "SecretsManager": {
+    "FileSystem": {
+      "BasePath": "/var/secrets",
+      "EncryptionKey": "base64-encoded-256-bit-key"
+    }
+  }
+}
+```
+
+This reads from the `SecretsManager:FileSystem` section and validates all options.
+
 ## Storage Format
 
 Secrets are stored under `basePath/{key}/` with per-version JSON files:
@@ -110,15 +143,3 @@ await provider.PutSecretAsync("db-password", "second-value");
 var versions = await provider.GetSecretVersionsAsync("db-password");
 // Returns: v1 (first-value), v2 (second-value)
 ```
-
-### Configuration via IOptions&lt;T&gt;
-
-You can also bind configuration from `IConfiguration`:
-
-```csharp
-var provider = new SecretProviderBuilder()
-    .ConfigureFileSystem(configuration)
-    .Build();
-```
-
-This reads from the `SecretsManager:FileSystem` section and validates all options.
