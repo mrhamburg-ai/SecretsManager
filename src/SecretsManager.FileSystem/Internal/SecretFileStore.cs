@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
 namespace SecretsManager.FileSystem.Internal;
@@ -13,7 +14,10 @@ internal sealed partial class SecretFileStore : IDisposable
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
-        WriteIndented = true
+        WriteIndented = true,
+        // Do not write null fields: an envelope with no key id should simply omit it, so a legacy
+        // envelope stays distinguishable from one written after key ids were introduced.
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
 
     private static readonly char[] InvalidKeyChars =
@@ -21,6 +25,13 @@ internal sealed partial class SecretFileStore : IDisposable
 
     private readonly string _basePath;
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _locks = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Set once <see cref="Dispose"/> starts. A key lock must never be handed out after that point:
+    /// <see cref="Dispose"/> frees them, and a lock acquired afterwards would either be missed by
+    /// that pass (leaking it) or freed underneath its new owner.
+    /// </summary>
+    private volatile bool _disposed;
 
     public SecretFileStore(string basePath)
     {
@@ -125,13 +136,32 @@ internal sealed partial class SecretFileStore : IDisposable
             Directory.Delete(dir, recursive: true);
     }
 
-    public SemaphoreSlim GetLock(string key) =>
-        _locks.GetOrAdd(SanitizeKey(key), _ => new SemaphoreSlim(1, 1));
+    public SemaphoreSlim GetLock(string key)
+    {
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(SecretFileStore));
+
+        return _locks.GetOrAdd(SanitizeKey(key), _ => new SemaphoreSlim(1, 1));
+    }
 
     public void Dispose()
     {
-        foreach (var sem in _locks.Values)
+        if (_disposed)
+            return;
+
+        _disposed = true;
+
+        // An in-flight operation may still be holding one of these locks. Disposing a semaphore
+        // under it makes the operation's Release throw ObjectDisposedException, so wait each lock
+        // out before freeing it. Nothing can acquire a lock any more, so the drain terminates.
+        foreach (var sem in _locks.Values.ToArray())
+        {
+            while (sem.CurrentCount != 1)
+                sem.Wait();
+
             sem.Dispose();
+        }
+
         _locks.Clear();
     }
 

@@ -7,6 +7,35 @@ namespace SecretsManager.PostgreSql;
 /// </summary>
 public sealed class PostgreSqlSecretProviderFactory : ISecretProviderFactory
 {
+    private readonly PostgreSqlOptions? _capturedOptions;
+
+    /// <summary>
+    /// Initializes a factory that builds its options purely from the settings dictionary. Used when
+    /// configuration comes from YAML, environment variables, or <c>IConfiguration</c>.
+    /// </summary>
+    public PostgreSqlSecretProviderFactory()
+    {
+    }
+
+    /// <summary>
+    /// Initializes a factory that starts from options already configured through the fluent API.
+    /// </summary>
+    /// <param name="capturedOptions">
+    /// The options produced by the <c>WithPostgreSql</c> configuration action. They are used as the
+    /// base, and the string settings override the values that are expressible as strings.
+    /// </param>
+    /// <remarks>
+    /// This overload exists because <see cref="ISecretProviderFactory.Create"/> accepts only strings.
+    /// Without it, an object-valued option such as
+    /// <see cref="PostgreSqlOptions.EncryptionKeyProvider"/> is silently dropped, the provider finds
+    /// no key, and it falls back to writing plaintext.
+    /// </remarks>
+    public PostgreSqlSecretProviderFactory(PostgreSqlOptions capturedOptions)
+    {
+        ArgumentNullException.ThrowIfNull(capturedOptions);
+        _capturedOptions = capturedOptions;
+    }
+
     /// <summary>
     /// The provider name used in YAML/env configuration: <c>"postgresql"</c>.
     /// </summary>
@@ -21,13 +50,19 @@ public sealed class PostgreSqlSecretProviderFactory : ISecretProviderFactory
     /// <returns>A configured <see cref="PostgreSqlSecretProvider"/> instance.</returns>
     public ISecretProvider Create(IReadOnlyDictionary<string, string> configuration)
     {
-        var options = MapConfiguration(configuration);
+        var options = MapConfiguration(configuration, _capturedOptions);
         return new PostgreSqlSecretProvider(options);
     }
 
-    internal static PostgreSqlOptions MapConfiguration(IReadOnlyDictionary<string, string> configuration)
+    /// <param name="configuration">The flat settings dictionary.</param>
+    /// <param name="into">
+    /// When supplied, the settings are merged into this instance instead of a fresh one. Used to
+    /// carry object-valued options that cannot travel through the string dictionary.
+    /// </param>
+    internal static PostgreSqlOptions MapConfiguration(
+        IReadOnlyDictionary<string, string> configuration, PostgreSqlOptions? into = null)
     {
-        var options = new PostgreSqlOptions();
+        var options = into ?? new PostgreSqlOptions();
 
         if (configuration.TryGetValue("connection.string", out var cs) && !string.IsNullOrWhiteSpace(cs))
             options.ConnectionString = cs;

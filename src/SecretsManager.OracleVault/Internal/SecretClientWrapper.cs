@@ -69,9 +69,7 @@ internal sealed class SecretClientWrapper : ISecretClientWrapper
             ? Encoding.UTF8.GetString(Convert.FromBase64String(content.Content))
             : string.Empty;
 
-        var tags = bundle.Metadata != null
-            ? bundle.Metadata.ToDictionary(kvp => kvp.Key, kvp => kvp.Value?.ToString() ?? string.Empty)
-            : null;
+        var tags = bundle.Metadata?.ToDictionary(kvp => kvp.Key, kvp => kvp.Value?.ToString() ?? string.Empty);
 
         return new OracleSecretResult(
             bundle.SecretId,
@@ -90,9 +88,7 @@ internal sealed class SecretClientWrapper : ISecretClientWrapper
     {
         var base64Content = Convert.ToBase64String(Encoding.UTF8.GetBytes(value));
 
-        var metadata = tags != null
-            ? tags.ToDictionary(kvp => kvp.Key, kvp => (object)kvp.Value)
-            : null;
+        var metadata = tags?.ToDictionary(kvp => kvp.Key, kvp => (object)kvp.Value);
 
         var createSecretDetails = new CreateSecretDetails
         {
@@ -132,9 +128,7 @@ internal sealed class SecretClientWrapper : ISecretClientWrapper
     {
         var base64Content = Convert.ToBase64String(Encoding.UTF8.GetBytes(value));
 
-        var metadata = tags != null
-            ? tags.ToDictionary(kvp => kvp.Key, kvp => (object)kvp.Value)
-            : null;
+        var metadata = tags?.ToDictionary(kvp => kvp.Key, kvp => (object)kvp.Value);
 
         var updateSecretDetails = new UpdateSecretDetails
         {

@@ -36,8 +36,10 @@ dotnet add package SecretsManager.FileSystem
 | `BasePath` | `string` | Yes | `{LocalApplicationData}/SecretsManager` | Root directory where secrets are stored. Each secret gets a subdirectory |
 | `EncryptionKey` | `string?` | No | `null` | Base64-encoded AES-256 key (32 bytes). When set, secrets are encrypted at rest |
 | `EncryptionKeyFile` | `string?` | No | `null` | Path to a file containing the raw or base64-encoded AES-256 key |
+| `EncryptionKeyProvider` | `IEncryptionKeyProvider?` | No | `null` | Supplies the encryption key from an external source, for example another secret provider. Fluent API only — it is an object, so it cannot come from appsettings.json, YAML, or an environment variable |
+| `LegacyEncryptionKey` | `string?` | No | `null` | Base64-encoded key used only to *decrypt* values written before key ids were recorded. Set this when migrating an existing store to `EncryptionKeyProvider` |
 
-`FileSystemOptions.Validate()` requires `BasePath`. `EncryptionKey` and `EncryptionKeyFile` are **mutually exclusive** — setting both is a validation error. With neither set, secrets are stored in plaintext (development only).
+`FileSystemOptions.Validate()` requires `BasePath`. `EncryptionKey`, `EncryptionKeyFile` and `EncryptionKeyProvider` are **mutually exclusive** — setting more than one is a validation error. `LegacyEncryptionKey` is only meaningful alongside `EncryptionKeyProvider`. With no key source set at all, secrets are stored in plaintext (development only).
 
 Secret keys are validated before any filesystem access: an empty key, or a key of `.` or `..`, is rejected with `ArgumentException`. Version identifiers must match `v<number>` (for example `v1`); anything else — including `current`, a path separator, or an absolute path — is rejected the same way. Both checks exist because a key or version previously reached the filesystem unchecked, letting `../other-secret/v1` read a different secret and `.` resolve to the store root.
 
@@ -64,6 +66,76 @@ var provider = new SecretProviderBuilder()
     })
     .Build();
 ```
+
+### With the Key From Another Provider
+
+The key can be held in a different secret provider entirely — Scaleway, Azure Key Vault, HashiCorp Vault, AWS Secrets Manager, or any of the other providers. The key is fetched on first use and cached per key version, so the steady-state cost is one read per version, not one per operation.
+
+```csharp title="Program.cs"
+// The bootstrap provider holds the key. It is built first and owned by the caller.
+await using var keyProvider = new SecretProviderBuilder()
+    .WithScaleway(options =>
+    {
+        options.Region = "fr-par";
+        options.ProjectId = "...";
+        options.AccessKey = "...";
+        options.SecretKey = "...";
+    })
+    .Build();
+
+await using var provider = new SecretProviderBuilder()
+    .WithFileSystem(options =>
+    {
+        options.BasePath = "/var/secrets";
+        options.EncryptionKeyProvider = new SecretProviderKeySource(keyProvider, "sm/data-key");
+    })
+    .Build();
+```
+
+Store the key as base64 — `openssl rand -base64 32` — in a secret named `sm/data-key`, and rotate it by putting a new version of that secret. New writes pick up the new version automatically; existing values stay readable because each envelope records the key version it was written with and `GetKeyAsync` fetches that exact version on demand. No keyring list and no separate rotation step.
+
+The same pattern works with Azure Key Vault:
+
+```csharp
+await using var keyProvider = new SecretProviderBuilder()
+    .WithAzureKeyVault(options => options.VaultUri = "https://my-vault.vault.azure.net/")
+    .Build();
+
+await using var provider = new SecretProviderBuilder()
+    .WithFileSystem(options =>
+    {
+        options.BasePath = "/var/secrets";
+        options.EncryptionKeyProvider = new SecretProviderKeySource(keyProvider, "sm-data-key");
+    })
+    .Build();
+```
+
+:::warning
+Build the key provider first, and never point a key source at the store it encrypts. A self-referential key source recurses or fails on first use — the fetch happens inside the operation that needs the key, so it cannot bootstrap itself.
+:::
+
+`SecretProviderKeySource` does **not** dispose the provider it wraps. The caller owns the bootstrap provider and may use it for other keys.
+
+:::tip
+Call `WarmUpAsync()` to resolve the key (and, for PostgreSQL, ensure the schema) at startup rather than on the first read or write. Without it, a misconfigured key source surfaces only when the first secret is accessed.
+:::
+
+### Migrating an Existing Store
+
+Every envelope written before this feature has no key id. When you set `EncryptionKeyProvider`, also set `LegacyEncryptionKey` to the key the existing values were written with:
+
+```csharp
+await using var provider = new SecretProviderBuilder()
+    .WithFileSystem(options =>
+    {
+        options.BasePath = "/var/secrets";
+        options.EncryptionKeyProvider = new SecretProviderKeySource(keyProvider, "sm/data-key");
+        options.LegacyEncryptionKey = previousBase64Key;
+    })
+    .Build();
+```
+
+Values without a key id decrypt with `LegacyEncryptionKey`; new writes record the key id from the provider and need it no longer. Re-encrypting the old values is optional cleanup, not a precondition.
 
 ### YAML Configuration
 

@@ -242,3 +242,22 @@ var provider = new SecretProviderBuilder()
 ```
 
 Or create a small extension method in your own project.
+
+## Why some behaviour cannot be a layer
+
+Layers wrap a finished provider, so they can change what a call *does*, but not what the provider *is*. Encryption is the clearest example.
+
+`SecretProviderBuilder.Build()` constructs the provider first and wraps it afterwards:
+
+```csharp
+var provider = factory.Create(_configuration.Settings);   // key resolved here, from options
+
+for (var i = _layers.Count - 1; i >= 0; i--)
+    provider = _layers[i].Wrap(provider);                 // layers wrap AFTER
+```
+
+A layer receives only the finished provider. By then the encryptor is a `private readonly` field already built from the options, and the layer has no reference to it, to the options, or to the provider's internals. The encryption key is consumed before any call happens, so there is nothing for a decorator to intercept.
+
+The only way a layer could work is if the provider exposed its encryptor for replacement — which would mean publishing key material through a public API, the opposite of what encryption is for.
+
+**Sourcing the key from another provider therefore lives in the providers' key resolution**, not in the layer pipeline. See [FileSystem Provider](providers/filesystem.md#with-the-key-from-another-provider) and [PostgreSql Provider](providers/postgresql.md#with-the-key-from-another-provider) for `EncryptionKeyProvider` and `SecretProviderKeySource`.

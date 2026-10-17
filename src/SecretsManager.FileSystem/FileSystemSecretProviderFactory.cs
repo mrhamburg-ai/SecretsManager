@@ -8,6 +8,35 @@ namespace SecretsManager.FileSystem;
 /// </summary>
 public sealed class FileSystemSecretProviderFactory : ISecretProviderFactory
 {
+    private readonly FileSystemOptions? _capturedOptions;
+
+    /// <summary>
+    /// Initializes a factory that builds its options purely from the settings dictionary. Used when
+    /// configuration comes from YAML, environment variables, or <c>IConfiguration</c>.
+    /// </summary>
+    public FileSystemSecretProviderFactory()
+    {
+    }
+
+    /// <summary>
+    /// Initializes a factory that starts from options already configured through the fluent API.
+    /// </summary>
+    /// <param name="capturedOptions">
+    /// The options produced by the <c>WithFileSystem</c> configuration action. They are used as the
+    /// base, and the string settings override the values that are expressible as strings.
+    /// </param>
+    /// <remarks>
+    /// This overload exists because <see cref="ISecretProviderFactory.Create"/> accepts only strings.
+    /// Without it, an object-valued option such as
+    /// <see cref="FileSystemOptions.EncryptionKeyProvider"/> is silently dropped, the provider finds
+    /// no key, and it falls back to writing plaintext.
+    /// </remarks>
+    public FileSystemSecretProviderFactory(FileSystemOptions capturedOptions)
+    {
+        ArgumentNullException.ThrowIfNull(capturedOptions);
+        _capturedOptions = capturedOptions;
+    }
+
     /// <summary>
     /// Gets the provider name used in YAML and environment configuration.
     /// </summary>
@@ -20,7 +49,7 @@ public sealed class FileSystemSecretProviderFactory : ISecretProviderFactory
     /// <returns>The filesystem secret provider.</returns>
     public ISecretProvider Create(IReadOnlyDictionary<string, string> configuration)
     {
-        var options = new FileSystemOptions();
+        var options = _capturedOptions ?? new FileSystemOptions();
 
         if (configuration.TryGetValue("path", out var path) && !string.IsNullOrWhiteSpace(path))
             options.BasePath = path;
