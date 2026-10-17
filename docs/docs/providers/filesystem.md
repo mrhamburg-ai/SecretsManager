@@ -39,6 +39,8 @@ dotnet add package SecretsManager.FileSystem
 
 `FileSystemOptions.Validate()` requires `BasePath`. `EncryptionKey` and `EncryptionKeyFile` are **mutually exclusive** — setting both is a validation error. With neither set, secrets are stored in plaintext (development only).
 
+Secret keys are validated before any filesystem access: an empty key, or a key of `.` or `..`, is rejected with `ArgumentException`. Version identifiers must match `v<number>` (for example `v1`); anything else — including `current`, a path separator, or an absolute path — is rejected the same way. Both checks exist because a key or version previously reached the filesystem unchecked, letting `../other-secret/v1` read a different secret and `.` resolve to the store root.
+
 ### Fluent API
 
 ```csharp title="Program.cs"
@@ -90,6 +92,10 @@ var provider = new SecretProviderBuilder()
 
 :::warning
 Never use unencrypted mode in production. Always provide an encryption key for any environment that handles real secrets.
+
+Unencrypted mode stores values in cleartext JSON on disk with **no integrity protection**: anyone who can write to the store can change a secret's value undetectably.
+
+Once an encryption key is configured, the provider **refuses to read** any envelope stored unencrypted, and refuses to read an encrypted envelope when no key is configured. Both cases throw `SecretProviderException` rather than returning a value. Migrating an existing unencrypted store therefore means rewriting every secret, not just adding a key.
 :::
 
 ### Dependency Injection (IOptions&lt;T&gt;)
