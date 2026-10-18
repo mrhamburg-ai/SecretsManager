@@ -116,7 +116,7 @@ public sealed class PostgreSqlSecretProvider : ISecretProvider
     {
         try
         {
-            var (storedValue, encrypted) = await EncryptValueAsync(value, cancellationToken);
+            var (storedValue, encrypted) = await EncryptValueAsync(key, value, cancellationToken);
 
             var (secret, version) = await _store.PutSecretAsync(
                 key, storedValue, encrypted,
@@ -248,14 +248,18 @@ public sealed class PostgreSqlSecretProvider : ISecretProvider
     public void InvalidateKey() => _keys.InvalidateKey();
 
     private async ValueTask<(string Value, bool Encrypted)> EncryptValueAsync(
-        string value, CancellationToken cancellationToken)
+        string key, string value, CancellationToken cancellationToken)
     {
         var (encryptor, keyId) = await _keys.GetCurrentAsync(cancellationToken).ConfigureAwait(false);
 
         if (!encryptor.IsEnabled)
             return (value, false);
 
-        var payload = encryptor.Encrypt(Encoding.UTF8.GetBytes(value));
+        // Authenticate the key id and the secret key as associated data, so a row moved to a different
+        // secret or key fails to decrypt instead of returning the wrong value. The version is not
+        // known until the store assigns it, so it is deliberately not part of the binding.
+        var associatedData = Encoding.UTF8.GetBytes($"{keyId}|{key}");
+        var payload = encryptor.Encrypt(Encoding.UTF8.GetBytes(value), associatedData);
         var json = JsonSerializer.Serialize(new
         {
             n = Convert.ToBase64String(payload.Nonce),
@@ -294,10 +298,15 @@ public sealed class PostgreSqlSecretProvider : ISecretProvider
 
         var encryptor = await _keys.GetByKeyIdAsync(keyId, cancellationToken).ConfigureAwait(false);
 
+        // Rebuild the same associated data the write path authenticated: the key id and the secret
+        // key. A row predating this change has no key id, so it is bound to the secret key alone.
+        var associatedData = Encoding.UTF8.GetBytes($"{keyId}|{key}");
+
         var payload = new EncryptedPayload(
             Convert.FromBase64String(root.GetProperty("n").GetString()!),
             Convert.FromBase64String(root.GetProperty("c").GetString()!),
-            Convert.FromBase64String(root.GetProperty("t").GetString()!));
+            Convert.FromBase64String(root.GetProperty("t").GetString()!),
+            associatedData);
 
         return Encoding.UTF8.GetString(encryptor.Decrypt(payload));
     }

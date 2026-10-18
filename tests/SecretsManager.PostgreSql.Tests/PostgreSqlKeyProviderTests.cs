@@ -52,10 +52,13 @@ public sealed class PostgreSqlKeyProviderTests
         version, id, version, value, encrypted,
         DateTimeOffset.Parse("2026-01-01T00:00:00Z"), true);
 
-    private static string EncryptedPayloadFor(byte[] key, string plaintext, string? keyId)
+    private static string EncryptedPayloadFor(byte[] key, string plaintext, string? keyId, string secretKey = "s")
     {
         using var encryptor = new AesGcmEncryptor(key);
-        var payload = encryptor.Encrypt(Encoding.UTF8.GetBytes(plaintext));
+        // The provider authenticates "{keyId}|{secretKey}" as associated data, so the payload must
+        // be built the same way or decryption fails the tag check.
+        var associatedData = Encoding.UTF8.GetBytes($"{keyId}|{secretKey}");
+        var payload = encryptor.Encrypt(Encoding.UTF8.GetBytes(plaintext), associatedData);
 
         return JsonSerializer.Serialize(new
         {

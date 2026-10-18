@@ -22,10 +22,13 @@ public sealed class PostgreSqlSecretProviderTests
         new(_mockStore, new EncryptionKeyResolver(Convert.ToBase64String(_key), null, null, null));
 
     /// <summary>Builds the stored JSON for an encrypted row, using the same format the provider writes.</summary>
-    private string EncryptedPayloadFor(string plaintext)
+    private string EncryptedPayloadFor(string plaintext, string secretKey = "my-secret")
     {
         using var encryptor = new AesGcmEncryptor(_key);
-        var payload = encryptor.Encrypt(Encoding.UTF8.GetBytes(plaintext));
+
+        // The provider authenticates "{keyId}|{secretKey}" as associated data.
+        var associatedData = Encoding.UTF8.GetBytes($"|{secretKey}");
+        var payload = encryptor.Encrypt(Encoding.UTF8.GetBytes(plaintext), associatedData);
 
         return JsonSerializer.Serialize(new
         {
@@ -166,7 +169,7 @@ public sealed class PostgreSqlSecretProviderTests
     public async Task GetSecretAsync_EncryptedValue_DecryptsSuccessfully()
     {
         var plaintext = "my-secret-value";
-        var encryptedJson = EncryptedPayloadFor(plaintext);
+        var encryptedJson = EncryptedPayloadFor(plaintext, "encrypted-secret");
 
         _mockStore.GetSecretByKeyAsync("encrypted-secret", Arg.Any<CancellationToken>())
             .Returns(MakeSecret(key: "encrypted-secret"));
@@ -225,15 +228,24 @@ public sealed class PostgreSqlSecretProviderTests
         Assert.NotNull(storedValue);
         Assert.DoesNotContain("plaintext-value", storedValue!);
 
-        // The stored payload must decrypt back to the original value with the same key.
+        // The stored payload must decrypt back to the original value with the same key. The
+        // provider authenticates "{keyId}|enc-secret" as associated data, so the same value is
+        // supplied here.
         using var doc = JsonDocument.Parse(storedValue!);
+        var keyId = doc.RootElement.TryGetProperty("k", out var k) && k.ValueKind == JsonValueKind.String
+            ? k.GetString()
+            : null;
+        var associatedData = Encoding.UTF8.GetBytes($"{keyId}|enc-secret");
+
         using var encryptor = new AesGcmEncryptor(_key);
         var decrypted = encryptor.Decrypt(new EncryptedPayload(
             Convert.FromBase64String(doc.RootElement.GetProperty("n").GetString()!),
             Convert.FromBase64String(doc.RootElement.GetProperty("c").GetString()!),
-            Convert.FromBase64String(doc.RootElement.GetProperty("t").GetString()!)));
+            Convert.FromBase64String(doc.RootElement.GetProperty("t").GetString()!),
+            associatedData));
 
         Assert.Equal("plaintext-value", Encoding.UTF8.GetString(decrypted));
+        Assert.Null(keyId); // a static key records no key id
     }
 
     [Fact]

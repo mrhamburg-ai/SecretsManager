@@ -1,4 +1,4 @@
-namespace SecretsManager.Internal;
+namespace SecretsManager;
 
 /// <summary>
 /// A resolved encryption key and the identifier of the version that produced it.

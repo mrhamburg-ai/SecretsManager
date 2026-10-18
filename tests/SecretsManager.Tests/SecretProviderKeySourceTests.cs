@@ -63,27 +63,33 @@ public sealed class SecretProviderKeySourceTests
     }
 
     [Fact]
-    public async Task GetCurrentKey_WithoutVersion_UsesBareKey()
+    public async Task GetCurrentKey_WithoutVersion_Throws()
     {
+        // A source that reports no version cannot safely be used as a key source: the key id is
+        // derived from the version, so a missing version would make the id stable across a
+        // rotation and leave existing values unreadable.
         var provider = new FakeSecretProvider();
         provider.Seed("sm/data-key", Convert.ToBase64String(Key));
 
         var source = new SecretProviderKeySource(provider, "sm/data-key");
-        var material = await source.GetCurrentKeyAsync();
 
-        Assert.Equal("sm/data-key", material.KeyId);
+        var ex = await Assert.ThrowsAsync<SecretProviderException>(
+            () => source.GetCurrentKeyAsync().AsTask());
+
+        Assert.Contains("no version", ex.Message);
     }
 
     [Fact]
     public async Task GetCurrentKey_Utf8Encoding_UsesRawBytes()
     {
         var provider = new FakeSecretProvider();
-        provider.Seed("k", new string('a', 32));
+        provider.Seed("k", new string('a', 32), version: "1");
 
         var source = new SecretProviderKeySource(provider, "k", SecretKeyEncoding.Utf8);
         var material = await source.GetCurrentKeyAsync();
 
         Assert.Equal(Encoding.UTF8.GetBytes(new string('a', 32)), material.Key);
+        Assert.Equal("k@1", material.KeyId);
     }
 
     [Fact]
@@ -138,14 +144,17 @@ public sealed class SecretProviderKeySourceTests
     }
 
     [Fact]
-    public async Task InvalidBase64_Throws()
+    public async Task InvalidBase64_ThrowsSecretProviderException()
     {
         var provider = new FakeSecretProvider();
-        provider.Seed("k", "not base64 at all");
+        provider.Seed("k", "not base64 at all", version: "1");
 
         var source = new SecretProviderKeySource(provider, "k");
 
-        await Assert.ThrowsAsync<FormatException>(() => source.GetCurrentKeyAsync().AsTask());
+        var ex = await Assert.ThrowsAsync<SecretProviderException>(
+            () => source.GetCurrentKeyAsync().AsTask());
+
+        Assert.Contains("not valid base64", ex.Message);
     }
 
     [Fact]

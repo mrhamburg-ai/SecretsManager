@@ -1,6 +1,54 @@
+using System.Collections.Concurrent;
+using System.Security.Cryptography;
 using System.Text;
+using SecretsManager;
 
 namespace SecretsManager.Internal;
+
+/// <summary>
+/// The resolved key for new writes, plus the identifier of the key version that produced it.
+/// </summary>
+/// <remarks>
+/// A reference type on purpose: it is cached in a single field that is read without the lock on the
+/// fast path, and a multi-word value type read concurrently with a write can tear, pairing one key's
+/// encryptor with another key's id — which silently produces ciphertext that can never be decrypted.
+/// </remarks>
+internal sealed class EncryptionKeySlot
+{
+    /// <summary>
+    /// Initializes a new instance of the <see cref="EncryptionKeySlot"/> class.
+    /// </summary>
+    /// <param name="key">The cached key and its encryptor.</param>
+    /// <param name="keyId">The stable key id recorded alongside the ciphertext.</param>
+    public EncryptionKeySlot(CachedKey key, string? keyId)
+    {
+        Key = key;
+        KeyId = keyId;
+    }
+
+    /// <summary>Gets the cached key and its encryptor.</summary>
+    public CachedKey Key { get; }
+
+    /// <summary>Gets the stable key id recorded alongside the ciphertext.</summary>
+    public string? KeyId { get; }
+}
+
+/// <summary>
+/// A cached encryptor and the key bytes it was built from, so a key id presented again with
+/// different bytes can be detected instead of silently serving the wrong key.
+/// </summary>
+internal sealed class CachedKey
+{
+    public CachedKey(byte[] key, AesGcmEncryptor encryptor)
+    {
+        Key = key;
+        Encryptor = encryptor;
+    }
+
+    public byte[] Key { get; }
+
+    public AesGcmEncryptor Encryptor { get; }
+}
 
 /// <summary>
 /// Resolves the encryption key for a provider from a static key, a key file, or an
@@ -20,10 +68,14 @@ public sealed class EncryptionKeyResolver : IAsyncDisposable
     private readonly string? _legacyBase64Key;
 
     private readonly SemaphoreSlim _lock = new(1, 1);
-    private readonly Dictionary<string, AesGcmEncryptor> _encryptors = new(StringComparer.Ordinal);
-    private bool _disposed;
 
-    private (AesGcmEncryptor Encryptor, string? KeyId)? _current;
+    // A ConcurrentDictionary so the cache can be probed without taking the lock: a read of already
+    // resolved ciphertext then never waits behind an in-flight network fetch for a different key.
+    private readonly ConcurrentDictionary<string, CachedKey> _encryptors =
+        new(StringComparer.Ordinal);
+
+    private EncryptionKeySlot? _current;
+    private volatile bool _disposed;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="EncryptionKeyResolver"/> class.
@@ -57,34 +109,45 @@ public sealed class EncryptionKeyResolver : IAsyncDisposable
     /// </summary>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The encryptor and the key id, if any.</returns>
+    /// <exception cref="ObjectDisposedException">The resolver has been disposed.</exception>
     public async ValueTask<(ISecretEncryptor Encryptor, string? KeyId)> GetCurrentAsync(
         CancellationToken cancellationToken = default)
     {
         if (!IsEnabled)
             return (new NullEncryptor(), null);
 
-        if (_current is { } cached)
-            return (cached.Encryptor, cached.KeyId);
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(EncryptionKeyResolver));
+
+        // Fast path, no lock: the slot is a reference, so the pair is published atomically.
+        if (Volatile.Read(ref _current) is { } cached)
+            return (cached.Key.Encryptor, cached.KeyId);
 
         await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            // Assigned inside the lock rather than caching a Task, so a failed or cancelled first
-            // fetch is not stored and the next call retries.
-            if (_current is null)
+            // Resolve into a local, then publish. InvalidateKey clears the field without the lock,
+            // so it can be cleared again between the check and the read; resolving first means the
+            // returned pair always comes from a slot this call itself created.
+            var resolved = _current;
+            if (resolved is null)
             {
                 if (_provider is not null)
                 {
                     var material = await _provider.GetCurrentKeyAsync(cancellationToken).ConfigureAwait(false);
-                    _current = (GetOrCreateEncryptor(material.KeyId, material.Key), material.KeyId);
+                    resolved = new EncryptionKeySlot(
+                        GetOrCreateEncryptor(material.KeyId, material.Key), material.KeyId);
                 }
                 else
                 {
-                    _current = (GetOrCreateEncryptor(string.Empty, ReadStaticKey()), null);
+                    resolved = new EncryptionKeySlot(
+                        GetOrCreateEncryptor(string.Empty, ReadStaticKey()), null);
                 }
+
+                Volatile.Write(ref _current, resolved);
             }
 
-            return (_current.Value.Encryptor, _current.Value.KeyId);
+            return (resolved.Key.Encryptor, resolved.KeyId);
         }
         finally
         {
@@ -108,10 +171,10 @@ public sealed class EncryptionKeyResolver : IAsyncDisposable
         {
             var legacy = _legacyBase64Key ?? _base64Key;
             if (legacy is not null)
-                return GetOrCreateEncryptor(string.Empty, Convert.FromBase64String(legacy));
+                return GetOrCreateEncryptor(string.Empty, Convert.FromBase64String(legacy)).Encryptor;
 
             if (_keyFilePath is not null)
-                return GetOrCreateEncryptor(string.Empty, ReadStaticKey());
+                return GetOrCreateEncryptor(string.Empty, ReadStaticKey()).Encryptor;
 
             throw new SecretProviderException(
                 "This value was written without a key id and no LegacyEncryptionKey is configured, " +
@@ -122,14 +185,18 @@ public sealed class EncryptionKeyResolver : IAsyncDisposable
             throw new SecretProviderException(
                 $"This value records key id '{keyId}', but no EncryptionKeyProvider is configured to resolve it.");
 
+        // Lock-free read of the cache first: this is the hot path for reading already-resolved values.
+        if (_encryptors.TryGetValue(keyId, out var cached))
+            return cached.Encryptor;
+
         await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            if (_encryptors.TryGetValue(keyId, out var cached))
-                return cached;
+            if (_encryptors.TryGetValue(keyId, out cached))
+                return cached.Encryptor;
 
             var material = await _provider.GetKeyAsync(keyId, cancellationToken).ConfigureAwait(false);
-            return GetOrCreateEncryptor(keyId, material.Key);
+            return GetOrCreateEncryptor(keyId, material.Key).Encryptor;
         }
         finally
         {
@@ -141,54 +208,54 @@ public sealed class EncryptionKeyResolver : IAsyncDisposable
     /// Drops the cached current key so the next write re-reads it from the source. Cached historical
     /// keys are kept, because existing ciphertext still needs them.
     /// </summary>
+    /// <remarks>
+    /// Does not take the lock: a synchronous wait would block behind any in-flight fetch, which is
+    /// exactly what the async dispose path exists to avoid. The cache is only written under the lock
+    /// by <see cref="GetCurrentAsync"/>, and this clear is idempotent.
+    /// </remarks>
     public void InvalidateKey()
     {
-        _lock.Wait();
-        try
-        {
-            _current = null;
-        }
-        finally
-        {
-            _lock.Release();
-        }
+        Volatile.Write(ref _current, null);
     }
 
     /// <summary>
-    /// Releases the cached encryptors and the lock. Safe to call while a key fetch is in flight:
-    /// it waits for the lock first, so it never disposes the semaphore under a running fetch.
+    /// Releases the cached encryptors and the lock. Safe to call while a key fetch is in flight,
+    /// and safe to call more than once.
     /// </summary>
+    /// <remarks>
+    /// Deliberately does not take the lock, and deliberately does not free the cached encryptors.
+    /// Freeing them would strand any caller already holding one: <see cref="GetCurrentAsync"/>
+    /// hands the encryptor to its caller, which may still be using it, so its next
+    /// <c>Encrypt</c> would throw <see cref="ObjectDisposedException"/>. The lock is not taken
+    /// because a synchronous wait would block behind an in-flight fetch — exactly what the async
+    /// dispose path exists to avoid. The managed objects are reclaimed with the resolver.
+    /// </remarks>
     public void Dispose()
     {
-        DisposeAsync().AsTask().GetAwaiter().GetResult();
+        _disposed = true;
+
+        Volatile.Write(ref _current, null);
     }
 
     /// <summary>
-    /// Releases the cached encryptors and the lock, waiting for any in-flight key fetch to finish
-    /// before freeing the lock. Async, because the wait can be indefinite: a key source that blocks
-    /// holds the lock until it returns, and a synchronous <c>Dispose</c> would block the caller.
+    /// Stops this resolver from being used again and releases the cached encryptors.
+    /// Safe to call more than once, and safe to call while a fetch is in flight.
     /// </summary>
-    public async ValueTask DisposeAsync()
+    /// <remarks>
+    /// Neither the lock nor the cached encryptors are freed. Freeing the lock would make the
+    /// in-flight fetch's own <c>Release</c> throw <see cref="ObjectDisposedException"/>; freeing an
+    /// encryptor would strand a caller that already took it from <see cref="GetCurrentAsync"/>.
+    /// Both are safe to leave alive because the resolver is unreachable once disposed — they are
+    /// reclaimed with it — and every new caller is rejected by the <c>_disposed</c> check in the
+    /// getters before it can touch either.
+    /// </remarks>
+    public ValueTask DisposeAsync()
     {
-        await _lock.WaitAsync().ConfigureAwait(false);
-        try
-        {
-            if (_disposed)
-                return;
+        _disposed = true;
 
-            _disposed = true;
+        Volatile.Write(ref _current, null);
 
-            foreach (var encryptor in _encryptors.Values)
-                encryptor.Dispose();
-
-            _encryptors.Clear();
-        }
-        finally
-        {
-            _lock.Release();
-        }
-
-        _lock.Dispose();
+        return ValueTask.CompletedTask;
     }
 
     private byte[] ReadStaticKey()
@@ -208,17 +275,28 @@ public sealed class EncryptionKeyResolver : IAsyncDisposable
         throw new SecretProviderException("No encryption key is configured.");
     }
 
-    private AesGcmEncryptor GetOrCreateEncryptor(string keyId, byte[] key)
+    private CachedKey GetOrCreateEncryptor(string keyId, byte[] key)
     {
         if (key.Length != 32)
             throw new SecretProviderException(
                 $"Resolved key '{keyId}' is {key.Length} bytes; AES-256-GCM requires 32.");
 
         if (_encryptors.TryGetValue(keyId, out var existing))
-            return existing;
+        {
+            // A key id must identify exactly one key. A source that hands out the same id for
+            // different bytes — Passbolt always reports version "1", and any provider without
+            // immutable versions behaves the same way — would otherwise make previously written
+            // values permanently unreadable, with no error at the point of rotation.
+            if (!CryptographicOperations.FixedTimeEquals(existing.Key, key))
+                throw new SecretProviderException(
+                    $"Key id '{keyId}' was already resolved to a different key. The key source must " +
+                    "report a distinct version for every key it serves, or existing values encrypted " +
+                    "under this id cannot be read back.");
 
-        var encryptor = new AesGcmEncryptor(key);
-        _encryptors[keyId] = encryptor;
-        return encryptor;
+            return existing;
+        }
+
+        var created = new CachedKey(key, new AesGcmEncryptor(key));
+        return _encryptors.GetOrAdd(keyId, created);
     }
 }

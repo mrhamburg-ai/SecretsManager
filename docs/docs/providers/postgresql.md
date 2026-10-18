@@ -79,7 +79,7 @@ await using var provider = new SecretProviderBuilder()
     .Build();
 ```
 
-Store the key as base64 — `openssl rand -base64 32` — and rotate it by putting a new version of that secret. New writes pick up the new version automatically; existing rows stay readable because each row records the key version it was written with and `GetKeyAsync` fetches that exact version on demand.
+Store the key as base64 — `openssl rand -base64 32` — and rotate it by putting a new version of that secret. The current key is cached per process: new writes pick up the new version on restart, or immediately if you call `InvalidateKey()`. Existing rows stay readable either way, because each row records the key version it was written with and `GetKeyAsync` fetches that exact version on demand.
 
 The same pattern works with Scaleway:
 

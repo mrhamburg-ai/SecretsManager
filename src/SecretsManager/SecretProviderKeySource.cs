@@ -11,7 +11,14 @@ public enum SecretKeyEncoding
     /// <summary>Standard base64. This is the default, and matches <c>openssl rand -base64 32</c>.</summary>
     Base64,
 
-    /// <summary>Raw UTF-8 text, used as-is.</summary>
+    /// <summary>
+    /// Raw UTF-8 text, used as-is. Requires a value of exactly 32 characters.
+    /// </summary>
+    /// <remarks>
+    /// This is a passphrase, not a key: 32 characters of text carry far less entropy than 32 random
+    /// bytes, so it is far more vulnerable to brute force. Prefer <see cref="Base64"/> with
+    /// <c>openssl rand -base64 32</c>, and use this only when the key must already exist as text.
+    /// </remarks>
     Utf8
 }
 
@@ -91,9 +98,20 @@ public sealed class SecretProviderKeySource : IEncryptionKeyProvider
 
     private byte[] Decode(string value)
     {
-        var bytes = _encoding == SecretKeyEncoding.Base64
-            ? Convert.FromBase64String(value.Trim())
-            : Encoding.UTF8.GetBytes(value);
+        byte[] bytes;
+        try
+        {
+            bytes = _encoding == SecretKeyEncoding.Base64
+                ? Convert.FromBase64String(value.Trim())
+                : Encoding.UTF8.GetBytes(value);
+        }
+        catch (FormatException ex)
+        {
+            // Report this as a provider error, not a raw FormatException, so callers can handle
+            // every key-resolution failure the same way.
+            throw new SecretProviderException(
+                $"Key secret '{_key}' is not valid {(_encoding == SecretKeyEncoding.Base64 ? "base64" : "UTF-8")}.", ex);
+        }
 
         if (bytes.Length != 32)
             throw new SecretProviderException(
@@ -102,8 +120,22 @@ public sealed class SecretProviderKeySource : IEncryptionKeyProvider
         return bytes;
     }
 
-    private static string BuildKeyId(string key, string? version) =>
-        string.IsNullOrEmpty(version) ? key : $"{key}@{version}";
+    private static string BuildKeyId(string key, string? version)
+    {
+        // Fail closed. Falling back to the bare key name would make the key id stable across a
+        // rotation: new writes would record the same id as values written under the previous key,
+        // and after a restart the old values would be decrypted with the new key and fail with a
+        // tag mismatch rather than a clear error. A source that cannot report versions must not be
+        // used as a key source.
+        if (string.IsNullOrEmpty(version))
+            throw new SecretProviderException(
+                $"The key source for '{key}' reported no version. A key id is derived from the " +
+                "source's version, so a source without versions cannot safely be used as a key " +
+                "source: rotating the key would reuse the same key id and make existing values " +
+                "unreadable.");
+
+        return $"{key}@{version}";
+    }
 
     private static (string Key, string? Version) ParseKeyId(string keyId)
     {

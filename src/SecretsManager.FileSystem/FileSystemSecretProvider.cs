@@ -104,7 +104,11 @@ public sealed class FileSystemSecretProvider : ISecretProvider
 
             if (encryptor.IsEnabled)
             {
-                var payload = encryptor.Encrypt(Encoding.UTF8.GetBytes(value));
+                // The key id, the secret key and the version are authenticated as associated data, so
+                // a payload copied to a different secret, version, or key fails to decrypt rather
+                // than returning the wrong value under a valid tag.
+                var associatedData = Encoding.UTF8.GetBytes($"{keyId}|{key}|{version}");
+                var payload = encryptor.Encrypt(Encoding.UTF8.GetBytes(value), associatedData);
                 envelope.Encrypted = true;
                 envelope.KeyId = keyId;
                 envelope.Nonce = Convert.ToBase64String(payload.Nonce);
@@ -257,10 +261,15 @@ public sealed class FileSystemSecretProvider : ISecretProvider
 
         var encryptor = await _keys.GetByKeyIdAsync(envelope.KeyId, cancellationToken).ConfigureAwait(false);
 
+        // Rebuild the same associated data the write path authenticated. A value predating this
+        // change has no key id, so it is bound to the secret key and version alone.
+        var associatedData = Encoding.UTF8.GetBytes($"{envelope.KeyId}|{key}|{envelope.Version}");
+
         var payload = new EncryptedPayload(
             Convert.FromBase64String(envelope.Nonce ?? ""),
             Convert.FromBase64String(envelope.Ciphertext ?? ""),
-            Convert.FromBase64String(envelope.AuthTag ?? ""));
+            Convert.FromBase64String(envelope.AuthTag ?? ""),
+            associatedData);
 
         return Encoding.UTF8.GetString(encryptor.Decrypt(payload));
     }

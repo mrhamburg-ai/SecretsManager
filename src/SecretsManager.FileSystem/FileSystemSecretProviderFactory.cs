@@ -49,7 +49,9 @@ public sealed class FileSystemSecretProviderFactory : ISecretProviderFactory
     /// <returns>The filesystem secret provider.</returns>
     public ISecretProvider Create(IReadOnlyDictionary<string, string> configuration)
     {
-        var options = _capturedOptions ?? new FileSystemOptions();
+        // Never mutate the captured instance: Build() may be called more than once on one builder,
+        // and each call would otherwise overwrite the previous one's settings.
+        var options = _capturedOptions is null ? new FileSystemOptions() : Clone(_capturedOptions);
 
         if (configuration.TryGetValue("path", out var path) && !string.IsNullOrWhiteSpace(path))
             options.BasePath = path;
@@ -62,4 +64,16 @@ public sealed class FileSystemSecretProviderFactory : ISecretProviderFactory
 
         return new FileSystemSecretProvider(options);
     }
+
+    private static FileSystemOptions Clone(FileSystemOptions source) => new()
+    {
+        BasePath = source.BasePath,
+        EncryptionKey = source.EncryptionKey,
+        EncryptionKeyFile = source.EncryptionKeyFile,
+
+        // An object, so it is shared rather than copied: the key provider is a stateless reader and
+        // the caller owns its lifetime.
+        EncryptionKeyProvider = source.EncryptionKeyProvider,
+        LegacyEncryptionKey = source.LegacyEncryptionKey
+    };
 }

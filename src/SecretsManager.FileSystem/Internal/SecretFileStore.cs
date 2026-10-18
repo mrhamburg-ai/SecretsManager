@@ -144,25 +144,21 @@ internal sealed partial class SecretFileStore : IDisposable
         return _locks.GetOrAdd(SanitizeKey(key), _ => new SemaphoreSlim(1, 1));
     }
 
+    /// <summary>
+    /// Stops handing out locks. Safe to call while an operation is in flight.
+    /// </summary>
+    /// <remarks>
+    /// Does not wait for the locks to come free, and does not free the ones already handed out.
+    /// Waiting would make <c>Dispose</c> — called synchronously from <c>DisposeAsync</c> — hang
+    /// behind an in-flight operation, and freeing a lock an operation still holds would make its
+    /// <c>Release</c> throw <see cref="ObjectDisposedException"/>. Both problems are avoided by
+    /// leaving the locks alive: the store is unreachable once disposed, so the lock objects are
+    /// reclaimed with it, and an operation that arrives later is rejected by the
+    /// <c>_disposed</c> check in <see cref="GetLock"/>.
+    /// </remarks>
     public void Dispose()
     {
-        if (_disposed)
-            return;
-
         _disposed = true;
-
-        // An in-flight operation may still be holding one of these locks. Disposing a semaphore
-        // under it makes the operation's Release throw ObjectDisposedException, so wait each lock
-        // out before freeing it. Nothing can acquire a lock any more, so the drain terminates.
-        foreach (var sem in _locks.Values.ToArray())
-        {
-            while (sem.CurrentCount != 1)
-                sem.Wait();
-
-            sem.Dispose();
-        }
-
-        _locks.Clear();
     }
 
     /// <summary>

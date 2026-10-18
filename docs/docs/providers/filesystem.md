@@ -92,7 +92,9 @@ await using var provider = new SecretProviderBuilder()
     .Build();
 ```
 
-Store the key as base64 — `openssl rand -base64 32` — in a secret named `sm/data-key`, and rotate it by putting a new version of that secret. New writes pick up the new version automatically; existing values stay readable because each envelope records the key version it was written with and `GetKeyAsync` fetches that exact version on demand. No keyring list and no separate rotation step.
+Store the key as base64 — `openssl rand -base64 32` — in a secret named `sm/data-key`. Rotating it is a single `PutSecretAsync` at the source, but note that **the current key is cached per process**: new writes pick up the new version when the process restarts, or immediately if you call `InvalidateKey()`. Existing values stay readable either way, because each envelope records the key version it was written with and `GetKeyAsync` fetches that exact version on demand. No keyring list and no separate rotation step.
+
+`WarmUpAsync()` and `InvalidateKey()` are declared on the concrete provider types, not on `ISecretProvider`, so they are unavailable once a layer wraps the provider.
 
 The same pattern works with Azure Key Vault:
 
@@ -113,6 +115,8 @@ await using var provider = new SecretProviderBuilder()
 :::warning
 Build the key provider first, and never point a key source at the store it encrypts. A self-referential key source recurses or fails on first use — the fetch happens inside the operation that needs the key, so it cannot bootstrap itself.
 :::
+
+The key id is **derived from the version the source reports** (`{key}@{version}`), so the source must report a **distinct, immutable version for every key it serves**. A source whose version does not change on rotation — Passbolt always reports `1` — cannot be used as a key source: `SecretProviderKeySource` throws rather than silently reusing a key id, which would make values written under the previous key unreadable.
 
 `SecretProviderKeySource` does **not** dispose the provider it wraps. The caller owns the bootstrap provider and may use it for other keys.
 

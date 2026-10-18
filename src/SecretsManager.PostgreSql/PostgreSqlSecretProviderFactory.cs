@@ -50,8 +50,37 @@ public sealed class PostgreSqlSecretProviderFactory : ISecretProviderFactory
     /// <returns>A configured <see cref="PostgreSqlSecretProvider"/> instance.</returns>
     public ISecretProvider Create(IReadOnlyDictionary<string, string> configuration)
     {
-        var options = MapConfiguration(configuration, _capturedOptions);
+        // Clone rather than merge into the captured instance: Build() may be called more than once
+        // on one builder, and each call would otherwise overwrite the previous one's settings.
+        var options = MapConfiguration(configuration, Clone(_capturedOptions));
         return new PostgreSqlSecretProvider(options);
+    }
+
+    /// <summary>
+    /// Produces a shallow copy of the supplied options, or fresh defaults when there are none.
+    /// </summary>
+    /// <param name="source">The options configured through the fluent API, or null.</param>
+    /// <returns>A copy that the caller may freely mutate.</returns>
+    private static PostgreSqlOptions Clone(PostgreSqlOptions? source)
+    {
+        if (source is null)
+            return new PostgreSqlOptions();
+
+        return new PostgreSqlOptions
+        {
+            ConnectionString = source.ConnectionString,
+            Schema = source.Schema,
+            TablePrefix = source.TablePrefix,
+            AutoCreateSchema = source.AutoCreateSchema,
+            SchemaOwner = source.SchemaOwner,
+            EncryptionKey = source.EncryptionKey,
+            EncryptionKeyFile = source.EncryptionKeyFile,
+
+            // An object, so it is shared rather than copied: the key provider is a stateless reader
+            // and the caller owns its lifetime.
+            EncryptionKeyProvider = source.EncryptionKeyProvider,
+            LegacyEncryptionKey = source.LegacyEncryptionKey
+        };
     }
 
     /// <param name="configuration">The flat settings dictionary.</param>

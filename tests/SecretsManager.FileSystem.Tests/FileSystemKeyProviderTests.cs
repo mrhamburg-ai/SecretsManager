@@ -66,6 +66,41 @@ public sealed class FileSystemKeyProviderTests : IAsyncLifetime
         File.ReadAllText(Path.Combine(_tempDir, key, $"{version}.json"));
 
     /// <summary>
+    /// Disposing a provider while an operation holds a key lock must not deadlock and must not make
+    /// the operation's own Release throw. This is the regression for a drain loop that waited on
+    /// <see cref="SemaphoreSlim.CurrentCount"/> — <c>Wait()</c> leaves the count at zero, so the
+    /// loop never exited while a lock was held.
+    /// </summary>
+    [Fact]
+    public async Task Dispose_DuringInFlightOperation_DoesNotDeadlockOrThrow()
+    {
+        // The key fetch blocks, so PutSecretAsync still holds the per-key lock when we dispose.
+        var gate = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var provider = new SecretProviderBuilder()
+            .WithFileSystem(o =>
+            {
+                o.BasePath = _tempDir;
+                o.EncryptionKeyProvider = new GatedKeySource(_key, gate.Task);
+            })
+            .Build();
+
+        var put = provider.PutSecretAsync("k", "value");
+
+        // Let the put reach the store lock, then dispose while it is held.
+        await Task.Delay(200);
+
+        var dispose = Task.Run(() => provider.DisposeAsync().AsTask());
+        var completed = await Task.WhenAny(dispose, Task.Delay(TimeSpan.FromSeconds(10)));
+
+        Assert.True(completed == dispose, "Dispose deadlocked while a key lock was held.");
+
+        // Release the fetch; the operation must finish rather than throw ObjectDisposedException.
+        gate.SetResult(true);
+        await put;
+    }
+
+    /// <summary>
     /// The test that proves the key provider object survives the builder. Without the captured-options
     /// factory the object is dropped, the provider finds no key, and the value lands on disk in
     /// cleartext — encryption silently off.
@@ -291,8 +326,9 @@ public sealed class FileSystemKeyProviderTests : IAsyncLifetime
     }
 
     /// <summary>
-    /// Disposing while a key fetch is in flight is safe: <c>DisposeAsync</c> waits for the resolver's
-    /// lock rather than racing it, and the fetch is never left running against a disposed resolver.
+    /// Disposing while a key fetch is in flight is safe: the resolver does not take its lock
+    /// synchronously, so <c>DisposeAsync</c> cannot block behind the fetch, and the fetch is not
+    /// left running against a disposed resolver.
     /// </summary>
     [Fact]
     public async Task DisposeAsync_DuringInFlightKeyFetch_DoesNotThrow()
@@ -306,22 +342,23 @@ public sealed class FileSystemKeyProviderTests : IAsyncLifetime
 
         var put = provider.PutSecretAsync("k", "value");
 
-        // Let the fetch reach the resolver lock, then dispose concurrently.
-        await Task.Yield();
-        var dispose = provider.DisposeAsync();
-        gate.SetResult(true);
+        // Let the fetch reach the resolver, then dispose while it is still pending.
+        await Task.Delay(200);
+        await provider.DisposeAsync();
 
-        await dispose;
+        // Release the fetch. A correct implementation neither blocks nor throws here.
+        gate.SetResult(true);
         await put;
     }
 
-    /// <summary>A key source that blocks until a gate opens, to hold a fetch open across a dispose.</summary>
+    /// <summary>
+    /// A key source that blocks until a gate opens, to hold a fetch open across a dispose.
+    /// Honours the token so it behaves like a real network-backed source.
+    /// </summary>
     private sealed class GatedKeySource(byte[] key, Task gate) : IEncryptionKeyProvider
     {
         public async ValueTask<EncryptionKeyMaterial> GetCurrentKeyAsync(CancellationToken cancellationToken = default)
         {
-            // The token matters: a real source cancels its own fetch when the caller gives up, so
-            // this double must too, or it would keep running after the provider is disposed.
             await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
             return new EncryptionKeyMaterial(key, "gated@1");
         }

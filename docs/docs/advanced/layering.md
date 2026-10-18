@@ -250,14 +250,18 @@ Layers wrap a finished provider, so they can change what a call *does*, but not 
 `SecretProviderBuilder.Build()` constructs the provider first and wraps it afterwards:
 
 ```csharp
-var provider = factory.Create(_configuration.Settings);   // key resolved here, from options
+var provider = factory.Create(_configuration.Settings);   // options read here
 
 for (var i = _layers.Count - 1; i >= 0; i--)
     provider = _layers[i].Wrap(provider);                 // layers wrap AFTER
 ```
 
-A layer receives only the finished provider. By then the encryptor is a `private readonly` field already built from the options, and the layer has no reference to it, to the options, or to the provider's internals. The encryption key is consumed before any call happens, so there is nothing for a decorator to intercept.
+A layer receives only the finished provider. The key *source* is a property of the provider's options, and the provider's options are not reachable from the wrapped interface — the layer has no reference to them, or to the provider's internals. A decorator can intercept calls, but it cannot reach back into the configuration that produced the provider.
 
-The only way a layer could work is if the provider exposed its encryptor for replacement — which would mean publishing key material through a public API, the opposite of what encryption is for.
+The only way a layer could work is if the provider exposed its key source for replacement — which would mean publishing key material through a public API, the opposite of what encryption is for.
 
 **Sourcing the key from another provider therefore lives in the providers' key resolution**, not in the layer pipeline. See [FileSystem Provider](providers/filesystem.md#with-the-key-from-another-provider) and [PostgreSql Provider](providers/postgresql.md#with-the-key-from-another-provider) for `EncryptionKeyProvider` and `SecretProviderKeySource`.
+
+:::note
+The key itself is resolved lazily, on first use, rather than at construction time — a key held in another provider may require a network round trip. That does not make it layerable: the *source* of the key is fixed when the provider is built, which is before any layer runs.
+:::
