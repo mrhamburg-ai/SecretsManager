@@ -24,6 +24,14 @@ internal sealed class VersionedSecretEnvelope
     [JsonPropertyName("encrypted")]
     public bool Encrypted { get; set; }
 
+    /// <summary>
+    /// Identifier of the key that produced this ciphertext, so the value stays readable after the
+    /// key is rotated at its source. Null for values written before key ids were recorded, which are
+    /// read with the legacy or static key.
+    /// </summary>
+    [JsonPropertyName("keyId")]
+    public string? KeyId { get; set; }
+
     // Encrypted fields (base64)
     [JsonPropertyName("nonce")]
     public string? Nonce { get; set; }

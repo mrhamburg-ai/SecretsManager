@@ -6,7 +6,11 @@ namespace SecretsManager.Internal;
 /// <param name="Nonce">The nonce (initialization vector) generated for this payload.</param>
 /// <param name="Ciphertext">The encrypted secret bytes.</param>
 /// <param name="Tag">The authentication tag used to verify the ciphertext.</param>
-public record EncryptedPayload(byte[] Nonce, byte[] Ciphertext, byte[] Tag);
+/// <param name="AssociatedData">
+/// The authenticated associated data, if any. Not secret, but covered by the authentication tag, so
+/// tampering with it is detected on decrypt.
+/// </param>
+public record EncryptedPayload(byte[] Nonce, byte[] Ciphertext, byte[] Tag, byte[]? AssociatedData = null);
 
 /// <summary>
 /// Encrypts and decrypts secret payloads for providers that support encryption at rest.
@@ -23,8 +27,13 @@ public interface ISecretEncryptor : IDisposable
     /// Encrypts the given plaintext bytes.
     /// </summary>
     /// <param name="plaintext">The data to encrypt.</param>
+    /// <param name="associatedData">
+    /// Optional data to authenticate but not encrypt, such as the key id and the secret's own
+    /// identity. It is covered by the tag, so moving a payload to a different secret, version, or key
+    /// is detected on decrypt instead of silently returning the wrong value.
+    /// </param>
     /// <returns>The encrypted payload, including its nonce and authentication tag.</returns>
-    EncryptedPayload Encrypt(byte[] plaintext);
+    EncryptedPayload Encrypt(byte[] plaintext, byte[]? associatedData = null);
 
     /// <summary>
     /// Decrypts a payload previously produced by <see cref="Encrypt"/>.

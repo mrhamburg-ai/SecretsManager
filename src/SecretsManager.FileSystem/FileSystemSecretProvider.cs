@@ -11,7 +11,7 @@ namespace SecretsManager.FileSystem;
 public sealed class FileSystemSecretProvider : ISecretProvider
 {
     private readonly SecretFileStore _store;
-    private readonly ISecretEncryptor _encryptor;
+    private readonly EncryptionKeyResolver _keys;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="FileSystemSecretProvider"/> class.
@@ -27,7 +27,11 @@ public sealed class FileSystemSecretProvider : ISecretProvider
                 $"Invalid {nameof(FileSystemOptions)}: {string.Join("; ", errors)}", nameof(options));
 
         _store = new SecretFileStore(options.BasePath);
-        _encryptor = CreateEncryptor(options);
+        _keys = new EncryptionKeyResolver(
+            options.EncryptionKey,
+            options.EncryptionKeyFile,
+            options.EncryptionKeyProvider,
+            options.LegacyEncryptionKey);
     }
 
     /// <summary>
@@ -49,7 +53,7 @@ public sealed class FileSystemSecretProvider : ISecretProvider
                 ?? await _store.ReadCurrentVersionAsync(key, cancellationToken);
 
             var envelope = await _store.ReadEnvelopeAsync(key, version, cancellationToken);
-            var value = DecryptValue(key, envelope);
+            var value = await DecryptValueAsync(key, envelope, cancellationToken);
 
             if (query?.Property is { } property)
                 value = JsonPropertyExtractor.Extract(value, property);
@@ -96,10 +100,17 @@ public sealed class FileSystemSecretProvider : ISecretProvider
                 Tags = metadata?.Tags?.ToDictionary(kvp => kvp.Key, kvp => kvp.Value)
             };
 
-            if (_encryptor.IsEnabled)
+            var (encryptor, keyId) = await _keys.GetCurrentAsync(cancellationToken);
+
+            if (encryptor.IsEnabled)
             {
-                var payload = _encryptor.Encrypt(Encoding.UTF8.GetBytes(value));
+                // The key id, the secret key and the version are authenticated as associated data, so
+                // a payload copied to a different secret, version, or key fails to decrypt rather
+                // than returning the wrong value under a valid tag.
+                var associatedData = Encoding.UTF8.GetBytes($"{keyId}|{key}|{version}");
+                var payload = encryptor.Encrypt(Encoding.UTF8.GetBytes(value), associatedData);
                 envelope.Encrypted = true;
+                envelope.KeyId = keyId;
                 envelope.Nonce = Convert.ToBase64String(payload.Nonce);
                 envelope.Ciphertext = Convert.ToBase64String(payload.Ciphertext);
                 envelope.AuthTag = Convert.ToBase64String(payload.Tag);
@@ -206,52 +217,60 @@ public sealed class FileSystemSecretProvider : ISecretProvider
     /// <summary>
     /// Releases the underlying file store and encryptor resources.
     /// </summary>
-    public ValueTask DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
-        _encryptor.Dispose();
+        await _keys.DisposeAsync().ConfigureAwait(false);
         _store.Dispose();
-        return ValueTask.CompletedTask;
     }
 
-    private string DecryptValue(string key, VersionedSecretEnvelope envelope)
+    /// <summary>
+    /// Resolves the encryption key before the first operation, so a misconfigured key source fails
+    /// at startup rather than on the first read or write. Optional — without it the key is resolved
+    /// lazily on first use.
+    /// </summary>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    public async ValueTask WarmUpAsync(CancellationToken cancellationToken = default)
+    {
+        await _keys.GetCurrentAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Drops the cached encryption key so the next write re-reads it from the configured key source.
+    /// Cached historical keys are kept, because existing ciphertext still needs them.
+    /// </summary>
+    public void InvalidateKey() => _keys.InvalidateKey();
+
+    private async ValueTask<string> DecryptValueAsync(
+        string key, VersionedSecretEnvelope envelope, CancellationToken cancellationToken)
     {
         // An envelope that is not encrypted while a key is configured has either been tampered with
         // or written by a misconfigured process. Returning it would let anyone with write access to
         // the store plant an attacker-chosen value, which is the whole point of authenticated
         // encryption being lost.
-        if (_encryptor.IsEnabled && !envelope.Encrypted)
+        if (_keys.IsEnabled && !envelope.Encrypted)
             throw new SecretProviderException(
                 $"Secret '{key}' version '{envelope.Version}' is stored unencrypted, but an " +
                 "encryption key is configured. Refusing to return a value that may have been tampered with.");
 
-        if (!_encryptor.IsEnabled && envelope.Encrypted)
+        if (!_keys.IsEnabled && envelope.Encrypted)
             throw new SecretProviderException(
                 $"Secret '{key}' version '{envelope.Version}' is encrypted, but no encryption key is configured.");
 
         if (!envelope.Encrypted)
             return envelope.Value ?? "";
 
+        var encryptor = await _keys.GetByKeyIdAsync(envelope.KeyId, cancellationToken).ConfigureAwait(false);
+
+        // Rebuild the same associated data the write path authenticated. A value predating this
+        // change has no key id, so it is bound to the secret key and version alone.
+        var associatedData = Encoding.UTF8.GetBytes($"{envelope.KeyId}|{key}|{envelope.Version}");
+
         var payload = new EncryptedPayload(
             Convert.FromBase64String(envelope.Nonce ?? ""),
             Convert.FromBase64String(envelope.Ciphertext ?? ""),
-            Convert.FromBase64String(envelope.AuthTag ?? ""));
+            Convert.FromBase64String(envelope.AuthTag ?? ""),
+            associatedData);
 
-        return Encoding.UTF8.GetString(_encryptor.Decrypt(payload));
-    }
-
-    private static ISecretEncryptor CreateEncryptor(FileSystemOptions options)
-    {
-        if (options.EncryptionKey is { } base64Key)
-            return new AesGcmEncryptor(Convert.FromBase64String(base64Key));
-
-        if (options.EncryptionKeyFile is { } keyFilePath)
-        {
-            var raw = File.ReadAllBytes(keyFilePath);
-            // If the file is exactly 32 bytes, use as-is; otherwise treat as base64
-            var key = raw.Length == 32 ? raw : Convert.FromBase64String(Encoding.UTF8.GetString(raw).Trim());
-            return new AesGcmEncryptor(key);
-        }
-
-        return new NullEncryptor();
+        return Encoding.UTF8.GetString(encryptor.Decrypt(payload));
     }
 }

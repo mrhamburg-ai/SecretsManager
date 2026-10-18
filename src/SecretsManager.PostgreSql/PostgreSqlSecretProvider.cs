@@ -12,7 +12,8 @@ namespace SecretsManager.PostgreSql;
 public sealed class PostgreSqlSecretProvider : ISecretProvider
 {
     private readonly IPostgreSqlSecretStore _store;
-    private readonly ISecretEncryptor _encryptor;
+    private readonly EncryptionKeyResolver _keys;
+    private readonly bool _autoCreateSchema;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="PostgreSqlSecretProvider"/> class.
@@ -28,13 +29,19 @@ public sealed class PostgreSqlSecretProvider : ISecretProvider
                 $"Invalid {nameof(PostgreSqlOptions)}: {string.Join("; ", errors)}", nameof(options));
 
         _store = new PostgreSqlSecretStore(options);
-        _encryptor = CreateEncryptor(options);
+        _keys = new EncryptionKeyResolver(
+            options.EncryptionKey,
+            options.EncryptionKeyFile,
+            options.EncryptionKeyProvider,
+            options.LegacyEncryptionKey);
+        _autoCreateSchema = options.AutoCreateSchema;
     }
 
-    internal PostgreSqlSecretProvider(IPostgreSqlSecretStore store, ISecretEncryptor encryptor)
+    internal PostgreSqlSecretProvider(IPostgreSqlSecretStore store, EncryptionKeyResolver keys, bool autoCreateSchema = false)
     {
         _store = store;
-        _encryptor = encryptor;
+        _keys = keys;
+        _autoCreateSchema = autoCreateSchema;
     }
 
     /// <summary>
@@ -69,7 +76,7 @@ public sealed class PostgreSqlSecretProvider : ISecretProvider
             var version = await _store.GetVersionAsync(secret.Id, versionNumber, cancellationToken)
                 ?? throw new SecretNotFoundException(key);
 
-            var value = DecryptValue(key, version);
+            var value = await DecryptValueAsync(key, version, cancellationToken);
 
             if (query?.Property is { } property)
                 value = JsonPropertyExtractor.Extract(value, property);
@@ -109,7 +116,7 @@ public sealed class PostgreSqlSecretProvider : ISecretProvider
     {
         try
         {
-            var storedValue = EncryptValue(value, out var encrypted);
+            var (storedValue, encrypted) = await EncryptValueAsync(key, value, cancellationToken);
 
             var (secret, version) = await _store.PutSecretAsync(
                 key, storedValue, encrypted,
@@ -215,39 +222,67 @@ public sealed class PostgreSqlSecretProvider : ISecretProvider
     /// </summary>
     public async ValueTask DisposeAsync()
     {
-        _encryptor.Dispose();
+        await _keys.DisposeAsync().ConfigureAwait(false);
         await _store.DisposeAsync();
     }
 
-    private string EncryptValue(string value, out bool encrypted)
+    /// <summary>
+    /// Resolves the encryption key and, when <c>AutoCreateSchema</c> is enabled, ensures the schema
+    /// exists, before the first operation — so a misconfigured key source or an uncreatable schema
+    /// fails at startup rather than on the first read or write. Optional; without it the key is
+    /// resolved lazily on first use.
+    /// </summary>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    public async ValueTask WarmUpAsync(CancellationToken cancellationToken = default)
     {
-        if (!_encryptor.IsEnabled)
-        {
-            encrypted = false;
-            return value;
-        }
+        await _keys.GetCurrentAsync(cancellationToken).ConfigureAwait(false);
 
-        var payload = _encryptor.Encrypt(Encoding.UTF8.GetBytes(value));
-        encrypted = true;
-        return JsonSerializer.Serialize(new
+        if (_autoCreateSchema)
+            await _store.EnsureSchemaAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Drops the cached encryption key so the next write re-reads it from the configured key source.
+    /// Cached historical keys are kept, because existing ciphertext still needs them.
+    /// </summary>
+    public void InvalidateKey() => _keys.InvalidateKey();
+
+    private async ValueTask<(string Value, bool Encrypted)> EncryptValueAsync(
+        string key, string value, CancellationToken cancellationToken)
+    {
+        var (encryptor, keyId) = await _keys.GetCurrentAsync(cancellationToken).ConfigureAwait(false);
+
+        if (!encryptor.IsEnabled)
+            return (value, false);
+
+        // Authenticate the key id and the secret key as associated data, so a row moved to a different
+        // secret or key fails to decrypt instead of returning the wrong value. The version is not
+        // known until the store assigns it, so it is deliberately not part of the binding.
+        var associatedData = Encoding.UTF8.GetBytes($"{keyId}|{key}");
+        var payload = encryptor.Encrypt(Encoding.UTF8.GetBytes(value), associatedData);
+        var json = JsonSerializer.Serialize(new
         {
             n = Convert.ToBase64String(payload.Nonce),
             c = Convert.ToBase64String(payload.Ciphertext),
-            t = Convert.ToBase64String(payload.Tag)
+            t = Convert.ToBase64String(payload.Tag),
+            k = keyId
         });
+
+        return (json, true);
     }
 
-    private string DecryptValue(string key, PostgreSqlVersionRow version)
+    private async ValueTask<string> DecryptValueAsync(
+        string key, PostgreSqlVersionRow version, CancellationToken cancellationToken)
     {
         // The point of encrypting at rest is that someone with database access cannot read or tamper
         // with secrets. A row marked unencrypted while a key is configured is exactly what
         // UPDATE ... SET encrypted = false, value = 'attacker-value' produces.
-        if (_encryptor.IsEnabled && !version.Encrypted)
+        if (_keys.IsEnabled && !version.Encrypted)
             throw new SecretProviderException(
                 $"Secret '{key}' version {version.Version} is stored unencrypted, but an encryption " +
                 "key is configured. Refusing to return a value that may have been tampered with.");
 
-        if (!_encryptor.IsEnabled && version.Encrypted)
+        if (!_keys.IsEnabled && version.Encrypted)
             throw new SecretProviderException(
                 $"Secret '{key}' version {version.Version} is encrypted, but no encryption key is configured.");
 
@@ -257,26 +292,22 @@ public sealed class PostgreSqlSecretProvider : ISecretProvider
         using var doc = JsonDocument.Parse(version.Value);
         var root = doc.RootElement;
 
+        string? keyId = root.TryGetProperty("k", out var k) && k.ValueKind == JsonValueKind.String
+            ? k.GetString()
+            : null;
+
+        var encryptor = await _keys.GetByKeyIdAsync(keyId, cancellationToken).ConfigureAwait(false);
+
+        // Rebuild the same associated data the write path authenticated: the key id and the secret
+        // key. A row predating this change has no key id, so it is bound to the secret key alone.
+        var associatedData = Encoding.UTF8.GetBytes($"{keyId}|{key}");
+
         var payload = new EncryptedPayload(
             Convert.FromBase64String(root.GetProperty("n").GetString()!),
             Convert.FromBase64String(root.GetProperty("c").GetString()!),
-            Convert.FromBase64String(root.GetProperty("t").GetString()!));
+            Convert.FromBase64String(root.GetProperty("t").GetString()!),
+            associatedData);
 
-        return Encoding.UTF8.GetString(_encryptor.Decrypt(payload));
-    }
-
-    private static ISecretEncryptor CreateEncryptor(PostgreSqlOptions options)
-    {
-        if (options.EncryptionKey is { } base64Key)
-            return new AesGcmEncryptor(Convert.FromBase64String(base64Key));
-
-        if (options.EncryptionKeyFile is { } keyFilePath)
-        {
-            var raw = File.ReadAllBytes(keyFilePath);
-            var key = raw.Length == 32 ? raw : Convert.FromBase64String(Encoding.UTF8.GetString(raw).Trim());
-            return new AesGcmEncryptor(key);
-        }
-
-        return new NullEncryptor();
+        return Encoding.UTF8.GetString(encryptor.Decrypt(payload));
     }
 }

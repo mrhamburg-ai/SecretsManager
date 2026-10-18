@@ -15,8 +15,9 @@ public sealed class NullEncryptor : ISecretEncryptor
     /// Returns the plaintext unchanged as the "ciphertext", with an empty nonce and tag.
     /// </summary>
     /// <param name="plaintext">The data to pass through.</param>
+    /// <param name="associatedData">Ignored: nothing is authenticated when encryption is off.</param>
     /// <returns>A payload whose ciphertext is the original plaintext.</returns>
-    public EncryptedPayload Encrypt(byte[] plaintext) =>
+    public EncryptedPayload Encrypt(byte[] plaintext, byte[]? associatedData = null) =>
         new(Nonce: [], Ciphertext: plaintext, Tag: []);
 
     /// <summary>

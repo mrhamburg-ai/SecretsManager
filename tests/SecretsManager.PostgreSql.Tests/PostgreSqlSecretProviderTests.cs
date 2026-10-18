@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using NSubstitute;
@@ -10,9 +11,33 @@ namespace SecretsManager.PostgreSql.Tests;
 public sealed class PostgreSqlSecretProviderTests
 {
     private readonly IPostgreSqlSecretStore _mockStore = Substitute.For<IPostgreSqlSecretStore>();
-    private readonly ISecretEncryptor _mockEncryptor = Substitute.For<ISecretEncryptor>();
+    private readonly byte[] _key = RandomNumberGenerator.GetBytes(32);
 
-    private PostgreSqlSecretProvider CreateProvider() => new(_mockStore, _mockEncryptor);
+    /// <summary>A provider with no encryption key configured.</summary>
+    private PostgreSqlSecretProvider CreateProvider() =>
+        new(_mockStore, new EncryptionKeyResolver(null, null, null, null));
+
+    /// <summary>A provider with a real 32-byte AES-256 key, so the crypto path is exercised for real.</summary>
+    private PostgreSqlSecretProvider CreateProviderWithKey() =>
+        new(_mockStore, new EncryptionKeyResolver(Convert.ToBase64String(_key), null, null, null));
+
+    /// <summary>Builds the stored JSON for an encrypted row, using the same format the provider writes.</summary>
+    private string EncryptedPayloadFor(string plaintext, string secretKey = "my-secret")
+    {
+        using var encryptor = new AesGcmEncryptor(_key);
+
+        // The provider authenticates "{keyId}|{secretKey}" as associated data.
+        var associatedData = Encoding.UTF8.GetBytes($"|{secretKey}");
+        var payload = encryptor.Encrypt(Encoding.UTF8.GetBytes(plaintext), associatedData);
+
+        return JsonSerializer.Serialize(new
+        {
+            n = Convert.ToBase64String(payload.Nonce),
+            c = Convert.ToBase64String(payload.Ciphertext),
+            t = Convert.ToBase64String(payload.Tag),
+            k = (string?)null
+        });
+    }
 
     private static PostgreSqlSecretRow MakeSecret(int id = 1, string key = "my-secret") =>
         new(id, key, "text/plain",
@@ -29,7 +54,6 @@ public sealed class PostgreSqlSecretProviderTests
     [Fact]
     public async Task GetSecretAsync_ReturnsSecretValue()
     {
-        _mockEncryptor.IsEnabled.Returns(false);
         _mockStore.GetSecretByKeyAsync("my-secret", Arg.Any<CancellationToken>())
             .Returns(MakeSecret());
         _mockStore.GetVersionAsync(1, null, Arg.Any<CancellationToken>())
@@ -51,7 +75,6 @@ public sealed class PostgreSqlSecretProviderTests
     [Fact]
     public async Task GetSecretAsync_WithVersion_PassesVersionToStore()
     {
-        _mockEncryptor.IsEnabled.Returns(false);
         _mockStore.GetSecretByKeyAsync("my-secret", Arg.Any<CancellationToken>())
             .Returns(MakeSecret());
         _mockStore.GetVersionAsync(1, 2, Arg.Any<CancellationToken>())
@@ -67,7 +90,6 @@ public sealed class PostgreSqlSecretProviderTests
     [Fact]
     public async Task GetSecretAsync_WithProperty_ExtractsJsonProperty()
     {
-        _mockEncryptor.IsEnabled.Returns(false);
         _mockStore.GetSecretByKeyAsync("db-config", Arg.Any<CancellationToken>())
             .Returns(MakeSecret(key: "db-config"));
         _mockStore.GetVersionAsync(1, null, Arg.Any<CancellationToken>())
@@ -82,7 +104,6 @@ public sealed class PostgreSqlSecretProviderTests
     [Fact]
     public async Task GetSecretAsync_WithNestedProperty_ExtractsNestedValue()
     {
-        _mockEncryptor.IsEnabled.Returns(false);
         _mockStore.GetSecretByKeyAsync("config", Arg.Any<CancellationToken>())
             .Returns(MakeSecret(key: "config"));
         _mockStore.GetVersionAsync(1, null, Arg.Any<CancellationToken>())
@@ -110,7 +131,6 @@ public sealed class PostgreSqlSecretProviderTests
     [Fact]
     public async Task GetSecretAsync_VersionNotFound_ThrowsSecretNotFoundException()
     {
-        _mockEncryptor.IsEnabled.Returns(false);
         _mockStore.GetSecretByKeyAsync("my-secret", Arg.Any<CancellationToken>())
             .Returns(MakeSecret());
         _mockStore.GetVersionAsync(1, 99, Arg.Any<CancellationToken>())
@@ -149,33 +169,22 @@ public sealed class PostgreSqlSecretProviderTests
     public async Task GetSecretAsync_EncryptedValue_DecryptsSuccessfully()
     {
         var plaintext = "my-secret-value";
-        var encryptedJson = JsonSerializer.Serialize(new
-        {
-            n = Convert.ToBase64String(new byte[12]),
-            c = Convert.ToBase64String(Encoding.UTF8.GetBytes("ciphertext")),
-            t = Convert.ToBase64String(new byte[16])
-        });
-
-        _mockEncryptor.IsEnabled.Returns(true);
-        _mockEncryptor.Decrypt(Arg.Any<EncryptedPayload>())
-            .Returns(Encoding.UTF8.GetBytes(plaintext));
+        var encryptedJson = EncryptedPayloadFor(plaintext, "encrypted-secret");
 
         _mockStore.GetSecretByKeyAsync("encrypted-secret", Arg.Any<CancellationToken>())
             .Returns(MakeSecret(key: "encrypted-secret"));
         _mockStore.GetVersionAsync(1, null, Arg.Any<CancellationToken>())
             .Returns(MakeVersion(value: encryptedJson, encrypted: true));
 
-        await using var provider = CreateProvider();
+        await using var provider = CreateProviderWithKey();
         var result = await provider.GetSecretAsync("encrypted-secret");
 
         Assert.Equal(plaintext, result.Value);
-        _mockEncryptor.Received(1).Decrypt(Arg.Any<EncryptedPayload>());
     }
 
     [Fact]
     public async Task PutSecretAsync_CreatesSecretAndVersion()
     {
-        _mockEncryptor.IsEnabled.Returns(false);
         _mockStore.PutSecretAsync("new-secret", "new-value", false, null, null, Arg.Any<CancellationToken>())
             .Returns((MakeSecret(key: "new-secret"), MakeVersion(value: "new-value")));
 
@@ -191,7 +200,6 @@ public sealed class PostgreSqlSecretProviderTests
     public async Task PutSecretAsync_WithMetadata_PassesContentTypeAndTags()
     {
         var tags = new Dictionary<string, string> { ["env"] = "staging" }.AsReadOnly();
-        _mockEncryptor.IsEnabled.Returns(false);
         _mockStore.PutSecretAsync("tagged", "val", false, "application/json", tags, Arg.Any<CancellationToken>())
             .Returns((
                 MakeSecret(key: "tagged"),
@@ -208,28 +216,41 @@ public sealed class PostgreSqlSecretProviderTests
     [Fact]
     public async Task PutSecretAsync_WithEncryption_EncryptsValueBeforeStorage()
     {
-        _mockEncryptor.IsEnabled.Returns(true);
-        _mockEncryptor.Encrypt(Arg.Any<byte[]>())
-            .Returns(new EncryptedPayload(new byte[12], new byte[] { 1, 2, 3 }, new byte[16]));
-
+        string? storedValue = null;
         _mockStore.PutSecretAsync(
-                Arg.Is("enc-secret"), Arg.Any<string>(), Arg.Is(true),
+                Arg.Is("enc-secret"), Arg.Do<string>(v => storedValue = v), Arg.Is(true),
                 Arg.Any<string?>(), Arg.Any<IReadOnlyDictionary<string, string>?>(), Arg.Any<CancellationToken>())
             .Returns((MakeSecret(key: "enc-secret"), MakeVersion(value: "encrypted", encrypted: true)));
 
-        await using var provider = CreateProvider();
-        var result = await provider.PutSecretAsync("enc-secret", "plaintext-value");
+        await using var provider = CreateProviderWithKey();
+        await provider.PutSecretAsync("enc-secret", "plaintext-value");
 
-        _mockEncryptor.Received(1).Encrypt(Arg.Any<byte[]>());
-        await _mockStore.Received(1).PutSecretAsync(
-            Arg.Is("enc-secret"), Arg.Any<string>(), Arg.Is(true),
-            Arg.Any<string?>(), Arg.Any<IReadOnlyDictionary<string, string>?>(), Arg.Any<CancellationToken>());
+        Assert.NotNull(storedValue);
+        Assert.DoesNotContain("plaintext-value", storedValue!);
+
+        // The stored payload must decrypt back to the original value with the same key. The
+        // provider authenticates "{keyId}|enc-secret" as associated data, so the same value is
+        // supplied here.
+        using var doc = JsonDocument.Parse(storedValue!);
+        var keyId = doc.RootElement.TryGetProperty("k", out var k) && k.ValueKind == JsonValueKind.String
+            ? k.GetString()
+            : null;
+        var associatedData = Encoding.UTF8.GetBytes($"{keyId}|enc-secret");
+
+        using var encryptor = new AesGcmEncryptor(_key);
+        var decrypted = encryptor.Decrypt(new EncryptedPayload(
+            Convert.FromBase64String(doc.RootElement.GetProperty("n").GetString()!),
+            Convert.FromBase64String(doc.RootElement.GetProperty("c").GetString()!),
+            Convert.FromBase64String(doc.RootElement.GetProperty("t").GetString()!),
+            associatedData));
+
+        Assert.Equal("plaintext-value", Encoding.UTF8.GetString(decrypted));
+        Assert.Null(keyId); // a static key records no key id
     }
 
     [Fact]
     public async Task PutSecretAsync_StoreError_ThrowsSecretProviderException()
     {
-        _mockEncryptor.IsEnabled.Returns(false);
         _mockStore.PutSecretAsync("broken", "val", false, null, null, Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("DB error"));
 
@@ -345,25 +366,22 @@ public sealed class PostgreSqlSecretProviderTests
         // Regression test for the downgrade attack. This used to assert that the plaintext row was
         // returned, which is exactly what UPDATE ... SET encrypted = false, value = 'attacker-value'
         // achieves for anyone with database access.
-        _mockEncryptor.IsEnabled.Returns(true);
         _mockStore.GetSecretByKeyAsync("plain", Arg.Any<CancellationToken>())
             .Returns(MakeSecret(key: "plain"));
         _mockStore.GetVersionAsync(1, null, Arg.Any<CancellationToken>())
             .Returns(MakeVersion(value: "plaintext", encrypted: false));
 
-        await using var provider = CreateProvider();
+        await using var provider = CreateProviderWithKey();
 
         var ex = await Assert.ThrowsAsync<SecretProviderException>(
             () => provider.GetSecretAsync("plain"));
 
         Assert.Contains("unencrypted", ex.Message);
-        _mockEncryptor.DidNotReceive().Decrypt(Arg.Any<EncryptedPayload>());
     }
 
     [Fact]
     public async Task GetSecretAsync_EncryptedRowButNoKeyConfigured_Throws()
     {
-        _mockEncryptor.IsEnabled.Returns(false);
         _mockStore.GetSecretByKeyAsync("cipher", Arg.Any<CancellationToken>())
             .Returns(MakeSecret(key: "cipher"));
         _mockStore.GetVersionAsync(1, null, Arg.Any<CancellationToken>())

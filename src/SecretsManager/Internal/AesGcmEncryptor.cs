@@ -35,8 +35,12 @@ public sealed class AesGcmEncryptor : ISecretEncryptor
     /// Encrypts the plaintext with AES-256-GCM using a freshly generated nonce.
     /// </summary>
     /// <param name="plaintext">The data to encrypt.</param>
-    /// <returns>The nonce, ciphertext and authentication tag for this payload.</returns>
-    public EncryptedPayload Encrypt(byte[] plaintext)
+    /// <param name="associatedData">
+    /// Optional data to authenticate but not encrypt. It is covered by the tag, so a payload moved to
+    /// a different secret, version, or key fails to decrypt instead of returning the wrong value.
+    /// </param>
+    /// <returns>The nonce, ciphertext, authentication tag and associated data for this payload.</returns>
+    public EncryptedPayload Encrypt(byte[] plaintext, byte[]? associatedData = null)
     {
         var nonce = new byte[NonceSize];
         RandomNumberGenerator.Fill(nonce);
@@ -44,9 +48,9 @@ public sealed class AesGcmEncryptor : ISecretEncryptor
         var ciphertext = new byte[plaintext.Length];
         var tag = new byte[TagSize];
 
-        _aesGcm.Encrypt(nonce, plaintext, ciphertext, tag);
+        _aesGcm.Encrypt(nonce, plaintext, ciphertext, tag, associatedData ?? []);
 
-        return new EncryptedPayload(nonce, ciphertext, tag);
+        return new EncryptedPayload(nonce, ciphertext, tag, associatedData);
     }
 
     /// <summary>
@@ -55,12 +59,14 @@ public sealed class AesGcmEncryptor : ISecretEncryptor
     /// <param name="payload">The payload to decrypt.</param>
     /// <returns>The decrypted plaintext bytes.</returns>
     /// <exception cref="AuthenticationTagMismatchException">
-    /// Thrown when the tag does not match, i.e. the data was tampered with or the key is wrong.
+    /// Thrown when the tag does not match, i.e. the data was tampered with, the associated data
+    /// differs, or the key is wrong.
     /// </exception>
     public byte[] Decrypt(EncryptedPayload payload)
     {
         var plaintext = new byte[payload.Ciphertext.Length];
-        _aesGcm.Decrypt(payload.Nonce, payload.Ciphertext, payload.Tag, plaintext);
+        _aesGcm.Decrypt(
+            payload.Nonce, payload.Ciphertext, payload.Tag, plaintext, payload.AssociatedData ?? []);
         return plaintext;
     }
 
