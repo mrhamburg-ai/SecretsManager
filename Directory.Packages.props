@@ -28,5 +28,8 @@
     <PackageVersion Include="NSubstitute" Version="6.2.0" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.1" />
+
+    <!-- Tooling packages -->
+    <PackageVersion Include="System.Reflection.MetadataLoadContext" Version="10.0.13" />
   </ItemGroup>
 </Project>
