@@ -79,6 +79,18 @@ var provider = new SecretProviderBuilder()
 
 You can configure Azure Key Vault using the Fluent API, environment variables, or YAML.
 
+### Options Reference
+
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `VaultUrl` | `string` | Yes | `""` | Key Vault URI, e.g. `https://myvault.vault.azure.net` |
+| `AuthenticationType` | `string` | No | `"default"` | `default`, `serviceprincipal`, `managedidentity` or `workloadidentity` |
+| `TenantId` | `string?` | Conditional | `null` | Azure AD tenant ID — required when `AuthenticationType` is `serviceprincipal` |
+| `ClientId` | `string?` | Conditional | `null` | Azure AD application (client) ID — required for service principal, optional for user-assigned managed identity |
+| `ClientSecret` | `string?` | Conditional | `null` | Azure AD client secret — required when `AuthenticationType` is `serviceprincipal` |
+
+`AzureKeyVaultOptions.Validate()` requires `VaultUrl`. `TenantId`, `ClientId` and `ClientSecret` are validated only when `AuthenticationType` is `serviceprincipal`.
+
 ### Fluent API
 
 ```csharp
@@ -123,6 +135,29 @@ provider:
       clientId: your-client-id
       clientSecret: your-client-secret
 ```
+
+### Dependency Injection (IOptions&lt;T&gt;)
+
+Bind the same settings from `appsettings.json` through the DI container:
+
+```csharp
+var provider = new SecretProviderBuilder()
+    .ConfigureAzureKeyVault(configuration)
+    .Build();
+```
+
+```json
+{
+  "SecretsManager": {
+    "AzureKeyVault": {
+      "VaultUrl": "https://myvault.vault.azure.net",
+      "AuthenticationType": "default"
+    }
+  }
+}
+```
+
+This reads from the `SecretsManager:AzureKeyVault` section and validates all options.
 
 ## Azure-Specific Features
 

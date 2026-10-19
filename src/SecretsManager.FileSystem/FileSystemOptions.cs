@@ -1,3 +1,5 @@
+using SecretsManager.Internal;
+
 namespace SecretsManager.FileSystem;
 
 /// <summary>
@@ -24,4 +26,42 @@ public sealed class FileSystemOptions
     /// Mutually exclusive with <see cref="EncryptionKey"/>.
     /// </summary>
     public string? EncryptionKeyFile { get; set; }
+
+    /// <summary>
+    /// Supplies the encryption key from an external source, for example another secret provider.
+    /// Mutually exclusive with <see cref="EncryptionKey"/> and <see cref="EncryptionKeyFile"/> for
+    /// new writes. Because this is an object it cannot come from appsettings.json, YAML or
+    /// environment variables — set it through the fluent API.
+    /// </summary>
+    public IEncryptionKeyProvider? EncryptionKeyProvider { get; set; }
+
+    /// <summary>
+    /// Base64-encoded key used only to <em>decrypt</em> values written before key ids were recorded.
+    /// Set this when migrating an existing store to <see cref="EncryptionKeyProvider"/>.
+    /// </summary>
+    public string? LegacyEncryptionKey { get; set; }
+
+    /// <summary>
+    /// Validates the options and returns error messages.
+    /// </summary>
+    /// <returns>Validation error messages. An empty collection indicates the options are valid.</returns>
+    public IEnumerable<string> Validate()
+    {
+        if (string.IsNullOrWhiteSpace(BasePath))
+            yield return "BasePath is required";
+        if (!string.IsNullOrEmpty(EncryptionKey) && !string.IsNullOrEmpty(EncryptionKeyFile))
+            yield return "EncryptionKey and EncryptionKeyFile are mutually exclusive";
+
+        var writeSources = new[]
+        {
+            EncryptionKey is not null,
+            EncryptionKeyFile is not null,
+            EncryptionKeyProvider is not null
+        };
+        if (writeSources.Count(x => x) > 1)
+            yield return "EncryptionKey, EncryptionKeyFile and EncryptionKeyProvider are mutually exclusive";
+
+        if (LegacyEncryptionKey is not null && EncryptionKeyProvider is null)
+            yield return "LegacyEncryptionKey is only meaningful alongside EncryptionKeyProvider";
+    }
 }

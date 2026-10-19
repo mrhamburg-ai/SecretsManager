@@ -78,6 +78,17 @@ var provider = new SecretProviderBuilder()
 
 You can configure AWS Secrets Manager using the Fluent API, environment variables, or YAML.
 
+### Options Reference
+
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `Region` | `string` | Yes | `""` | AWS region, e.g. `us-east-1` or `eu-west-1` |
+| `AccessKey` | `string?` | No | `null` | Explicit AWS access key ID. When `null`, the AWS default credential chain is used |
+| `SecretKey` | `string?` | No | `null` | Explicit AWS secret access key. Required when `AccessKey` is set |
+| `SessionToken` | `string?` | No | `null` | Session token, for temporary (STS) credentials |
+
+`AwsSecretsManagerOptions.Validate()` requires `Region`. Credentials are optional because the AWS SDK resolves them from its default credential chain when `AccessKey`/`SecretKey` are left `null`.
+
 ### Fluent API
 
 ```csharp
@@ -118,6 +129,28 @@ provider:
     secret:
       key: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
 ```
+
+### Dependency Injection (IOptions&lt;T&gt;)
+
+Bind the same settings from `appsettings.json` through the DI container:
+
+```csharp
+var provider = new SecretProviderBuilder()
+    .ConfigureAwsSecretsManager(configuration)
+    .Build();
+```
+
+```json
+{
+  "SecretsManager": {
+    "AwsSecretsManager": {
+      "Region": "us-east-1"
+    }
+  }
+}
+```
+
+This reads from the `SecretsManager:AwsSecretsManager` section and validates all options.
 
 ## AWS-Specific Features
 

@@ -2,8 +2,17 @@ using SecretsManager.Builder;
 
 namespace SecretsManager.Vault;
 
+/// <summary>
+/// Extension methods for registering the HashiCorp Vault secret provider with a <see cref="SecretProviderBuilder"/>.
+/// </summary>
 public static class SecretProviderBuilderExtensions
 {
+    /// <summary>
+    /// Registers the HashiCorp Vault secret provider factory and optionally configures it with fluent options.
+    /// </summary>
+    /// <param name="builder">The <see cref="SecretProviderBuilder"/> to configure.</param>
+    /// <param name="configure">An optional action to configure <see cref="VaultOptions"/>.</param>
+    /// <returns>The same <see cref="SecretProviderBuilder"/> for method chaining.</returns>
     public static SecretProviderBuilder WithVault(
         this SecretProviderBuilder builder,
         Action<VaultOptions>? configure = null)

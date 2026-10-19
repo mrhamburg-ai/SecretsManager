@@ -29,6 +29,18 @@ dotnet add package SecretsManager.OVH
 
 ## Configuration
 
+### Options Reference
+
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `Endpoint` | `string` | Yes | `""` | OVH endpoint region: `ovh-eu`, `ovh-us` or `ovh-ca` |
+| `ApplicationKey` | `string` | Yes | `""` | OVH application key |
+| `ApplicationSecret` | `string` | Yes | `""` | OVH application secret |
+| `ConsumerKey` | `string` | Yes | `""` | OVH consumer key |
+| `OkmsId` | `string` | No | `""` | OVH OKMS ID |
+
+`OVHOptions.Validate()` requires `Endpoint`, `ApplicationKey`, `ApplicationSecret` and `ConsumerKey`.
+
 ### Fluent API
 
 ```csharp title="Program.cs"
@@ -70,6 +82,31 @@ provider:
     okms:
       id: your-okms-id
 ```
+
+### Dependency Injection (IOptions&lt;T&gt;)
+
+Bind the same settings from `appsettings.json` through the DI container:
+
+```csharp
+var provider = new SecretProviderBuilder()
+    .ConfigureOVH(configuration)
+    .Build();
+```
+
+```json
+{
+  "SecretsManager": {
+    "OVH": {
+      "Endpoint": "ovh-eu",
+      "ApplicationKey": "your-application-key",
+      "ApplicationSecret": "your-application-secret",
+      "ConsumerKey": "your-consumer-key"
+    }
+  }
+}
+```
+
+This reads from the `SecretsManager:OVH` section and validates all options.
 
 ## Authentication
 

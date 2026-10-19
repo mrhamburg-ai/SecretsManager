@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 jobs:
-  build-and-test:
+  build:
     runs-on: ubuntu-latest
 
     steps:
@@ -25,7 +25,7 @@ jobs:
         dotnet-version: '10.0.x'
 
     - name: Cache NuGet packages
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: ~/.nuget/packages
         key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Build.props') }}
@@ -37,11 +37,27 @@ jobs:
 
     - name: Check API compatibility
       run: |
-        dotnet build tools/ApiCompatChecker/ApiCompatChecker.csproj -c Release --no-restore
-        dotnet build src/SecretsManager.Vault/SecretsManager.Vault.csproj -c Release --no-restore
-        dotnet tools/ApiCompatChecker/bin/Release/net10.0/ApiCompatChecker.dll \
-          "src/SecretsManager.Vault/bin/Release/net10.0" \
-          "src/SecretsManager.Vault/bin/Release/net10.0"
+        set -euo pipefail
+
+        # Publish rather than build. A library build copies only the project's own assemblies, so
+        # the checker would not find the NuGet dependencies it needs to resolve the API surface.
+        dotnet publish tools/ApiCompatChecker/ApiCompatChecker.csproj -c Release -o "$RUNNER_TEMP/api-checker"
+        dotnet publish src/SecretsManager.Vault/SecretsManager.Vault.csproj -c Release -o "$RUNNER_TEMP/api-current"
+
+        # The base has to be origin/main, built in an isolated worktree. Comparing the branch
+        # against its own output passes unconditionally, which is exactly what this check exists to
+        # catch. The previous version did `git stash; git checkout main`, which cannot work on a PR
+        # merge ref.
+        git fetch origin main
+        git worktree add --detach "$RUNNER_TEMP/api-base-wt" origin/main
+        dotnet publish "$RUNNER_TEMP/api-base-wt/src/SecretsManager.Vault/SecretsManager.Vault.csproj" \
+          -c Release -o "$RUNNER_TEMP/api-base"
+
+        dotnet "$RUNNER_TEMP/api-checker/ApiCompatChecker.dll" \
+          "$RUNNER_TEMP/api-base" \
+          "$RUNNER_TEMP/api-current"
+
+        git worktree remove --force "$RUNNER_TEMP/api-base-wt" || true
 
     - name: Check formatting
       run: dotnet format --verify-no-changes --no-restore
@@ -49,11 +65,48 @@ jobs:
     - name: Build
       run: dotnet build --no-restore -c Release
 
-    - name: Run unit tests with coverage
+    - name: Pack NuGet packages
+      run: dotnet pack --no-build -c Release --output ./nupkg
+
+    - name: Upload NuGet packages
+      uses: actions/upload-artifact@v7
+      with:
+        name: nuget-packages
+        path: ./nupkg/*.nupkg
+        retention-days: 7
+
+  unit-tests:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v6
+      with:
+        dotnet-version: '10.0.x'
+
+    - name: Cache NuGet packages
+      uses: actions/cache@v6
+      with:
+        path: ~/.nuget/packages
+        key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Build.props') }}
+        restore-keys: |
+          nuget-${{ runner.os }}-
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build
+      run: dotnet build --no-restore -c Release
+
+    - name: Run unit tests
       run: >-
         dotnet test
         --no-build
         -c Release
+        --filter "FullyQualifiedName~SecretsManager.Tests"
         --collect:"XPlat Code Coverage"
         --results-directory ./test-results
 
@@ -67,12 +120,36 @@ jobs:
       env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
-    - name: Pack NuGet packages
-      run: dotnet pack --no-build -c Release --output ./nupkg
+  integration-tests:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
-    - name: Upload NuGet packages
-      uses: actions/upload-artifact@v7
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v6
       with:
-        name: nuget-packages
-        path: ./nupkg/*.nupkg
-        retention-days: 7
+        dotnet-version: '10.0.x'
+
+    - name: Cache NuGet packages
+      uses: actions/cache@v6
+      with:
+        path: ~/.nuget/packages
+        key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Build.props') }}
+        restore-keys: |
+          nuget-${{ runner.os }}-
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build
+      run: dotnet build --no-restore -c Release
+
+    - name: Run integration tests
+      run: >-
+        dotnet test
+        --no-build
+        -c Release
+        --filter "FullyQualifiedName~SecretsManager.IntegrationTests"

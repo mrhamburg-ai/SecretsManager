@@ -1,0 +1,19 @@
+<Project>
+
+  <!--
+    Projects under tests/ would pick up this file instead of the repository-wide
+    Directory.Build.props, so import the root one explicitly to keep the shared
+    settings (target framework, nullable, implicit usings, language version, ...).
+  -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <PropertyGroup>
+    <!--
+      Test assemblies are never shipped, so generating XML documentation for them adds no
+      value. Disabling it also silences CS1591 ("Missing XML comment for publicly visible
+      type or member") for test fixtures, which are intentionally undocumented.
+    -->
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+</Project>

@@ -82,6 +82,19 @@ var provider = new SecretProviderBuilder()
 
 You can configure Oracle Vault using the Fluent API, environment variables, or YAML.
 
+### Options Reference
+
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `AuthenticationType` | `string` | No | `"configfile"` | `configfile`, `instanceprincipal` or `securitytoken` |
+| `ProfileName` | `string?` | No | `"DEFAULT"` | OCI config profile name. `configfile` only |
+| `ConfigFilePath` | `string?` | Conditional | `null` | Path to the OCI config file; defaults to `~/.oci/config`. Required when `AuthenticationType` is `configfile` |
+| `Region` | `string?` | Yes | `null` | OCI region, e.g. `us-phoenix-1` or `eu-frankfurt-1` |
+| `VaultId` | `string?` | Conditional | `null` | Vault OCID. Required for `PutSecretAsync` and `DeleteSecretAsync` |
+| `CompartmentId` | `string?` | Conditional | `null` | Compartment OCID. Required for `PutSecretAsync` |
+
+`OracleVaultOptions.Validate()` requires `Region`, and `ConfigFilePath` when `AuthenticationType` is `configfile`. `VaultId` and `CompartmentId` are needed only for write operations.
+
 ### Fluent API
 
 ```csharp
@@ -127,6 +140,29 @@ provider:
     compartment:
       id: ocid1.compartment.oc1..xxxxx
 ```
+
+### Dependency Injection (IOptions&lt;T&gt;)
+
+Bind the same settings from `appsettings.json` through the DI container:
+
+```csharp
+var provider = new SecretProviderBuilder()
+    .ConfigureOracleVault(configuration)
+    .Build();
+```
+
+```json
+{
+  "SecretsManager": {
+    "OracleVault": {
+      "AuthenticationType": "configfile",
+      "Region": "eu-frankfurt-1"
+    }
+  }
+}
+```
+
+This reads from the `SecretsManager:OracleVault` section and validates all options.
 
 ## Oracle-Specific Features
 
@@ -195,17 +231,6 @@ await provider.DeleteSecretAsync(secretOcid);
 :::warning[Soft Delete]
 OCI Vault uses soft-delete by default. Deleted secrets can be recovered within the deletion window configured for your vault.
 :::
-
-## Options Reference
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `AuthenticationType` | `string` | `"configfile"` | Authentication method: `configfile`, `instanceprincipal`, `securitytoken` |
-| `ProfileName` | `string?` | `"DEFAULT"` | OCI config profile name (configfile only) |
-| `ConfigFilePath` | `string?` | `null` | Path to OCI config file (configfile only) |
-| `Region` | `string?` | `null` | OCI region (e.g., `us-phoenix-1`, `eu-frankfurt-1`) |
-| `VaultId` | `string?` | `null` | Vault OCID (required for creating secrets) |
-| `CompartmentId` | `string?` | `null` | Compartment OCID (required for creating secrets) |
 
 ## Best Practices
 

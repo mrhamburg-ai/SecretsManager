@@ -4,10 +4,17 @@ using SecretsManager.TencentCloud.Internal;
 
 namespace SecretsManager.TencentCloud;
 
+/// <summary>
+/// Secret provider that stores and retrieves secrets using the Tencent Cloud Secrets Manager service.
+/// </summary>
 public sealed class TencentCloudSecretProvider : ISecretProvider
 {
     private readonly ITencentCloudApiClient _client;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="TencentCloudSecretProvider"/> class.
+    /// </summary>
+    /// <param name="options">The Tencent Cloud configuration options.</param>
     public TencentCloudSecretProvider(TencentCloudOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -26,6 +33,15 @@ public sealed class TencentCloudSecretProvider : ISecretProvider
         _client = client;
     }
 
+    /// <summary>
+    /// Retrieves a secret value from Tencent Cloud Secrets Manager by key.
+    /// </summary>
+    /// <param name="key">The secret name to retrieve.</param>
+    /// <param name="query">Optional query specifying a version ID or property to extract.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>A <see cref="SecretValue"/> containing the secret data.</returns>
+    /// <exception cref="SecretNotFoundException">Thrown when the secret does not exist.</exception>
+    /// <exception cref="SecretProviderException">Thrown when the Tencent Cloud API call fails.</exception>
     public async Task<SecretValue> GetSecretAsync(
         string key, SecretQuery? query = null, CancellationToken cancellationToken = default)
     {
@@ -60,6 +76,15 @@ public sealed class TencentCloudSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Creates or updates a secret in Tencent Cloud Secrets Manager.
+    /// </summary>
+    /// <param name="key">The secret name to create or update.</param>
+    /// <param name="value">The secret value to store.</param>
+    /// <param name="metadata">Optional metadata (not currently used by this provider).</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>A <see cref="SecretValue"/> containing the stored secret data and the new version ID.</returns>
+    /// <exception cref="SecretProviderException">Thrown when the Tencent Cloud API call fails.</exception>
     public async Task<SecretValue> PutSecretAsync(
         string key, string value, SecretMetadata? metadata = null,
         CancellationToken cancellationToken = default)
@@ -98,6 +123,12 @@ public sealed class TencentCloudSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Deletes a secret from Tencent Cloud Secrets Manager.
+    /// </summary>
+    /// <param name="key">The secret name to delete.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <exception cref="SecretProviderException">Thrown when the Tencent Cloud API call fails.</exception>
     public async Task DeleteSecretAsync(
         string key, CancellationToken cancellationToken = default)
     {
@@ -112,6 +143,13 @@ public sealed class TencentCloudSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Lists all versions of a secret from Tencent Cloud Secrets Manager, ordered by creation time (newest first).
+    /// </summary>
+    /// <param name="key">The secret name to list versions for.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>A read-only list of <see cref="SecretVersionInfo"/> describing each version.</returns>
+    /// <exception cref="SecretProviderException">Thrown when the Tencent Cloud API call fails.</exception>
     public async Task<IReadOnlyList<SecretVersionInfo>> GetSecretVersionsAsync(
         string key, CancellationToken cancellationToken = default)
     {
@@ -137,6 +175,13 @@ public sealed class TencentCloudSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Checks whether a secret exists in Tencent Cloud Secrets Manager.
+    /// </summary>
+    /// <param name="key">The secret name to check.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns><see langword="true"/> if the secret exists; otherwise, <see langword="false"/>.</returns>
+    /// <exception cref="SecretProviderException">Thrown when the Tencent Cloud API call fails.</exception>
     public async Task<bool> SecretExistsAsync(
         string key, CancellationToken cancellationToken = default)
     {
@@ -153,6 +198,9 @@ public sealed class TencentCloudSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Asynchronously releases the underlying Tencent Cloud API client and its resources.
+    /// </summary>
     public async ValueTask DisposeAsync()
     {
         await _client.DisposeAsync();

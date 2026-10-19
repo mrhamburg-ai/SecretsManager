@@ -9,4 +9,12 @@
     <AssemblyName>ApiCompatChecker</AssemblyName>
     <RootNamespace>ApiCompatChecker</RootNamespace>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Reflects over metadata in an isolated context, so the same assembly name can be inspected on
+         both sides of the comparison and dependencies resolve from the directory being inspected.
+         Assembly.LoadFrom can do neither: it fails to resolve dependencies and refuses a second
+         assembly with a name already loaded. -->
+    <PackageReference Include="System.Reflection.MetadataLoadContext" />
+  </ItemGroup>
 </Project>

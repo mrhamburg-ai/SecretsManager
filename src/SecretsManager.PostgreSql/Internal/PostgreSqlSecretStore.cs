@@ -11,6 +11,7 @@ internal sealed partial class PostgreSqlSecretStore : IPostgreSqlSecretStore
     private readonly string _schema;
     private readonly string _tablePrefix;
     private readonly bool _autoCreateSchema;
+    private readonly string? _schemaOwner;
     private readonly SemaphoreSlim _schemaLock = new(1, 1);
     private bool _schemaEnsured;
 
@@ -30,6 +31,7 @@ internal sealed partial class PostgreSqlSecretStore : IPostgreSqlSecretStore
         _schema = options.Schema;
         _tablePrefix = options.TablePrefix;
         _autoCreateSchema = options.AutoCreateSchema;
+        _schemaOwner = options.SchemaOwner;
         _dataSource = NpgsqlDataSource.Create(options.ConnectionString);
     }
 
@@ -63,7 +65,7 @@ internal sealed partial class PostgreSqlSecretStore : IPostgreSqlSecretStore
                     UNIQUE(secret_id, version)
                 );
 
-                CREATE INDEX IF NOT EXISTS "{_tablePrefix}secret_versions_current_idx"
+                CREATE UNIQUE INDEX IF NOT EXISTS "{_tablePrefix}secret_versions_current_idx"
                     ON {VersionsTable} (secret_id) WHERE is_current = true;
                 """;
 
@@ -71,11 +73,51 @@ internal sealed partial class PostgreSqlSecretStore : IPostgreSqlSecretStore
             await using var cmd = new NpgsqlCommand(ddl, conn);
             await cmd.ExecuteNonQueryAsync(cancellationToken);
 
+            await VerifyTableOwnershipAsync(conn, cancellationToken);
+
             _schemaEnsured = true;
         }
         finally
         {
             _schemaLock.Release();
+        }
+    }
+
+    /// <summary>
+    /// Confirms the application owns the tables it is about to use. A role that can create objects in
+    /// the target schema could otherwise create the tables first, own them, and then read every secret
+    /// written to them afterwards — or add a trigger that copies values elsewhere.
+    /// </summary>
+    private async Task VerifyTableOwnershipAsync(NpgsqlConnection conn, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT c.relname, pg_get_userbyid(c.relowner) AS owner, current_user AS connected_role
+            FROM pg_class c
+            JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE n.nspname = $1 AND c.relname = ANY($2)
+            """;
+
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.Add(new NpgsqlParameter { Value = _schema });
+        cmd.Parameters.Add(new NpgsqlParameter
+        {
+            Value = new[] { $"{_tablePrefix}secrets", $"{_tablePrefix}secret_versions" }
+        });
+
+        await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            var table = reader.GetString(0);
+            var owner = reader.GetString(1);
+            var connected = reader.GetString(2);
+            var expected = _schemaOwner ?? connected;
+
+            if (!string.Equals(owner, expected, StringComparison.Ordinal))
+                throw new SecretProviderException(
+                    $"Table '{_schema}.{table}' is owned by '{owner}', but '{expected}' was expected. " +
+                    "Refusing to use tables this application does not own — they may have been created " +
+                    "by another role. Set PostgreSqlOptions.SchemaOwner if a separate migration role " +
+                    "owns the tables.");
         }
     }
 

@@ -1,5 +1,8 @@
 namespace SecretsManager.OracleVault;
 
+/// <summary>
+/// Configuration options for the Oracle Vault secret provider.
+/// </summary>
 public sealed class OracleVaultOptions
 {
     /// <summary>
@@ -36,4 +39,16 @@ public sealed class OracleVaultOptions
     /// Required for PutSecretAsync.
     /// </summary>
     public string? CompartmentId { get; set; }
+
+    /// <summary>
+    /// Validates the options and returns any error messages.
+    /// </summary>
+    /// <returns>An error message for each invalid setting; empty when the configuration is valid.</returns>
+    public IEnumerable<string> Validate()
+    {
+        if (string.IsNullOrWhiteSpace(Region))
+            yield return "Region is required";
+        if (AuthenticationType == "configfile" && string.IsNullOrWhiteSpace(ConfigFilePath))
+            yield return "ConfigFilePath is required when AuthenticationType is configfile";
+    }
 }

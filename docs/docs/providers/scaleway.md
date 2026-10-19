@@ -29,6 +29,17 @@ dotnet add package SecretsManager.Scaleway
 
 ## Configuration
 
+### Options Reference
+
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `Region` | `string` | Yes | `""` | Scaleway region: `fr-par`, `nl-ams` or `pl-waw` |
+| `ProjectId` | `string` | Yes | `""` | Scaleway project UUID |
+| `AccessKey` | `string` | Yes | `""` | Scaleway access key (`SCWXXXXXXXXXXXXXXXXX`) |
+| `SecretKey` | `string` | Yes | `""` | Scaleway secret key, sent as the `X-Auth-Token` header |
+
+All four options are validated at startup: `ScalewayOptions.Validate()` reports each missing one by name.
+
 ### Fluent API
 
 ```csharp title="Program.cs"
@@ -66,6 +77,31 @@ provider:
     secret:
       key: your-secret-key
 ```
+
+### Dependency Injection (IOptions&lt;T&gt;)
+
+Bind the same settings from `appsettings.json` through the DI container:
+
+```csharp
+var provider = new SecretProviderBuilder()
+    .ConfigureScaleway(configuration)
+    .Build();
+```
+
+```json
+{
+  "SecretsManager": {
+    "Scaleway": {
+      "Region": "fr-par",
+      "ProjectId": "your-project-uuid",
+      "AccessKey": "your-access-key",
+      "SecretKey": "your-secret-key"
+    }
+  }
+}
+```
+
+This reads from the `SecretsManager:Scaleway` section and validates all options.
 
 ## Authentication
 

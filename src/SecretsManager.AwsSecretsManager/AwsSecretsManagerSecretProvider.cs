@@ -4,10 +4,18 @@ using SecretsManager.Internal;
 
 namespace SecretsManager.AwsSecretsManager;
 
+/// <summary>
+/// Secret provider that stores and retrieves secrets using AWS Secrets Manager.
+/// </summary>
 public sealed class AwsSecretsManagerSecretProvider : ISecretProvider
 {
     private readonly IAwsSecretsManagerClient _client;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AwsSecretsManagerSecretProvider"/> class.
+    /// </summary>
+    /// <param name="options">The AWS Secrets Manager configuration options.</param>
+    /// <exception cref="ArgumentException">Thrown when required options are missing.</exception>
     public AwsSecretsManagerSecretProvider(AwsSecretsManagerOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -22,6 +30,15 @@ public sealed class AwsSecretsManagerSecretProvider : ISecretProvider
         _client = client;
     }
 
+    /// <summary>
+    /// Retrieves a secret value from AWS Secrets Manager by key.
+    /// </summary>
+    /// <param name="key">The secret key.</param>
+    /// <param name="query">Optional query parameters for version or property selection.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The secret value with version, timestamp, and tag metadata.</returns>
+    /// <exception cref="SecretNotFoundException">Thrown when the secret does not exist.</exception>
+    /// <exception cref="SecretProviderException">Thrown when the AWS API call fails.</exception>
     public async Task<SecretValue> GetSecretAsync(
         string key, SecretQuery? query = null, CancellationToken cancellationToken = default)
     {
@@ -58,6 +75,15 @@ public sealed class AwsSecretsManagerSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Creates or updates a secret in AWS Secrets Manager.
+    /// </summary>
+    /// <param name="key">The secret key.</param>
+    /// <param name="value">The secret value to store.</param>
+    /// <param name="metadata">Optional secret metadata including content type.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The stored secret value with the new version ID.</returns>
+    /// <exception cref="SecretProviderException">Thrown when the AWS API call fails.</exception>
     public async Task<SecretValue> PutSecretAsync(
         string key, string value, SecretMetadata? metadata = null,
         CancellationToken cancellationToken = default)
@@ -83,6 +109,13 @@ public sealed class AwsSecretsManagerSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Deletes a secret from AWS Secrets Manager.
+    /// </summary>
+    /// <param name="key">The secret key to delete.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <exception cref="SecretNotFoundException">Thrown when the secret does not exist.</exception>
+    /// <exception cref="SecretProviderException">Thrown when the AWS API call fails.</exception>
     public async Task DeleteSecretAsync(string key, CancellationToken cancellationToken = default)
     {
         try
@@ -100,6 +133,14 @@ public sealed class AwsSecretsManagerSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Lists all versions of a secret in AWS Secrets Manager.
+    /// </summary>
+    /// <param name="key">The secret key.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>A read-only list of version information.</returns>
+    /// <exception cref="SecretNotFoundException">Thrown when the secret does not exist.</exception>
+    /// <exception cref="SecretProviderException">Thrown when the AWS API call fails.</exception>
     public async Task<IReadOnlyList<SecretVersionInfo>> GetSecretVersionsAsync(
         string key, CancellationToken cancellationToken = default)
     {
@@ -129,6 +170,13 @@ public sealed class AwsSecretsManagerSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Checks whether a secret exists in AWS Secrets Manager.
+    /// </summary>
+    /// <param name="key">The secret key to check.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns><see langword="true"/> if the secret exists; otherwise, <see langword="false"/>.</returns>
+    /// <exception cref="SecretProviderException">Thrown when the AWS API call fails.</exception>
     public async Task<bool> SecretExistsAsync(string key, CancellationToken cancellationToken = default)
     {
         try
@@ -142,6 +190,9 @@ public sealed class AwsSecretsManagerSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Asynchronously releases the underlying AWS Secrets Manager client.
+    /// </summary>
     public async ValueTask DisposeAsync()
     {
         await _client.DisposeAsync();

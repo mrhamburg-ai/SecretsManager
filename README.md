@@ -89,7 +89,11 @@ Layers are decorators that wrap a provider to add operational capabilities like 
 
 ```csharp
 await using var provider = new SecretProviderBuilder()
-    .WithFileSystem(opts => opts.BasePath = "/secrets")
+    .WithFileSystem(opts =>
+    {
+        opts.BasePath = "/secrets";
+        opts.EncryptionKey = "base64encodedkey==";   // omit only for throwaway local development
+    })
     .WithConcurrentLimiter(opts => {
         opts.MaxConcurrentRequests = 10;
         opts.AcquireTimeout = TimeSpan.FromSeconds(5);
@@ -120,7 +124,7 @@ Layers are processed in registration order (outermost to innermost). The first r
 
 ## Configuration
 
-SecretsManager supports three ways to configure a provider.
+SecretsManager supports four ways to configure a provider.
 
 ### Fluent API
 
@@ -132,6 +136,34 @@ var provider = new SecretProviderBuilder()
         opts.EncryptionKey = "base64encodedkey==";
     })
     .Build();
+```
+
+### Dependency Injection (`IOptions<T>`)
+
+Bind options from `appsettings.json` through the DI container:
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddSecretsManager();
+builder.Services.Configure<FileSystemOptions>(
+    builder.Configuration.GetSection("SecretsManager:FileSystem"));
+
+// Or bind and build in one step
+var provider = new SecretProviderBuilder()
+    .ConfigureFileSystem(builder.Configuration)
+    .Build();
+```
+
+```json
+{
+  "SecretsManager": {
+    "FileSystem": {
+      "BasePath": "/secrets",
+      "EncryptionKey": "base64encodedkey=="
+    }
+  }
+}
 ```
 
 ### Environment Variables

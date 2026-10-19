@@ -5,9 +5,14 @@ Conjur secret provider
 ## Usage
 
 ```csharp
-// Add the SecretsManager.Conjur secret provider to your configuration
-services.AddSecretsManager()
-    .AddConjur();
+var builder = new SecretProviderBuilder()
+    .WithConjur(options =>
+    {
+        options.Url = "https://conjur.example.com";
+        options.Account = "your-account";
+        options.Login = "your-login";
+        options.ApiKey = "your-api-key";
+    });
 ```
 
 ## Installation

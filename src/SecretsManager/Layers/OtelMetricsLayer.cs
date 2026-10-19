@@ -13,6 +13,13 @@ public sealed class OtelMetricsLayer : ISecretProviderLayer
 {
     private readonly OtelMetricsLayerOptions _options;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="OtelMetricsLayer"/> class.
+    /// </summary>
+    /// <param name="options">Layer options, including the meter name. Defaults to <see cref="OtelMetricsLayerOptions"/>.</param>
+    /// <exception cref="ArgumentException">
+    /// Thrown when <see cref="OtelMetricsLayerOptions.MeterName"/> is empty.
+    /// </exception>
     public OtelMetricsLayer(OtelMetricsLayerOptions? options = null)
     {
         _options = options ?? new OtelMetricsLayerOptions();
@@ -21,6 +28,12 @@ public sealed class OtelMetricsLayer : ISecretProviderLayer
             throw new ArgumentException("MeterName is required.", nameof(OtelMetricsLayerOptions.MeterName));
     }
 
+    /// <summary>
+    /// Wraps the given provider so that calls, failures, in-flight operations and durations are
+    /// recorded as <see cref="System.Diagnostics.Metrics"/> instruments.
+    /// </summary>
+    /// <param name="inner">The provider to wrap.</param>
+    /// <returns>The wrapped provider.</returns>
     public ISecretProvider Wrap(ISecretProvider inner)
     {
         ArgumentNullException.ThrowIfNull(inner);

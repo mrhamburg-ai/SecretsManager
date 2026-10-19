@@ -30,6 +30,17 @@ dotnet add package SecretsManager.Vault
 
 ## Configuration
 
+### Options Reference
+
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `Url` | `string` | Yes | `"http://localhost:8200"` | Vault server URL |
+| `Token` | `string` | Yes | `""` | Authentication token for Vault |
+| `MountPath` | `string` | No | `"secret"` | KV mount path where secrets are stored |
+| `SkipTlsVerify` | `bool` | No | `false` | When `true`, disables TLS certificate validation |
+
+`VaultOptions.Validate()` requires `Url` only — a missing `Token` fails at the first API call rather than at startup.
+
 ### Fluent API
 
 ```csharp title="Program.cs"
@@ -67,6 +78,29 @@ provider:
       tls:
         verify: false
 ```
+
+### Dependency Injection (IOptions&lt;T&gt;)
+
+Bind the same settings from `appsettings.json` through the DI container:
+
+```csharp
+var provider = new SecretProviderBuilder()
+    .ConfigureVault(configuration)
+    .Build();
+```
+
+```json
+{
+  "SecretsManager": {
+    "Vault": {
+      "Url": "http://localhost:8200",
+      "Token": "your-vault-token"
+    }
+  }
+}
+```
+
+This reads from the `SecretsManager:Vault` section and validates all options.
 
 ## Authentication
 

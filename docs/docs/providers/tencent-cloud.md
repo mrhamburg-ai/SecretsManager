@@ -30,6 +30,17 @@ dotnet add package SecretsManager.TencentCloud
 
 ## Configuration
 
+### Options Reference
+
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `Region` | `string` | Yes | `""` | Tencent Cloud region, e.g. `ap-shanghai` |
+| `SecretId` | `string` | Yes | `""` | Tencent Cloud secret ID |
+| `SecretKey` | `string` | Yes | `""` | Tencent Cloud secret key |
+| `Endpoint` | `string?` | No | `null` | Custom API endpoint override |
+
+`TencentCloudOptions.Validate()` requires `Region`, `SecretId` and `SecretKey`.
+
 ### Fluent API
 
 ```csharp title="Program.cs"
@@ -62,6 +73,30 @@ provider:
       id: AKID123...
       key: abc123...
 ```
+
+### Dependency Injection (IOptions&lt;T&gt;)
+
+Bind the same settings from `appsettings.json` through the DI container:
+
+```csharp
+var provider = new SecretProviderBuilder()
+    .ConfigureTencentCloud(configuration)
+    .Build();
+```
+
+```json
+{
+  "SecretsManager": {
+    "TencentCloud": {
+      "Region": "ap-shanghai",
+      "SecretId": "your-secret-id",
+      "SecretKey": "your-secret-key"
+    }
+  }
+}
+```
+
+This reads from the `SecretsManager:TencentCloud` section and validates all options.
 
 ## Authentication
 

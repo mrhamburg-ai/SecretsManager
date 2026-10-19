@@ -5,10 +5,18 @@ using SecretsManager.Internal;
 
 namespace SecretsManager.GoogleSecretManager;
 
+/// <summary>
+/// Stores and retrieves secrets from Google Cloud Secret Manager.
+/// Supports versioning, metadata, labels, and JSON property extraction.
+/// </summary>
 public sealed class GoogleSecretManagerSecretProvider : ISecretProvider
 {
     private readonly ISecretManagerClientWrapper _client;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="GoogleSecretManagerSecretProvider"/> class.
+    /// </summary>
+    /// <param name="options">The Google Secret Manager options.</param>
     public GoogleSecretManagerSecretProvider(GoogleSecretManagerOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -24,6 +32,15 @@ public sealed class GoogleSecretManagerSecretProvider : ISecretProvider
         _client = client;
     }
 
+    /// <summary>
+    /// Reads a secret from Google Cloud Secret Manager, optionally extracting a JSON property.
+    /// </summary>
+    /// <param name="key">The secret key.</param>
+    /// <param name="query">The secret query.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The secret value.</returns>
+    /// <exception cref="SecretNotFoundException">The secret was not found.</exception>
+    /// <exception cref="SecretProviderException">An error occurred while accessing Google Cloud Secret Manager.</exception>
     public async Task<SecretValue> GetSecretAsync(
         string key, SecretQuery? query = null, CancellationToken cancellationToken = default)
     {
@@ -57,6 +74,15 @@ public sealed class GoogleSecretManagerSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Writes a secret to Google Cloud Secret Manager, creating the secret if it does not exist.
+    /// </summary>
+    /// <param name="key">The secret key.</param>
+    /// <param name="value">The secret value.</param>
+    /// <param name="metadata">The secret metadata.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The secret value.</returns>
+    /// <exception cref="SecretProviderException">An error occurred while accessing Google Cloud Secret Manager.</exception>
     public async Task<SecretValue> PutSecretAsync(
         string key, string value, SecretMetadata? metadata = null,
         CancellationToken cancellationToken = default)
@@ -108,6 +134,13 @@ public sealed class GoogleSecretManagerSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Deletes a secret from Google Cloud Secret Manager.
+    /// </summary>
+    /// <param name="key">The secret key.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <exception cref="SecretNotFoundException">The secret was not found.</exception>
+    /// <exception cref="SecretProviderException">An error occurred while accessing Google Cloud Secret Manager.</exception>
     public async Task DeleteSecretAsync(string key, CancellationToken cancellationToken = default)
     {
         try
@@ -125,6 +158,14 @@ public sealed class GoogleSecretManagerSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Lists all enabled versions of a secret in Google Cloud Secret Manager.
+    /// </summary>
+    /// <param name="key">The secret key.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The list of secret versions.</returns>
+    /// <exception cref="SecretNotFoundException">The secret was not found.</exception>
+    /// <exception cref="SecretProviderException">An error occurred while accessing Google Cloud Secret Manager.</exception>
     public async Task<IReadOnlyList<SecretVersionInfo>> GetSecretVersionsAsync(
         string key, CancellationToken cancellationToken = default)
     {
@@ -164,6 +205,13 @@ public sealed class GoogleSecretManagerSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Checks whether a secret exists in Google Cloud Secret Manager.
+    /// </summary>
+    /// <param name="key">The secret key.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns><see langword="true"/> if the secret exists; otherwise, <see langword="false"/>.</returns>
+    /// <exception cref="SecretProviderException">An error occurred while accessing Google Cloud Secret Manager.</exception>
     public async Task<bool> SecretExistsAsync(string key, CancellationToken cancellationToken = default)
     {
         try
@@ -177,6 +225,9 @@ public sealed class GoogleSecretManagerSecretProvider : ISecretProvider
         }
     }
 
+    /// <summary>
+    /// Releases the underlying Google Cloud Secret Manager client resources.
+    /// </summary>
     public async ValueTask DisposeAsync()
     {
         await _client.DisposeAsync();

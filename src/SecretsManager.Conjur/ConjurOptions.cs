@@ -36,4 +36,22 @@ public sealed class ConjurOptions
     /// When true, disables TLS certificate validation (useful for testing with self-signed certs).
     /// </summary>
     public bool SkipTlsVerify { get; set; }
+
+    /// <summary>
+    /// Returns the validation errors for the current options; an empty sequence means the options
+    /// are valid. Requires <see cref="Url"/>, <see cref="Account"/>, <see cref="Login"/> and
+    /// <see cref="ApiKey"/> to be set.
+    /// </summary>
+    /// <returns>One message per invalid setting.</returns>
+    public IEnumerable<string> Validate()
+    {
+        if (string.IsNullOrWhiteSpace(Url))
+            yield return "Url is required";
+        if (string.IsNullOrWhiteSpace(Account))
+            yield return "Account is required";
+        if (string.IsNullOrWhiteSpace(Login))
+            yield return "Login is required";
+        if (string.IsNullOrWhiteSpace(ApiKey))
+            yield return "ApiKey is required";
+    }
 }

@@ -18,7 +18,7 @@ The PostgreSQL provider stores secrets in a PostgreSQL database with optional AE
 - Use your existing PostgreSQL infrastructure for secrets
 - AES-256-GCM encryption at rest (optional)
 - Auto-versioning with per-secret version history
-- Auto-creates tables on first use
+- Optional table auto-creation, with an ownership check on the tables it uses
 - Tags stored as JSONB for flexible querying
 
 ## Installation
@@ -29,6 +29,22 @@ dotnet add package SecretsManager.PostgreSql
 ```
 
 ## Configuration
+
+### Options Reference
+
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `ConnectionString` | `string` | Yes | `""` | PostgreSQL connection string, e.g. `Host=localhost;Database=secrets;Username=app;Password=pass` |
+| `Schema` | `string` | No | `"public"` | Database schema for the tables |
+| `TablePrefix` | `string` | No | `"sm_"` | Prefix for table names, to avoid collisions |
+| `AutoCreateSchema` | `bool` | No | `false` | Create the tables automatically on first use. Requires `CREATE` on the schema |
+| `SchemaOwner` | `string?` | No | `null` | Role expected to own the secrets tables. When `null`, the connected role must own them |
+| `EncryptionKey` | `string?` | No | `null` | Base64-encoded AES-256 key (32 bytes). When set, values are encrypted at rest with AES-256-GCM |
+| `EncryptionKeyFile` | `string?` | No | `null` | Path to a file containing the encryption key. A 32-byte file is used as-is, otherwise it is treated as base64 |
+| `EncryptionKeyProvider` | `IEncryptionKeyProvider?` | No | `null` | Supplies the encryption key from an external source, for example another secret provider. Fluent API only — it is an object, so it cannot come from appsettings.json, YAML, or an environment variable |
+| `LegacyEncryptionKey` | `string?` | No | `null` | Base64-encoded key used only to *decrypt* values written before key ids were recorded. Set this when migrating an existing database to `EncryptionKeyProvider` |
+
+`PostgreSqlOptions.Validate()` requires `ConnectionString`, rejects `EncryptionKey`, `EncryptionKeyFile` and `EncryptionKeyProvider` being set together, and caps `TablePrefix` at 40 characters (PostgreSQL truncates identifiers at 63 bytes, which can collapse the two table names into one). `LegacyEncryptionKey` is only meaningful alongside `EncryptionKeyProvider`. Validation runs on every construction path.
 
 ### Fluent API
 
@@ -43,6 +59,76 @@ var provider = new SecretProviderBuilder()
     })
     .Build();
 ```
+
+### With the Key From Another Provider
+
+The key can be held in a different secret provider entirely — Azure Key Vault, Scaleway, HashiCorp Vault, AWS Secrets Manager, or any of the other providers. It is fetched on first use and cached per key version.
+
+```csharp title="Program.cs"
+// The bootstrap provider holds the key. It is built first and owned by the caller.
+await using var keyProvider = new SecretProviderBuilder()
+    .WithAzureKeyVault(options => options.VaultUri = "https://my-vault.vault.azure.net/")
+    .Build();
+
+await using var provider = new SecretProviderBuilder()
+    .WithPostgreSql(options =>
+    {
+        options.ConnectionString = "Host=localhost;Database=secrets;Username=app;Password=secret";
+        options.EncryptionKeyProvider = new SecretProviderKeySource(keyProvider, "sm-data-key");
+    })
+    .Build();
+```
+
+Store the key as base64 — `openssl rand -base64 32` — and rotate it by putting a new version of that secret. The current key is cached per process: new writes pick up the new version on restart, or immediately if you call `InvalidateKey()`. Existing rows stay readable either way, because each row records the key version it was written with and `GetKeyAsync` fetches that exact version on demand.
+
+The same pattern works with Scaleway:
+
+```csharp
+await using var keyProvider = new SecretProviderBuilder()
+    .WithScaleway(options =>
+    {
+        options.Region = "fr-par";
+        options.ProjectId = "...";
+        options.AccessKey = "...";
+        options.SecretKey = "...";
+    })
+    .Build();
+
+await using var provider = new SecretProviderBuilder()
+    .WithPostgreSql(options =>
+    {
+        options.ConnectionString = "Host=localhost;Database=secrets;Username=app;Password=secret";
+        options.EncryptionKeyProvider = new SecretProviderKeySource(keyProvider, "sm/data-key");
+    })
+    .Build();
+```
+
+:::warning
+Build the key provider first, and never point a key source at the store it encrypts. A self-referential key source recurses or fails on first use — the fetch happens inside the operation that needs the key, so it cannot bootstrap itself.
+:::
+
+`SecretProviderKeySource` does **not** dispose the provider it wraps. The caller owns the bootstrap provider and may use it for other keys.
+
+:::tip
+Call `WarmUpAsync()` to resolve the key and ensure the schema at startup rather than on the first read or write. Without it, a misconfigured key source surfaces only when the first secret is accessed.
+:::
+
+### Migrating an Existing Database
+
+Every row written before this feature has no key id. When you set `EncryptionKeyProvider`, also set `LegacyEncryptionKey` to the key the existing rows were written with:
+
+```csharp
+await using var provider = new SecretProviderBuilder()
+    .WithPostgreSql(options =>
+    {
+        options.ConnectionString = "Host=localhost;Database=secrets;Username=app;Password=secret";
+        options.EncryptionKeyProvider = new SecretProviderKeySource(keyProvider, "sm-data-key");
+        options.LegacyEncryptionKey = previousBase64Key;
+    })
+    .Build();
+```
+
+Rows without a key id decrypt with `LegacyEncryptionKey`; new writes record the key id from the provider and need it no longer. Re-encrypting the old rows is optional cleanup, not a precondition.
 
 ### Environment Variables
 
@@ -72,16 +158,63 @@ provider:
       key: base64encodedkey    # or keyFile: /path/to/keyfile
 ```
 
-## Options Reference
+### Dependency Injection (IOptions&lt;T&gt;)
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `ConnectionString` | *(required)* | PostgreSQL connection string |
-| `Schema` | `public` | Database schema for the tables |
-| `TablePrefix` | `sm_` | Prefix for table names to avoid collisions |
-| `AutoCreateSchema` | `true` | Auto-create tables on first use |
-| `EncryptionKey` | `null` | Base64-encoded AES-256 key (32 bytes) |
-| `EncryptionKeyFile` | `null` | Path to file containing the encryption key |
+Bind the same settings from `appsettings.json` through the DI container:
+
+```csharp
+var provider = new SecretProviderBuilder()
+    .ConfigurePostgreSql(configuration)
+    .Build();
+```
+
+```json
+{
+  "SecretsManager": {
+    "PostgreSql": {
+      "ConnectionString": "Host=localhost;Database=secrets;Username=app;Password=pass"
+    }
+  }
+}
+```
+
+This reads from the `SecretsManager:PostgreSql` section and validates all options.
+
+### Transport security
+
+Npgsql defaults to `SslMode=Prefer`, which permits an unencrypted connection and does not verify the
+server certificate. Add `SSL Mode=VerifyFull` to the connection string in any environment that is not
+a trusted local socket:
+
+```text
+Host=db.example.com;Database=secrets;Username=app;Password=...;SSL Mode=VerifyFull
+```
+
+Without it, the database password, secret keys, tags and any unencrypted values can be read or
+modified in transit.
+
+### Least-privilege setup
+
+`AutoCreateSchema` defaults to `false` so the runtime account does not need `CREATE` on the schema.
+Create the tables from a migration role and grant the application only DML rights on the two tables:
+
+```sql
+CREATE SCHEMA secrets AUTHORIZATION secrets_owner;
+REVOKE ALL ON SCHEMA secrets FROM PUBLIC;
+GRANT USAGE ON SCHEMA secrets TO secrets_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON secrets.sm_secrets, secrets.sm_secret_versions TO secrets_app;
+GRANT USAGE ON ALL SEQUENCES IN SCHEMA secrets TO secrets_app;
+```
+
+```csharp
+options.AutoCreateSchema = false;          // the migration role creates the tables
+options.SchemaOwner = "secrets_owner";     // the app connects as secrets_app
+```
+
+When `AutoCreateSchema` is `true`, the provider checks `pg_class.relowner` for both tables after the
+DDL and throws if the owner is not `SchemaOwner` (or the connected role when it is unset). A role that
+can create objects in the target schema could otherwise create the tables first, own them, and read
+every secret written afterwards — or add a trigger that copies values elsewhere.
 
 ## Encryption
 
@@ -93,7 +226,7 @@ Encrypted values are stored as JSON in the `value` column:
 {"n":"<nonce-base64>","c":"<ciphertext-base64>","t":"<tag-base64>"}
 ```
 
-Each version row has an `encrypted` boolean column, allowing mixed encrypted and plaintext versions. This supports key rotation scenarios where new versions are encrypted while old versions remain readable.
+Each version row has an `encrypted` boolean column. The provider refuses to mix the two states: a row marked unencrypted while a key is configured, or an encrypted row with no key configured, both throw `SecretProviderException`. This closes the downgrade attack — `UPDATE ... SET encrypted = false, value = 'attacker-value'`, which anyone with database access could otherwise use to forge a secret such as a connection string pointing at their own server. It also means a key cannot simply be added to a database that already holds plaintext rows; those rows must be rewritten.
 
 :::tip
 Generate a 32-byte encryption key with:

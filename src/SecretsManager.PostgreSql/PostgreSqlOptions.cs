@@ -1,5 +1,10 @@
+using SecretsManager.Internal;
+
 namespace SecretsManager.PostgreSql;
 
+/// <summary>
+/// Configuration options for the PostgreSQL secret provider.
+/// </summary>
 public sealed class PostgreSqlOptions
 {
     /// <summary>
@@ -19,9 +24,17 @@ public sealed class PostgreSqlOptions
     public string TablePrefix { get; set; } = "sm_";
 
     /// <summary>
-    /// Whether to automatically create tables on first use. Defaults to true.
+    /// Whether to automatically create tables on first use. Defaults to false: prefer creating them
+    /// from a migration role so the runtime account does not need CREATE rights on the schema.
     /// </summary>
-    public bool AutoCreateSchema { get; set; } = true;
+    public bool AutoCreateSchema { get; set; }
+
+    /// <summary>
+    /// Role expected to own the secrets tables. When null, the connected role must own them. Set this
+    /// when a migration role creates the tables and the application connects as a different,
+    /// lower-privileged role.
+    /// </summary>
+    public string? SchemaOwner { get; set; }
 
     /// <summary>
     /// Base64-encoded AES-256 encryption key (32 bytes).
@@ -34,4 +47,59 @@ public sealed class PostgreSqlOptions
     /// If the file is exactly 32 bytes it is used as-is; otherwise it is treated as base64.
     /// </summary>
     public string? EncryptionKeyFile { get; set; }
+
+    /// <summary>
+    /// Supplies the encryption key from an external source, for example another secret provider.
+    /// Mutually exclusive with <see cref="EncryptionKey"/> and <see cref="EncryptionKeyFile"/> for
+    /// new writes. Because this is an object it cannot come from appsettings.json, YAML or
+    /// environment variables — set it through the fluent API.
+    /// </summary>
+    public IEncryptionKeyProvider? EncryptionKeyProvider { get; set; }
+
+    /// <summary>
+    /// Base64-encoded key used only to <em>decrypt</em> values written before key ids were recorded.
+    /// Set this when migrating an existing database to <see cref="EncryptionKeyProvider"/>.
+    /// </summary>
+    public string? LegacyEncryptionKey { get; set; }
+
+    /// <summary>
+    /// Validates the options and returns a collection of error messages.
+    /// An empty collection indicates the options are valid.
+    /// </summary>
+    /// <returns>Validation error messages; empty when the options are valid.</returns>
+    /// <summary>
+    /// PostgreSQL truncates identifiers at 63 bytes. The longest name this provider builds is
+    /// "{prefix}secret_versions", so the prefix must leave room for that suffix or the two table
+    /// names can collapse into the same identifier.
+    /// </summary>
+    private const int MaxTablePrefixLength = 40;
+
+    /// <summary>
+    /// Validates the options and returns a collection of error messages.
+    /// An empty collection indicates the options are valid.
+    /// </summary>
+    /// <returns>Validation error messages; empty when the options are valid.</returns>
+    public IEnumerable<string> Validate()
+    {
+        if (string.IsNullOrWhiteSpace(ConnectionString))
+            yield return "ConnectionString is required";
+
+        if (!string.IsNullOrEmpty(EncryptionKey) && !string.IsNullOrEmpty(EncryptionKeyFile))
+            yield return "EncryptionKey and EncryptionKeyFile are mutually exclusive";
+
+        var writeSources = new[]
+        {
+            EncryptionKey is not null,
+            EncryptionKeyFile is not null,
+            EncryptionKeyProvider is not null
+        };
+        if (writeSources.Count(x => x) > 1)
+            yield return "EncryptionKey, EncryptionKeyFile and EncryptionKeyProvider are mutually exclusive";
+
+        if (LegacyEncryptionKey is not null && EncryptionKeyProvider is null)
+            yield return "LegacyEncryptionKey is only meaningful alongside EncryptionKeyProvider";
+
+        if (TablePrefix.Length > MaxTablePrefixLength)
+            yield return $"TablePrefix must be {MaxTablePrefixLength} characters or fewer";
+    }
 }

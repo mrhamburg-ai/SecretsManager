@@ -76,9 +76,16 @@ After installing, verify the packages are available:
 
 ```csharp
 using SecretsManager;
+using SecretsManager.FileSystem;
+using Microsoft.Extensions.DependencyInjection;
 
-// This should compile without errors
+// Fluent API
 ISecretProvider provider = new SecretProviderBuilder()
     .WithFileSystem(options => options.BasePath = "/tmp/secrets")
+    .Build();
+
+// Or with IOptions&lt;T&gt;
+ISecretProvider provider2 = new SecretProviderBuilder()
+    .ConfigureFileSystem(configuration)
     .Build();
 ```
