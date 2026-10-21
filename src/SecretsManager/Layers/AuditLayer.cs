@@ -114,82 +114,37 @@ public sealed class AuditLayer : ISecretProviderLayer, IProviderNameAwareLayer
                 () => _inner.SecretExistsAsync(key, cancellationToken));
         }
 
-        public async ValueTask DisposeAsync()
+        // Disposal is only audited when every scope is enabled.
+        public ValueTask DisposeAsync()
         {
-            if (_options.Scope != SecretAuditScope.All)
-            {
-                await _inner.DisposeAsync().ConfigureAwait(false);
-                return;
-            }
-
-            var context = CaptureContext();
-            var started = Stopwatch.GetTimestamp();
-
-            try
-            {
-                await _inner.DisposeAsync().ConfigureAwait(false);
-                await EmitAsync(
-                    CreateEvent("DisposeAsync", null, SecretAuditOutcome.Success, context, started, null, null),
-                    forceIgnoreFailures: false).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                await EmitAsync(
-                    CreateEvent(
-                        "DisposeAsync",
-                        null,
-                        SecretAuditOutcome.Failure,
-                        context,
-                        started,
-                        null,
-                        ex.GetType().FullName),
-                    forceIgnoreFailures: true).ConfigureAwait(false);
-                throw;
-            }
+            return new ValueTask(ExecuteAsync(
+                "DisposeAsync",
+                SecretAuditScope.All,
+                key: null,
+                () => _inner.DisposeAsync().AsTask()));
         }
 
         private async Task ExecuteAsync(
             string operation,
             SecretAuditScope scope,
-            string key,
+            string? key,
             Func<Task> operationExecutor)
         {
-            if (!ShouldAudit(scope))
-            {
-                await operationExecutor().ConfigureAwait(false);
-                return;
-            }
-
-            var context = CaptureContext();
-            var started = Stopwatch.GetTimestamp();
-
-            try
-            {
-                await operationExecutor().ConfigureAwait(false);
-                await EmitAsync(
-                    CreateEvent(operation, key, SecretAuditOutcome.Success, context, started, null, null),
-                    forceIgnoreFailures: false).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                await EmitAsync(
-                    CreateEvent(
-                        operation,
-                        key,
-                        SecretAuditOutcome.Failure,
-                        context,
-                        started,
-                        null,
-                        ex.GetType().FullName),
-                    forceIgnoreFailures: true).ConfigureAwait(false);
-                throw;
-            }
+            await ExecuteAsync(
+                operation,
+                scope,
+                key,
+                async () =>
+                {
+                    await operationExecutor().ConfigureAwait(false);
+                    return true;
+                }).ConfigureAwait(false);
         }
 
         private async Task<TResult> ExecuteAsync<TResult>(
             string operation,
             SecretAuditScope scope,
-            string key,
+            string? key,
             Func<Task<TResult>> operationExecutor,
             Func<TResult, string?>? versionSelector = null)
         {
@@ -199,20 +154,10 @@ public sealed class AuditLayer : ISecretProviderLayer, IProviderNameAwareLayer
             var context = CaptureContext();
             var started = Stopwatch.GetTimestamp();
 
+            TResult result;
             try
             {
-                var result = await operationExecutor().ConfigureAwait(false);
-                await EmitAsync(
-                    CreateEvent(
-                        operation,
-                        key,
-                        SecretAuditOutcome.Success,
-                        context,
-                        started,
-                        versionSelector?.Invoke(result),
-                        null),
-                    forceIgnoreFailures: false).ConfigureAwait(false);
-                return result;
+                result = await operationExecutor().ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -228,9 +173,23 @@ public sealed class AuditLayer : ISecretProviderLayer, IProviderNameAwareLayer
                     forceIgnoreFailures: true).ConfigureAwait(false);
                 throw;
             }
+
+            // Emitted outside the try block so a sink failure (AuditFailureMode.Throw) is not
+            // mistaken for an operation failure and recorded a second time.
+            await EmitAsync(
+                CreateEvent(
+                    operation,
+                    key,
+                    SecretAuditOutcome.Success,
+                    context,
+                    started,
+                    versionSelector?.Invoke(result),
+                    null),
+                forceIgnoreFailures: false).ConfigureAwait(false);
+            return result;
         }
 
-        private bool ShouldAudit(SecretAuditScope scope) => (_options.Scope & scope) != 0;
+        private bool ShouldAudit(SecretAuditScope scope) => (_options.Scope & scope) == scope;
 
         private AuditContext CaptureContext()
         {

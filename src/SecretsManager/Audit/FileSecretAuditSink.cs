@@ -68,7 +68,7 @@ public sealed class FileSecretAuditSink : ISecretAuditSink
             await stream.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
 
             if (_options.FlushEachWrite)
-                await stream.FlushAsync(cancellationToken).ConfigureAwait(false);
+                stream.Flush(flushToDisk: true);
         }
         finally
         {
@@ -85,6 +85,8 @@ public sealed class FileSecretAuditSink : ISecretAuditSink
         if (!file.Exists || file.Length < maxFileSize)
             return;
 
-        File.Move(_path, _path + ".1", overwrite: true);
+        // A unique name per rotation: overwriting a previous rotated file would destroy audit records.
+        var rotatedPath = $"{_path}.{DateTime.UtcNow:yyyyMMddTHHmmssfffffff}";
+        File.Move(_path, rotatedPath, overwrite: false);
     }
 }

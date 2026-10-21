@@ -134,8 +134,8 @@ var sink = new FileSecretAuditSink("/var/log/secrets-audit.jsonl", new FileSecre
 
 | Option | Type | Required | Default | Description |
 |---|---|---|---|---|
-| `FlushEachWrite` | `bool` | No | `true` | Flush after each record. An unflushed audit record is not an audit record |
-| `MaxFileSizeBytes` | `long?` | No | `null` | Rotate to `<path>.1` when the file reaches this size |
+| `FlushEachWrite` | `bool` | No | `true` | Force each record to durable storage. An unflushed audit record is not an audit record |
+| `MaxFileSizeBytes` | `long?` | No | `null` | Rotate to `<path>.<UTC timestamp>` when the file reaches this size. Rotated files are never overwritten or deleted |
 
 The parent directory is created when it does not exist.
 

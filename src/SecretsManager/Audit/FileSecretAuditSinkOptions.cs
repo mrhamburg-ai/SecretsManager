@@ -6,13 +6,15 @@ namespace SecretsManager;
 public sealed class FileSecretAuditSinkOptions
 {
     /// <summary>
-    /// Flush to disk after every record. Defaults to <c>true</c>: an unflushed audit record is not
-    /// an audit record.
+    /// Force every record to durable storage before the write completes. Defaults to <c>true</c>:
+    /// an unflushed audit record is not an audit record. Set to <c>false</c> to leave flushing to
+    /// the operating system.
     /// </summary>
     public bool FlushEachWrite { get; set; } = true;
 
     /// <summary>
-    /// Optional maximum file size in bytes before the file is rotated to <c>&lt;path&gt;.1</c>.
+    /// Optional maximum file size in bytes before the file is rotated to <c>&lt;path&gt;.&lt;UTC timestamp&gt;</c>. Rotated files are never
+    /// overwritten or deleted.
     /// </summary>
     public long? MaxFileSizeBytes { get; set; }
 }

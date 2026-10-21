@@ -76,9 +76,16 @@ public sealed class FileSecretAuditSinkTests
 
             await sink.WriteAsync(CreateEvent("GetSecretAsync", "first"));
             await sink.WriteAsync(CreateEvent("GetSecretAsync", "second"));
+            await sink.WriteAsync(CreateEvent("GetSecretAsync", "third"));
 
-            Assert.True(File.Exists(path));
-            Assert.True(File.Exists(path + ".1"));
+            // Every record must survive: rotation never overwrites an earlier rotated file.
+            var files = Directory.GetFiles(directory, "audit.jsonl*");
+            Assert.Equal(3, files.Length);
+
+            var contents = string.Concat(files.Select(File.ReadAllText));
+            Assert.Contains("first", contents, StringComparison.Ordinal);
+            Assert.Contains("second", contents, StringComparison.Ordinal);
+            Assert.Contains("third", contents, StringComparison.Ordinal);
         }
         finally
         {

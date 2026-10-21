@@ -100,6 +100,25 @@ public sealed class AuditLayerTests
     }
 
     [Fact]
+    public async Task AuditLayer_ThrowMode_SinkFailureOnSuccessPropagatesWithoutExtraRecord()
+    {
+        var sink = new ThrowingAuditSink();
+        var provider = CreateLayer(sink, o => o.OnSinkFailure = AuditFailureMode.Throw)
+            .Wrap(new DelegatingSecretProvider
+            {
+                GetSecretAsyncImpl = (key, _, _) =>
+                    Task.FromResult(new SecretValue { Key = key, Value = "value" })
+            });
+
+        await Assert.ThrowsAsync<IOException>(() => provider.GetSecretAsync("key"));
+
+        // The operation succeeded, so exactly one Success record is attempted and no
+        // Failure record is invented for the sink error.
+        var auditEvent = Assert.Single(sink.Events);
+        Assert.Equal(SecretAuditOutcome.Success, auditEvent.Outcome);
+    }
+
+    [Fact]
     public async Task AuditLayer_FailedOperationRecordsFailureTypeButNoValue()
     {
         const string secretValue = "super-secret-value";
