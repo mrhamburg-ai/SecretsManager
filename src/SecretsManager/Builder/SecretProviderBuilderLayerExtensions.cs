@@ -1,5 +1,5 @@
 using System;
-
+using Microsoft.Extensions.Configuration;
 using SecretsManager;
 
 namespace SecretsManager.Builder;
@@ -90,6 +90,105 @@ public static class SecretProviderBuilderLayerExtensions
         configure?.Invoke(options);
 
         builder.AddLayer(new OtelTraceLayer(options));
+        return builder;
+    }
+
+    /// <summary>
+    /// Adds a durable audit layer. The registered provider name is recorded automatically.
+    /// </summary>
+    /// <param name="builder">The secret provider builder.</param>
+    /// <param name="configure">Optional configuration action for <see cref="AuditLayerOptions"/>.</param>
+    /// <returns>The same builder for method chaining.</returns>
+    public static SecretProviderBuilder WithAudit(
+        this SecretProviderBuilder builder,
+        Action<AuditLayerOptions>? configure = null)
+    {
+        var layer = builder.GetOrAddLayer(static () => new AuditLayer(new AuditLayerOptions()));
+        configure?.Invoke(layer.Options);
+        return builder;
+    }
+
+    /// <summary>
+    /// Registers an audit sink. May be called more than once to fan out to multiple sinks.
+    /// </summary>
+    /// <param name="builder">The secret provider builder.</param>
+    /// <param name="sink">The sink to register.</param>
+    /// <returns>The same builder for method chaining.</returns>
+    public static SecretProviderBuilder WithAuditSink(
+        this SecretProviderBuilder builder,
+        ISecretAuditSink sink)
+    {
+        ArgumentNullException.ThrowIfNull(sink);
+
+        var layer = builder.GetOrAddLayer(static () => new AuditLayer(new AuditLayerOptions()));
+        layer.Options.Sinks.Add(sink);
+        return builder;
+    }
+
+    /// <summary>
+    /// Binds the <c>SecretsManager:Audit</c> configuration section. Sinks are objects and must be
+    /// registered with <see cref="WithAuditSink"/>.
+    /// </summary>
+    /// <param name="builder">The secret provider builder.</param>
+    /// <param name="configuration">The configuration to bind.</param>
+    /// <returns>The same builder for method chaining.</returns>
+    /// <exception cref="ArgumentException">The configuration is invalid.</exception>
+    public static SecretProviderBuilder ConfigureAudit(
+        this SecretProviderBuilder builder,
+        IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        var section = configuration.GetSection("SecretsManager:Audit");
+        if (!section.Exists())
+            return builder;
+
+        var errors = new List<string>();
+        var enabled = true;
+
+        var enabledText = section["Enabled"];
+        if (!string.IsNullOrWhiteSpace(enabledText) && !bool.TryParse(enabledText, out enabled))
+            errors.Add("Enabled must be true or false");
+
+        if (!enabled)
+        {
+            if (errors.Count > 0)
+                throw new ArgumentException(
+                    $"Configuration errors for Audit: {string.Join("; ", errors)}");
+            return builder;
+        }
+
+        var scope = SecretAuditScope.All;
+        var scopeText = section["Scope"];
+        if (!string.IsNullOrWhiteSpace(scopeText))
+        {
+            if (Enum.TryParse<SecretAuditScope>(scopeText, ignoreCase: true, out var parsedScope)
+                && (parsedScope & ~SecretAuditScope.All) == 0)
+            {
+                scope = parsedScope;
+            }
+            else
+            {
+                errors.Add("Scope must be None, Reads, Writes, Deletes, Enumeration, or All");
+            }
+        }
+
+        var onSinkFailure = AuditFailureMode.Ignore;
+        var failureText = section["OnSinkFailure"];
+        if (!string.IsNullOrWhiteSpace(failureText)
+            && (!Enum.TryParse<AuditFailureMode>(failureText, ignoreCase: true, out onSinkFailure)
+                || !Enum.IsDefined(onSinkFailure)))
+        {
+            errors.Add("OnSinkFailure must be Ignore or Throw");
+        }
+
+        if (errors.Count > 0)
+            throw new ArgumentException(
+                $"Configuration errors for Audit: {string.Join("; ", errors)}");
+
+        var layer = builder.GetOrAddLayer(static () => new AuditLayer(new AuditLayerOptions()));
+        layer.Options.Scope = scope;
+        layer.Options.OnSinkFailure = onSinkFailure;
         return builder;
     }
 }

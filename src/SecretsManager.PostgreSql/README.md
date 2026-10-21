@@ -14,6 +14,23 @@ var builder = new SecretProviderBuilder()
     });
 ```
 
+## Audit sink
+
+Write secret access audit records to PostgreSQL:
+
+```csharp
+var builder = new SecretProviderBuilder()
+    .WithPostgreSql(options =>
+    {
+        options.ConnectionString = "Host=localhost;Database=secrets;Username=postgres;";
+    })
+    .WithPostgreSqlAuditSink(options =>
+    {
+        options.ConnectionString = "Host=localhost;Database=secrets;Username=postgres;";
+        options.AutoCreateSchema = true;
+    });
+```
+
 ## Installation
 
 ```bash

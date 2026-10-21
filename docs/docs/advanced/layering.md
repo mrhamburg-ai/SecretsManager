@@ -46,6 +46,7 @@ The core package ships these decorators:
 - Retry: `WithRetry`
 - Timeout: `WithTimeout`
 - Logging: `WithLogging`
+- Audit trail: `WithAudit` / `WithAuditSink`
 - OpenTelemetry metrics: `WithOtelMetrics`
 - OpenTelemetry trace: `WithOtelTrace`
 
@@ -150,6 +151,27 @@ public interface ISecretProviderLogger
 
 If no logger is provided, `NullSecretProviderLogger` is used.
 
+## Audit trail
+
+Emits a durable record per secret operation for compliance. Unlike logging, the audit layer records
+the actor, provider name, timestamp, outcome, and a failure type without ever recording a secret
+value. A broken sink does not change the secret operation's outcome by default.
+
+```csharp
+var provider = new SecretProviderBuilder()
+    .WithFileSystem(options => options.BasePath = "/etc/secrets")
+    .WithAudit(options =>
+    {
+        options.Sinks.Add(new FileSecretAuditSink("/var/log/secrets-audit.jsonl"));
+        options.Scope = SecretAuditScope.All;
+        options.OnSinkFailure = AuditFailureMode.Ignore;
+    })
+    .Build();
+```
+
+See [Audit Trail](audit-trail.md) for actor propagation, failure semantics, the file sink, and the
+PostgreSQL sink.
+
 ## OpenTelemetry metrics
 
 Generates metrics using `System.Diagnostics.Metrics`.
@@ -201,16 +223,18 @@ Span tags include:
 ## Custom layers
 
 You can create your own decorator by implementing `ISecretProviderLayer` and wrapping `ISecretProvider`.
+The example below is a pass-through; the library's real audit layer is documented in
+[Audit Trail](audit-trail.md).
 
 ```csharp
-public sealed class AuditLayer : ISecretProviderLayer
+public sealed class CustomLayer : ISecretProviderLayer
 {
     public ISecretProvider Wrap(ISecretProvider inner)
     {
-        return new AuditProvider(inner);
+        return new CustomProvider(inner);
     }
 
-    private sealed class AuditProvider(ISecretProvider inner) : ISecretProvider
+    private sealed class CustomProvider(ISecretProvider inner) : ISecretProvider
     {
         public Task<SecretValue> GetSecretAsync(string key, SecretQuery? query = null, CancellationToken cancellationToken = default)
             => inner.GetSecretAsync(key, query, cancellationToken);
@@ -237,7 +261,7 @@ Then call it via `AddLayer`:
 ```csharp
 var provider = new SecretProviderBuilder()
     .WithFileSystem(opts => opts.BasePath = "/etc/secrets")
-    .AddLayer(new AuditLayer())
+    .AddLayer(new CustomLayer())
     .Build();
 ```
 
