@@ -30,8 +30,7 @@ public sealed class FileSystemSecretProvider : ISecretProvider
         _keys = new EncryptionKeyResolver(
             options.EncryptionKey,
             options.EncryptionKeyFile,
-            options.EncryptionKeyProvider,
-            options.LegacyEncryptionKey);
+            options.EncryptionKeyProvider);
     }
 
     /// <summary>
@@ -261,8 +260,7 @@ public sealed class FileSystemSecretProvider : ISecretProvider
 
         var encryptor = await _keys.GetByKeyIdAsync(envelope.KeyId, cancellationToken).ConfigureAwait(false);
 
-        // Rebuild the same associated data the write path authenticated. A value predating this
-        // change has no key id, so it is bound to the secret key and version alone.
+        // Rebuild the same associated data the write path authenticated.
         var associatedData = Encoding.UTF8.GetBytes($"{envelope.KeyId}|{key}|{envelope.Version}");
 
         var payload = new EncryptedPayload(

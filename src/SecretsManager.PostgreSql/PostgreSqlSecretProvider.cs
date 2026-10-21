@@ -32,8 +32,7 @@ public sealed class PostgreSqlSecretProvider : ISecretProvider
         _keys = new EncryptionKeyResolver(
             options.EncryptionKey,
             options.EncryptionKeyFile,
-            options.EncryptionKeyProvider,
-            options.LegacyEncryptionKey);
+            options.EncryptionKeyProvider);
         _autoCreateSchema = options.AutoCreateSchema;
     }
 
@@ -298,8 +297,7 @@ public sealed class PostgreSqlSecretProvider : ISecretProvider
 
         var encryptor = await _keys.GetByKeyIdAsync(keyId, cancellationToken).ConfigureAwait(false);
 
-        // Rebuild the same associated data the write path authenticated: the key id and the secret
-        // key. A row predating this change has no key id, so it is bound to the secret key alone.
+        // Rebuild the same associated data the write path authenticated: the key id and the secret key.
         var associatedData = Encoding.UTF8.GetBytes($"{keyId}|{key}");
 
         var payload = new EncryptedPayload(

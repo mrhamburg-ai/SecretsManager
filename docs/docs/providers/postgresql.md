@@ -42,9 +42,8 @@ dotnet add package SecretsManager.PostgreSql
 | `EncryptionKey` | `string?` | No | `null` | Base64-encoded AES-256 key (32 bytes). When set, values are encrypted at rest with AES-256-GCM |
 | `EncryptionKeyFile` | `string?` | No | `null` | Path to a file containing the encryption key. A 32-byte file is used as-is, otherwise it is treated as base64 |
 | `EncryptionKeyProvider` | `IEncryptionKeyProvider?` | No | `null` | Supplies the encryption key from an external source, for example another secret provider. Fluent API only — it is an object, so it cannot come from appsettings.json, YAML, or an environment variable |
-| `LegacyEncryptionKey` | `string?` | No | `null` | Base64-encoded key used only to *decrypt* values written before key ids were recorded. Set this when migrating an existing database to `EncryptionKeyProvider` |
 
-`PostgreSqlOptions.Validate()` requires `ConnectionString`, rejects `EncryptionKey`, `EncryptionKeyFile` and `EncryptionKeyProvider` being set together, and caps `TablePrefix` at 40 characters (PostgreSQL truncates identifiers at 63 bytes, which can collapse the two table names into one). `LegacyEncryptionKey` is only meaningful alongside `EncryptionKeyProvider`. Validation runs on every construction path.
+`PostgreSqlOptions.Validate()` requires `ConnectionString`, rejects `EncryptionKey`, `EncryptionKeyFile` and `EncryptionKeyProvider` being set together, and caps `TablePrefix` at 40 characters (PostgreSQL truncates identifiers at 63 bytes, which can collapse the two table names into one). Validation runs on every construction path.
 
 ### Fluent API
 
@@ -112,23 +111,6 @@ Build the key provider first, and never point a key source at the store it encry
 :::tip
 Call `WarmUpAsync()` to resolve the key and ensure the schema at startup rather than on the first read or write. Without it, a misconfigured key source surfaces only when the first secret is accessed.
 :::
-
-### Migrating an Existing Database
-
-Every row written before this feature has no key id. When you set `EncryptionKeyProvider`, also set `LegacyEncryptionKey` to the key the existing rows were written with:
-
-```csharp
-await using var provider = new SecretProviderBuilder()
-    .WithPostgreSql(options =>
-    {
-        options.ConnectionString = "Host=localhost;Database=secrets;Username=app;Password=secret";
-        options.EncryptionKeyProvider = new SecretProviderKeySource(keyProvider, "sm-data-key");
-        options.LegacyEncryptionKey = previousBase64Key;
-    })
-    .Build();
-```
-
-Rows without a key id decrypt with `LegacyEncryptionKey`; new writes record the key id from the provider and need it no longer. Re-encrypting the old rows is optional cleanup, not a precondition.
 
 ### Environment Variables
 

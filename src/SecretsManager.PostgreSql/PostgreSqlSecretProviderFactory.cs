@@ -78,8 +78,7 @@ public sealed class PostgreSqlSecretProviderFactory : ISecretProviderFactory
 
             // An object, so it is shared rather than copied: the key provider is a stateless reader
             // and the caller owns its lifetime.
-            EncryptionKeyProvider = source.EncryptionKeyProvider,
-            LegacyEncryptionKey = source.LegacyEncryptionKey
+            EncryptionKeyProvider = source.EncryptionKeyProvider
         };
     }
 

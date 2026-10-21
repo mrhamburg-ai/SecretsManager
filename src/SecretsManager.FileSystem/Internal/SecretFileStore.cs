@@ -15,8 +15,7 @@ internal sealed partial class SecretFileStore : IDisposable
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         WriteIndented = true,
-        // Do not write null fields: an envelope with no key id should simply omit it, so a legacy
-        // envelope stays distinguishable from one written after key ids were introduced.
+        // Do not write null fields: optional values such as the key id and tags are omitted.
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
 

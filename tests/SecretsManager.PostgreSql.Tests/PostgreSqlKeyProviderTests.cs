@@ -76,10 +76,10 @@ public sealed class PostgreSqlKeyProviderTests
             .Returns((MakeSecret(1, "s"), MakeVersion(1, "v", true)));
 
     private PostgreSqlSecretProvider CreateWithStaticKey(byte[] key) =>
-        new(_mockStore, new EncryptionKeyResolver(Convert.ToBase64String(key), null, null, null));
+        new(_mockStore, new EncryptionKeyResolver(Convert.ToBase64String(key), null, null));
 
     private PostgreSqlSecretProvider CreateWithRotatableSource(RotatableKeySource source) =>
-        new(_mockStore, new EncryptionKeyResolver(null, null, source, null));
+        new(_mockStore, new EncryptionKeyResolver(null, null, source));
 
     [Fact]
     public async Task KeyProvider_IsFetchedOncePerInstance()
@@ -101,41 +101,6 @@ public sealed class PostgreSqlKeyProviderTests
         await provider.GetSecretAsync("s");
 
         Assert.Equal(1, source.CurrentCalls);
-    }
-
-    /// <summary>
-    /// Migration: a row written before key ids existed has no <c>k</c> field. It must still decrypt
-    /// using the legacy key, and new writes must record the key id.
-    /// </summary>
-    [Fact]
-    public async Task LegacyKey_DecryptsRowsWithNoKeyId_ThenRecordsKeyId()
-    {
-        var legacyPayload = EncryptedPayloadFor(_keyV1, "legacy-value", null);
-
-        _mockStore.GetSecretByKeyAsync("s", Arg.Any<CancellationToken>()).Returns(MakeSecret(1, "s"));
-        _mockStore.GetVersionAsync(1, null, Arg.Any<CancellationToken>())
-            .Returns(MakeVersion(1, legacyPayload, encrypted: true));
-        StubPut();
-
-        // Migrated to a key provider, with the old key kept as a decrypt-only fallback.
-        var source = new RotatableKeySource(new Dictionary<string, byte[]> { [V2] = _keyV2 }, V2);
-        await using (var migrated = new PostgreSqlSecretProvider(
-                   _mockStore,
-                   new EncryptionKeyResolver(null, null, source, Convert.ToBase64String(_keyV1))))
-        {
-            // The row has no key id, so it is read with the legacy key.
-            var read = await migrated.GetSecretAsync("s");
-            Assert.Equal("legacy-value", read.Value);
-
-            // New writes use the key provider and record its key id.
-            await migrated.PutSecretAsync("s", "new-value");
-
-            var written = LastWrittenValue();
-            using var doc = JsonDocument.Parse(written);
-            Assert.True(doc.RootElement.GetProperty("k").GetString() == V2, written);
-            Assert.DoesNotContain("new-value", written);
-            Assert.Equal(1, source.CurrentCalls);
-        }
     }
 
     /// <summary>
@@ -178,7 +143,7 @@ public sealed class PostgreSqlKeyProviderTests
     public async Task KeySourceThrows_FailsClosed()
     {
         await using var provider = new PostgreSqlSecretProvider(
-            _mockStore, new EncryptionKeyResolver(null, null, new ThrowingSource(), null));
+            _mockStore, new EncryptionKeyResolver(null, null, new ThrowingSource()));
 
         await Assert.ThrowsAsync<SecretProviderException>(
             () => provider.PutSecretAsync("s", "value"));
@@ -193,7 +158,7 @@ public sealed class PostgreSqlKeyProviderTests
     {
         var source = new RotatableKeySource(new Dictionary<string, byte[]> { [V1] = _keyV1 }, V1);
         await using var provider = new PostgreSqlSecretProvider(
-            _mockStore, new EncryptionKeyResolver(null, null, source, null), autoCreateSchema: true);
+            _mockStore, new EncryptionKeyResolver(null, null, source), autoCreateSchema: true);
 
         await provider.WarmUpAsync();
 
@@ -206,7 +171,7 @@ public sealed class PostgreSqlKeyProviderTests
     {
         var source = new RotatableKeySource(new Dictionary<string, byte[]> { [V1] = _keyV1 }, V1);
         await using var provider = new PostgreSqlSecretProvider(
-            _mockStore, new EncryptionKeyResolver(null, null, source, null));
+            _mockStore, new EncryptionKeyResolver(null, null, source));
 
         await provider.WarmUpAsync();
 
