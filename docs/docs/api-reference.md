@@ -143,6 +143,7 @@ var provider = new SecretProviderBuilder()
     .WithRetry()               // retries transient failures
     .WithTimeout()             // per-operation timeout
     .WithLogging()             // start/success/failure logging hooks
+    .WithAudit()               // durable per-access audit records
     .WithOtelMetrics()         // emits System.Diagnostics.Metrics
     .WithOtelTrace()           // emits OpenTelemetry Activity spans
     .Build();
@@ -160,3 +161,19 @@ var provider = new SecretProviderBuilder()
     .WithOtelTrace(options => options.ActivitySourceName = "secrets-traces")
     .Build();
 ```
+
+### Audit types
+
+`AuditLayer` writes a `SecretAuditEvent` to one or more `ISecretAuditSink` instances.
+
+| Type | Description |
+|------|-------------|
+| `SecretAuditEvent` | Immutable record: operation, provider, key, version, outcome, timestamp, duration, actor, correlation id, trace id, and failure type |
+| `SecretAuditOutcome` | `Success`, `Failure`, `Cancelled`, or `Denied` |
+| `SecretAuditScope` | Flags that select reads, writes, deletes, enumeration, or all operations |
+| `ISecretAuditSink` | Destination for audit records |
+| `ISecretActorAccessor` | Ambient actor lookup, with `AmbientSecretActorAccessor.Instance` as the default |
+| `FileSecretAuditSink` | JSON Lines file sink |
+| `PostgreSqlSecretAuditSink` | PostgreSQL sink in the `SecretsManager.PostgreSql` package |
+
+See [Audit Trail](advanced/audit-trail.md) for usage.

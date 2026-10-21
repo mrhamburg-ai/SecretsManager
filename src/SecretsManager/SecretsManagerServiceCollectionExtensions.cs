@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using SecretsManager.Builder;
 
 namespace SecretsManager;
@@ -11,19 +12,23 @@ public static class SecretsManagerServiceCollectionExtensions
 {
     /// <summary>
     /// Registers <see cref="SecretProviderBuilder"/> as a transient service so it can be injected
-    /// and configured with the fluent API or the <c>With*</c> extension methods.
+    /// and configured with the fluent API or the <c>With*</c> extension methods. Also registers
+    /// <see cref="AmbientSecretActorAccessor.Instance"/> as the default <see cref="ISecretActorAccessor"/>.
     /// </summary>
     /// <param name="services">The service collection to add to.</param>
     /// <returns>The same <see cref="IServiceCollection"/> for chaining.</returns>
     public static IServiceCollection AddSecretsManager(this IServiceCollection services)
     {
         services.AddTransient<SecretProviderBuilder>();
+        services.TryAddSingleton<ISecretActorAccessor>(AmbientSecretActorAccessor.Instance);
         return services;
     }
 
     /// <summary>
-    /// Registers <see cref="SecretProviderBuilder"/> as a transient service and binds
-    /// <see cref="SecretsManagerOptions"/> from the <c>SecretsManager</c> configuration section.
+    /// Registers <see cref="SecretProviderBuilder"/> as a transient service, binds
+    /// <see cref="SecretsManagerOptions"/> from the <c>SecretsManager</c> configuration section, and
+    /// registers <see cref="AmbientSecretActorAccessor.Instance"/> as the default
+    /// <see cref="ISecretActorAccessor"/>.
     /// </summary>
     /// <param name="services">The service collection to add to.</param>
     /// <param name="configuration">The configuration to bind options from.</param>
@@ -33,6 +38,7 @@ public static class SecretsManagerServiceCollectionExtensions
         IConfiguration configuration)
     {
         services.AddTransient<SecretProviderBuilder>();
+        services.TryAddSingleton<ISecretActorAccessor>(AmbientSecretActorAccessor.Instance);
         services.Configure<SecretsManagerOptions>(configuration.GetSection("SecretsManager"));
         return services;
     }

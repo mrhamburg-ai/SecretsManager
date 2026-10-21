@@ -40,6 +40,7 @@ const sidebars: SidebarsConfig = {
         'advanced/versioning',
         'advanced/json-extraction',
         'advanced/layering',
+        'advanced/audit-trail',
         'advanced/custom-providers',
       ],
     },

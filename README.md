@@ -82,6 +82,7 @@ Layers are decorators that wrap a provider to add operational capabilities like 
 | `RetryLayer` | `.WithRetry()` | Retries failed operations with exponential backoff and jitter |
 | `TimeoutLayer` | `.WithTimeout()` | Enforces a per-operation timeout |
 | `LoggingLayer` | `.WithLogging()` | Logs operation start, success, and failure events |
+| `AuditLayer` | `.WithAudit()` / `.WithAuditSink()` | Writes durable per-access audit records without secret values |
 | `OtelMetricsLayer` | `.WithOtelMetrics()` | Emits OpenTelemetry-compatible metrics (counters, histograms) |
 | `OtelTraceLayer` | `.WithOtelTrace()` | Emits OpenTelemetry-compatible distributed traces |
 
@@ -121,6 +122,26 @@ await using var provider = new SecretProviderBuilder()
 ```
 
 Layers are processed in registration order (outermost to innermost). The first registered layer wraps the provider, and each subsequent layer wraps the previous one.
+
+### Audit Trail
+
+The audit layer writes one durable record per secret operation: operation, provider, key, version,
+outcome, timestamp, actor, trace id, and failure type. Records never contain secret values, and a
+failing sink does not change the operation's outcome by default.
+
+```csharp
+var provider = new SecretProviderBuilder()
+    .WithFileSystem(opts => opts.BasePath = "/secrets")
+    .WithAudit(opts =>
+    {
+        opts.Sinks.Add(new FileSecretAuditSink("/var/log/secrets-audit.jsonl"));
+    })
+    .Build();
+```
+
+`SecretsManager.PostgreSql` also ships `PostgreSqlSecretAuditSink`, available through
+`.WithPostgreSqlAuditSink(...)`. See [Audit Trail](docs/advanced/audit-trail.md) for actor
+propagation, scopes, failure modes, and the PostgreSQL table schema.
 
 ## Configuration
 
@@ -207,6 +228,7 @@ See the full provider setup and configuration details in the docs:
 - [Provider overview](docs/providers/overview.md)
 - [JSON extraction guide](docs/advanced/json-extraction.md)
 - [Versioning guide](docs/advanced/versioning.md)
+- [Audit trail guide](docs/advanced/audit-trail.md)
 
 ## API Reference
 

@@ -180,6 +180,38 @@ var provider = new SecretProviderBuilder()
 
 This reads from the `SecretsManager:PostgreSql` section and validates all options.
 
+### Audit Sink
+
+The same package also ships a PostgreSQL-backed audit sink, so secret access records can live in the
+database you already operate:
+
+```csharp title="Program.cs"
+var provider = new SecretProviderBuilder()
+    .WithPostgreSql(options =>
+    {
+        options.ConnectionString = "Host=localhost;Database=secrets;Username=app;Password=secret";
+    })
+    .WithPostgreSqlAuditSink(options =>
+    {
+        options.ConnectionString = "Host=localhost;Database=secrets;Username=audit_app;Password=secret";
+        options.Schema = "public";
+        options.TableName = "sm_secret_audit_log";
+    })
+    .Build();
+```
+
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `ConnectionString` | `string` | Yes | `""` | PostgreSQL connection string |
+| `Schema` | `string` | No | `"public"` | Schema for the audit table |
+| `TableName` | `string` | No | `"sm_secret_audit_log"` | Audit table name (48 characters or fewer, so the generated index name fits) |
+| `AutoCreateSchema` | `bool` | No | `false` | Create the table and timestamp index on first write. Requires `CREATE` on the schema |
+
+The sink writes one row per audited operation. It stores the operation, provider, key, version,
+outcome, timestamp, duration, actor, correlation id, trace id, and failure type. It never stores a
+secret value. See [Audit Trail](../advanced/audit-trail.md) for the table schema, failure semantics,
+and actor propagation.
+
 ### Transport security
 
 Npgsql defaults to `SslMode=Prefer`, which permits an unencrypted connection and does not verify the

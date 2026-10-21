@@ -1,3 +1,5 @@
+using SecretsManager.Internal;
+
 namespace SecretsManager.Builder;
 
 /// <summary>
@@ -30,6 +32,20 @@ public sealed class SecretProviderBuilder
         ArgumentNullException.ThrowIfNull(layer);
         _layers.Add(layer);
         return this;
+    }
+
+    internal TLayer GetOrAddLayer<TLayer>(Func<TLayer> factory)
+        where TLayer : class, ISecretProviderLayer
+    {
+        foreach (var existing in _layers)
+        {
+            if (existing is TLayer layer)
+                return layer;
+        }
+
+        var created = factory();
+        _layers.Add(created);
+        return created;
     }
 
     /// <summary>
@@ -93,7 +109,12 @@ public sealed class SecretProviderBuilder
         var provider = factory.Create(_configuration.Settings);
 
         for (var i = _layers.Count - 1; i >= 0; i--)
+        {
+            if (_layers[i] is IProviderNameAwareLayer aware)
+                aware.SetProviderName(_configuration.ProviderName);
+
             provider = _layers[i].Wrap(provider);
+        }
 
         return provider;
     }
