@@ -13,5 +13,22 @@
       warning list nobody reads. The solution builds clean in both Debug and Release.
     -->
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+
+    <!--
+      Publish the repository URL in the package metadata and embed untracked sources in the
+      PDB so Source Link can resolve every source file for package consumers.
+    -->
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+
+    <!--
+      Release packages must be deterministic. Local Debug builds keep normal source paths for
+      local debugging. The SDK includes Source Link for net8.0 and later, so no extra package
+      reference is needed.
+    -->
+    <ContinuousIntegrationBuild Condition="'$(Configuration)' == 'Release'">true</ContinuousIntegrationBuild>
+    <DeterministicSourcePaths Condition="'$(Configuration)' == 'Release'">true</DeterministicSourcePaths>
   </PropertyGroup>
 </Project>
