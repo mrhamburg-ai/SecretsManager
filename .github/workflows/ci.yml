@@ -72,7 +72,9 @@ jobs:
       uses: actions/upload-artifact@v7
       with:
         name: nuget-packages
-        path: ./nupkg/*.nupkg
+        path: |
+          ./nupkg/*.nupkg
+          ./nupkg/*.snupkg
         retention-days: 7
 
   unit-tests:
