@@ -132,7 +132,7 @@ The fluent builder can be fed from three interchangeable sources, all producing 
 
 - **ci.yml:** restore → format (repo-wide) → build (Release) → unit tests (filtered) → pack. The API compatibility check step is currently commented out.
 - **docs-build.yml:** `npm ci && npm run build` in `docs/`, then deploys to GitHub Pages.
-- **integration.yml:** runs the integration harness against real services (PostgreSQL, Vault, Conjur, and cloud providers gated by repository variables). Triggers on main pushes, PRs to main, and manual dispatch.
+- **integration.yml:** runs the integration harness against real services (PostgreSQL, Vault, Conjur, and cloud providers gated by repository variables). Triggers on main pushes and manual dispatch only; in-progress runs are not cancelled.
 - **release.yml:** packs each `src/*/*.csproj` with `/p:Version` and publishes to NuGet on release publish or manual dispatch.
 
 ## Gotchas
