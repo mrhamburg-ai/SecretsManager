@@ -45,11 +45,23 @@ public sealed class PostgreSqlAuditSinkOptionsTests
         var options = new PostgreSqlAuditSinkOptions
         {
             ConnectionString = "Host=localhost",
-            TableName = new string('a', 64)
+            TableName = new string('a', 49)
         };
 
         var errors = options.Validate().ToList();
 
-        Assert.Contains(errors, e => e.Contains("63 characters or fewer"));
+        Assert.Contains(errors, e => e.Contains("48 characters or fewer"));
+    }
+
+    [Fact]
+    public void Validate_AcceptsLongestTableNameThatKeepsIndexNameValid()
+    {
+        var options = new PostgreSqlAuditSinkOptions
+        {
+            ConnectionString = "Host=localhost",
+            TableName = new string('a', 48)
+        };
+
+        Assert.Empty(options.Validate());
     }
 }

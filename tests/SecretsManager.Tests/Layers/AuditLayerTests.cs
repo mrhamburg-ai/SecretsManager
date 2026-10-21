@@ -61,6 +61,31 @@ public sealed class AuditLayerTests
     }
 
     [Fact]
+    public async Task AuditLayer_SnapshotsOptionsWhenWrapped()
+    {
+        var sink = new RecordingAuditSink();
+        var options = new AuditLayerOptions
+        {
+            ProviderName = "before"
+        };
+        options.Sinks.Add(sink);
+
+        var provider = new AuditLayer(options).Wrap(new DelegatingSecretProvider
+        {
+            GetSecretAsyncImpl = (key, _, _) =>
+                Task.FromResult(new SecretValue { Key = key, Value = "value" })
+        });
+
+        options.ProviderName = "after";
+        options.Sinks.Clear();
+
+        await provider.GetSecretAsync("key");
+
+        var auditEvent = Assert.Single(sink.Events, e => e.Operation == "GetSecretAsync");
+        Assert.Equal("before", auditEvent.Provider);
+    }
+
+    [Fact]
     public async Task AuditLayer_PopulatesActorFromAmbientAccessor()
     {
         var sink = new RecordingAuditSink();
@@ -116,6 +141,77 @@ public sealed class AuditLayerTests
         // Failure record is invented for the sink error.
         var auditEvent = Assert.Single(sink.Events);
         Assert.Equal(SecretAuditOutcome.Success, auditEvent.Outcome);
+    }
+
+    [Fact]
+    public async Task AuditLayer_ThrowMode_StillWritesToEverySinkBeforeThrowing()
+    {
+        var first = new ThrowingAuditSink();
+        var second = new RecordingAuditSink();
+        var baseProvider = new DelegatingSecretProvider
+        {
+            GetSecretAsyncImpl = (key, _, _) =>
+                Task.FromResult(new SecretValue { Key = key, Value = "value" })
+        };
+
+        var builder = new SecretProviderBuilder()
+            .RegisterProvider(new TestLayerProviderFactory(baseProvider))
+            .UseProvider("test")
+            .WithAudit(options =>
+            {
+                options.OnSinkFailure = AuditFailureMode.Throw;
+                options.Sinks.Add(first);
+                options.Sinks.Add(second);
+            });
+
+        var provider = builder.Build();
+
+        await Assert.ThrowsAsync<IOException>(() => provider.GetSecretAsync("key"));
+
+        var auditEvent = Assert.Single(second.Events, e => e.Operation == "GetSecretAsync");
+        Assert.Equal(SecretAuditOutcome.Success, auditEvent.Outcome);
+    }
+
+    [Fact]
+    public async Task AuditLayer_ThrowingOnSinkErrorCallbackDoesNotAffectOperation()
+    {
+        var sink = new ThrowingAuditSink();
+        var provider = CreateLayer(sink, o => o.OnSinkError = _ =>
+                throw new InvalidOperationException("callback failed"))
+            .Wrap(new DelegatingSecretProvider
+            {
+                GetSecretAsyncImpl = (key, _, _) =>
+                    Task.FromResult(new SecretValue { Key = key, Value = "value" })
+            });
+
+        var result = await provider.GetSecretAsync("key");
+
+        Assert.Equal("value", result.Value);
+        Assert.Single(sink.Events);
+    }
+
+    [Fact]
+    public async Task AuditLayer_PutDeleteVersionsAndExistsEmitOneRecordEach()
+    {
+        var sink = new RecordingAuditSink();
+        var provider = CreateLayer(sink).Wrap(new DelegatingSecretProvider
+        {
+            PutSecretAsyncImpl = (key, value, _, _) =>
+                Task.FromResult(new SecretValue { Key = key, Value = value, Version = "2" }),
+            GetSecretVersionsAsyncImpl = (_, _) =>
+                Task.FromResult((IReadOnlyList<SecretVersionInfo>)Array.Empty<SecretVersionInfo>()),
+            SecretExistsAsyncImpl = (_, _) => Task.FromResult(true)
+        });
+
+        await provider.PutSecretAsync("write-key", "value");
+        await provider.DeleteSecretAsync("delete-key");
+        await provider.GetSecretVersionsAsync("versions-key");
+        await provider.SecretExistsAsync("exists-key");
+
+        Assert.Single(sink.Events, e => e.Operation == "PutSecretAsync" && e.Version == "2");
+        Assert.Single(sink.Events, e => e.Operation == "DeleteSecretAsync");
+        Assert.Single(sink.Events, e => e.Operation == "GetSecretVersionsAsync");
+        Assert.Single(sink.Events, e => e.Operation == "SecretExistsAsync");
     }
 
     [Fact]
@@ -179,7 +275,7 @@ public sealed class AuditLayerTests
             () => provider.GetSecretAsync("key", cancellationToken: cts.Token));
 
         var auditEvent = Assert.Single(sink.Events, e => e.Operation == "GetSecretAsync");
-        Assert.Equal(SecretAuditOutcome.Failure, auditEvent.Outcome);
+        Assert.Equal(SecretAuditOutcome.Cancelled, auditEvent.Outcome);
         Assert.Equal("System.OperationCanceledException", auditEvent.FailureType);
     }
 
@@ -264,8 +360,9 @@ public sealed class AuditLayerTests
     }
 
     [Fact]
-    public void ConfigureAudit_Disabled_DoesNotAddLayer()
+    public async Task ConfigureAudit_Disabled_StaysDisabledWhenSinkIsRegisteredLater()
     {
+        var sink = new RecordingAuditSink();
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
@@ -273,9 +370,22 @@ public sealed class AuditLayerTests
             })
             .Build();
 
-        var builder = new SecretProviderBuilder().ConfigureAudit(configuration);
+        var baseProvider = new DelegatingSecretProvider
+        {
+            GetSecretAsyncImpl = (key, _, _) =>
+                Task.FromResult(new SecretValue { Key = key, Value = "value" })
+        };
 
-        Assert.NotNull(builder);
+        var builder = new SecretProviderBuilder()
+            .RegisterProvider(new TestLayerProviderFactory(baseProvider))
+            .UseProvider("test")
+            .ConfigureAudit(configuration)
+            .WithAuditSink(sink);
+
+        await using var provider = builder.Build();
+        await provider.GetSecretAsync("key");
+
+        Assert.Empty(sink.Events);
     }
 
     [Fact]

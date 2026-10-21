@@ -10,7 +10,7 @@ namespace SecretsManager;
 public sealed class FileSecretAuditSink : ISecretAuditSink
 {
     private static readonly ConcurrentDictionary<string, SemaphoreSlim> FileLocks =
-        new(StringComparer.Ordinal);
+        new(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
 
     private static readonly JsonSerializerOptions SerializerOptions =
         new(JsonSerializerDefaults.Web);
@@ -57,14 +57,19 @@ public sealed class FileSecretAuditSink : ISecretAuditSink
         {
             RotateIfNeeded();
 
-            await using var stream = new FileStream(
-                _path,
-                FileMode.Append,
-                FileAccess.Write,
-                FileShare.ReadWrite,
-                bufferSize: 4096,
-                FileOptions.Asynchronous);
+            var streamOptions = new FileStreamOptions
+            {
+                Mode = FileMode.Append,
+                Access = FileAccess.Write,
+                Share = FileShare.ReadWrite,
+                BufferSize = 4096,
+                Options = FileOptions.Asynchronous
+            };
 
+            if (!OperatingSystem.IsWindows())
+                streamOptions.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+
+            await using var stream = new FileStream(_path, streamOptions);
             await stream.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
 
             if (_options.FlushEachWrite)
@@ -85,8 +90,11 @@ public sealed class FileSecretAuditSink : ISecretAuditSink
         if (!file.Exists || file.Length < maxFileSize)
             return;
 
-        // A unique name per rotation: overwriting a previous rotated file would destroy audit records.
-        var rotatedPath = $"{_path}.{DateTime.UtcNow:yyyyMMddTHHmmssfffffff}";
-        File.Move(_path, rotatedPath, overwrite: false);
+        // A unique name per rotation: overwriting a previous rotated file would destroy audit
+        // records. Keep the original extension so "*.jsonl" globs still find rotated files.
+        var directory = Path.GetDirectoryName(_path) ?? string.Empty;
+        var rotatedName =
+            $"{Path.GetFileNameWithoutExtension(_path)}.{DateTime.UtcNow:yyyyMMddTHHmmssfffffff}{Path.GetExtension(_path)}";
+        File.Move(_path, Path.Combine(directory, rotatedName), overwrite: false);
     }
 }

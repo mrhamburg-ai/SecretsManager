@@ -26,8 +26,10 @@ public sealed class AuditLayerOptions
     public AuditFailureMode OnSinkFailure { get; set; } = AuditFailureMode.Ignore;
 
     /// <summary>
-    /// Invoked when a sink fails and <see cref="OnSinkFailure"/> is
-    /// <see cref="AuditFailureMode.Ignore"/>. Exceptions thrown by this callback are ignored.
+    /// Invoked when a sink failure is ignored: always when the secret operation already failed, and
+    /// when <see cref="OnSinkFailure"/> is <see cref="AuditFailureMode.Ignore"/>. In
+    /// <see cref="AuditFailureMode.Throw"/> mode a successful operation rethrows the sink failure
+    /// after every sink received the record. Exceptions thrown by this callback are ignored.
     /// </summary>
     public Action<Exception>? OnSinkError { get; set; }
 

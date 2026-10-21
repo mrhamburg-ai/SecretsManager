@@ -169,7 +169,7 @@ var provider = new SecretProviderBuilder()
 | Type | Description |
 |------|-------------|
 | `SecretAuditEvent` | Immutable record: operation, provider, key, version, outcome, timestamp, duration, actor, correlation id, trace id, and failure type |
-| `SecretAuditOutcome` | `Success`, `Failure`, or `Denied` |
+| `SecretAuditOutcome` | `Success`, `Failure`, `Cancelled`, or `Denied` |
 | `SecretAuditScope` | Flags that select reads, writes, deletes, enumeration, or all operations |
 | `ISecretAuditSink` | Destination for audit records |
 | `ISecretActorAccessor` | Ambient actor lookup, with `AmbientSecretActorAccessor.Instance` as the default |

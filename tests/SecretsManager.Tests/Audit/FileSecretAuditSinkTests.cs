@@ -24,6 +24,10 @@ public sealed class FileSecretAuditSinkTests
             var lines = await File.ReadAllLinesAsync(path);
             Assert.Equal(2, lines.Length);
 
+            // The raw line must be readable without the C# type; enums stay as names, not ordinals.
+            Assert.Contains("\"outcome\":\"Success\"", lines[0], StringComparison.Ordinal);
+            Assert.DoesNotContain("\"outcome\":0", lines[0], StringComparison.Ordinal);
+
             var first = JsonSerializer.Deserialize<SecretAuditEvent>(
                 lines[0], new JsonSerializerOptions(JsonSerializerDefaults.Web));
             Assert.NotNull(first);
@@ -79,8 +83,9 @@ public sealed class FileSecretAuditSinkTests
             await sink.WriteAsync(CreateEvent("GetSecretAsync", "third"));
 
             // Every record must survive: rotation never overwrites an earlier rotated file.
-            var files = Directory.GetFiles(directory, "audit.jsonl*");
+            var files = Directory.GetFiles(directory, "audit*.jsonl");
             Assert.Equal(3, files.Length);
+            Assert.All(files, file => Assert.EndsWith(".jsonl", file, StringComparison.Ordinal));
 
             var contents = string.Concat(files.Select(File.ReadAllText));
             Assert.Contains("first", contents, StringComparison.Ordinal);

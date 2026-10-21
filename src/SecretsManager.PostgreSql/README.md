@@ -27,7 +27,6 @@ var builder = new SecretProviderBuilder()
     .WithPostgreSqlAuditSink(options =>
     {
         options.ConnectionString = "Host=localhost;Database=secrets;Username=postgres;";
-        options.AutoCreateSchema = true;
     });
 ```
 

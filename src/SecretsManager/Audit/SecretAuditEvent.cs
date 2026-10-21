@@ -18,7 +18,7 @@ public sealed record SecretAuditEvent
     /// <summary>The resolved version, when the operation returned one.</summary>
     public string? Version { get; init; }
 
-    /// <summary>Whether the operation succeeded, failed, or was denied.</summary>
+    /// <summary>Whether the operation succeeded, failed, was cancelled, or was denied.</summary>
     public required SecretAuditOutcome Outcome { get; init; }
 
     /// <summary>When the operation started, captured by the library.</summary>

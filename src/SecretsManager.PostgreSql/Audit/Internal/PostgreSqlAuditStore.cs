@@ -10,7 +10,7 @@ internal sealed class PostgreSqlAuditStore : IPostgreSqlAuditStore
     private readonly string _tableName;
     private readonly bool _autoCreateSchema;
     private readonly SemaphoreSlim _schemaLock = new(1, 1);
-    private bool _schemaEnsured;
+    private volatile bool _schemaEnsured;
 
     private string Table => $"\"{_schema}\".\"{_tableName}\"";
 

@@ -12,8 +12,9 @@ public enum AuditFailureMode
     Ignore,
 
     /// <summary>
-    /// Sink failures propagate to the caller. Use only when the audit trail is a hard
-    /// requirement and an unwritten record must fail the secret operation.
+    /// Sink failures propagate to the caller after every registered sink has attempted the write.
+    /// Use only when the audit trail is a hard requirement and an unwritten record must fail the
+    /// secret operation.
     /// </summary>
     Throw
 }

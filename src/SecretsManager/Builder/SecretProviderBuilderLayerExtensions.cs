@@ -150,43 +150,42 @@ public static class SecretProviderBuilderLayerExtensions
         if (!string.IsNullOrWhiteSpace(enabledText) && !bool.TryParse(enabledText, out enabled))
             errors.Add("Enabled must be true or false");
 
-        if (!enabled)
-        {
-            if (errors.Count > 0)
-                throw new ArgumentException(
-                    $"Configuration errors for Audit: {string.Join("; ", errors)}");
-            return builder;
-        }
-
         var scope = SecretAuditScope.All;
-        var scopeText = section["Scope"];
-        if (!string.IsNullOrWhiteSpace(scopeText))
-        {
-            if (Enum.TryParse<SecretAuditScope>(scopeText, ignoreCase: true, out var parsedScope)
-                && (parsedScope & ~SecretAuditScope.All) == 0)
-            {
-                scope = parsedScope;
-            }
-            else
-            {
-                errors.Add("Scope must be None, Reads, Writes, Deletes, Enumeration, or All");
-            }
-        }
-
         var onSinkFailure = AuditFailureMode.Ignore;
-        var failureText = section["OnSinkFailure"];
-        if (!string.IsNullOrWhiteSpace(failureText)
-            && (!Enum.TryParse<AuditFailureMode>(failureText, ignoreCase: true, out onSinkFailure)
-                || !Enum.IsDefined(onSinkFailure)))
+
+        if (enabled)
         {
-            errors.Add("OnSinkFailure must be Ignore or Throw");
+            var scopeText = section["Scope"];
+            if (!string.IsNullOrWhiteSpace(scopeText))
+            {
+                if (Enum.TryParse<SecretAuditScope>(scopeText, ignoreCase: true, out var parsedScope)
+                    && (parsedScope & ~SecretAuditScope.All) == 0)
+                {
+                    scope = parsedScope;
+                }
+                else
+                {
+                    errors.Add("Scope must be None, Reads, Writes, Deletes, Enumeration, or All");
+                }
+            }
+
+            var failureText = section["OnSinkFailure"];
+            if (!string.IsNullOrWhiteSpace(failureText)
+                && (!Enum.TryParse<AuditFailureMode>(failureText, ignoreCase: true, out onSinkFailure)
+                    || !Enum.IsDefined(onSinkFailure)))
+            {
+                errors.Add("OnSinkFailure must be Ignore or Throw");
+            }
         }
 
         if (errors.Count > 0)
             throw new ArgumentException(
                 $"Configuration errors for Audit: {string.Join("; ", errors)}");
 
+        // Always add the layer, even when disabled: a sink registered later must not turn audit
+        // back on behind the configuration's back.
         var layer = builder.GetOrAddLayer(static () => new AuditLayer(new AuditLayerOptions()));
+        layer.Options.Enabled = enabled;
         layer.Options.Scope = scope;
         layer.Options.OnSinkFailure = onSinkFailure;
         return builder;

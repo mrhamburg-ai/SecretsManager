@@ -18,7 +18,9 @@ public sealed partial class PostgreSqlAuditSinkOptions
     public string Schema { get; set; } = "public";
 
     /// <summary>
-    /// Audit table name. Defaults to <c>sm_secret_audit_log</c>.
+    /// Audit table name. Defaults to <c>sm_secret_audit_log</c>. Limited to 48 characters so the
+    /// generated <c>&lt;table&gt;_timestamp_idx</c> index name stays within PostgreSQL's 63-character
+    /// identifier limit.
     /// </summary>
     public string TableName { get; set; } = "sm_secret_audit_log";
 
@@ -46,8 +48,8 @@ public sealed partial class PostgreSqlAuditSinkOptions
             yield return "TableName is required";
         else if (!SafeIdentifierRegex().IsMatch(TableName))
             yield return "TableName must contain only letters, digits, or underscores and start with a letter or underscore";
-        else if (TableName.Length > 63)
-            yield return "TableName must be 63 characters or fewer";
+        else if (TableName.Length > 48)
+            yield return "TableName must be 48 characters or fewer so the generated index name fits";
     }
 
     [GeneratedRegex(@"^[a-zA-Z_][a-zA-Z0-9_]*$")]

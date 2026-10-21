@@ -55,7 +55,7 @@ The builder fills in the registered provider name automatically. Records contain
 | `Provider` | Registered provider name, for example `vault` or `postgresql` |
 | `Key` | Target secret key, when the operation targets one |
 | `Version` | Resolved version, when the operation returns one |
-| `Outcome` | `Success`, `Failure`, or `Denied` |
+| `Outcome` | `Success`, `Failure`, `Cancelled`, or `Denied` |
 | `Timestamp` | Operation start time, captured by the library |
 | `Duration` | How long the operation took |
 | `ActorId` / `ActorDisplayName` | Identity from the ambient actor accessor |
@@ -104,8 +104,8 @@ public sealed class SecretActorMiddleware(RequestDelegate next)
 ```
 
 The default accessor is `AmbientSecretActorAccessor.Instance`, which flows the actor through
-`AsyncLocal<T>`, so it follows async continuations. Set `AuditLayerOptions.ActorAccessor` to use a
-different implementation.
+`AsyncLocal<T>`, so it follows async continuations. `AddSecretsManager` registers that instance as
+`ISecretActorAccessor` in DI. Set `AuditLayerOptions.ActorAccessor` to use a different implementation.
 
 ## Failure isolation
 
@@ -118,7 +118,21 @@ By default, a broken sink never changes the outcome of a secret operation:
   `OnSinkFailure = AuditFailureMode.Throw`.
 
 Set `OnSinkFailure = AuditFailureMode.Throw` only when the audit trail is a hard requirement, and
-document the resulting outage risk. It is not the default.
+document the resulting outage risk. It is not the default. Every registered sink still receives the
+record before the failure is rethrown.
+
+:::warning
+Audit records are written after the provider operation completes. For `PutSecretAsync` and
+`DeleteSecretAsync` with `Throw`, a sink failure is reported to the caller even though the mutation
+has already committed. An outer retry layer may then repeat that mutation. Reads are fail-closed
+because the value is not returned.
+:::
+
+## Layer ordering
+
+The audit layer records the call it wraps. Placing it outside `WithRetry` records one event per
+logical call; placing it inside records one event per retry attempt. Choose the position deliberately
+and keep it stable across services.
 
 ## File sink
 
@@ -135,9 +149,11 @@ var sink = new FileSecretAuditSink("/var/log/secrets-audit.jsonl", new FileSecre
 | Option | Type | Required | Default | Description |
 |---|---|---|---|---|
 | `FlushEachWrite` | `bool` | No | `true` | Force each record to durable storage. An unflushed audit record is not an audit record |
-| `MaxFileSizeBytes` | `long?` | No | `null` | Rotate to `<path>.<UTC timestamp>` when the file reaches this size. Rotated files are never overwritten or deleted |
+| `MaxFileSizeBytes` | `long?` | No | `null` | Rotate to `<name>.<UTC timestamp><extension>` when the file reaches this size, for example `audit.20261021T1200000000000.jsonl`. Rotated files are never overwritten or deleted |
 
-The parent directory is created when it does not exist.
+The parent directory is created when it does not exist. On Unix, a newly created sink file is opened
+with `0600` permissions. Rotation keeps the extension, so `*.jsonl` globs still find rotated files.
+Retention is the host's responsibility: rotated files are never deleted.
 
 ## PostgreSQL sink
 
@@ -154,7 +170,6 @@ var provider = new SecretProviderBuilder()
         options.ConnectionString = "Host=localhost;Database=secrets;Username=app;Password=secret";
         options.Schema = "public";
         options.TableName = "sm_secret_audit_log";
-        options.AutoCreateSchema = true;
     })
     .Build();
 ```
@@ -167,7 +182,8 @@ var provider = new SecretProviderBuilder()
 | `AutoCreateSchema` | `bool` | No | `false` | Create the table and timestamp index on first write. Requires `CREATE` on the schema |
 
 `Schema` and `TableName` must be letters, digits, or underscores and start with a letter or
-underscore. `TableName` is capped at 63 characters.
+underscore. `TableName` is capped at 48 characters so the generated
+`<table>_timestamp_idx` index name fits PostgreSQL's 63-character identifier limit.
 
 With `AutoCreateSchema = false`, create the table from a migration role:
 
@@ -192,10 +208,11 @@ CREATE INDEX sm_secret_audit_log_timestamp_idx
     ON public.sm_secret_audit_log ("timestamp");
 
 GRANT SELECT, INSERT ON public.sm_secret_audit_log TO secrets_app;
-GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO secrets_app;
+GRANT USAGE ON SEQUENCE public.sm_secret_audit_log_id_seq TO secrets_app;
 ```
 
-The sink stores `Outcome` as text (`Success`, `Failure`, `Denied`) and `Duration` as milliseconds.
+The sink stores `Outcome` as text (`Success`, `Failure`, `Cancelled`, `Denied`) and `Duration` as
+milliseconds.
 It uses the same Npgsql connection string conventions as the PostgreSQL provider; add
 `SSL Mode=VerifyFull` when the database is not a trusted local socket.
 
@@ -222,7 +239,6 @@ var provider = new SecretProviderBuilder()
     .WithPostgreSqlAuditSink(options =>
     {
         options.ConnectionString = configuration.GetConnectionString("Audit")!;
-        options.AutoCreateSchema = true;
     })
     .Build();
 ```

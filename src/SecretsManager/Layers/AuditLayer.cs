@@ -37,26 +37,32 @@ public sealed class AuditLayer : ISecretProviderLayer, IProviderNameAwareLayer
             throw new ArgumentException(
                 $"Invalid {nameof(AuditLayerOptions)}: {string.Join("; ", errors)}");
 
-        var sinks = _options.Sinks.ToArray();
-        return new AuditSecretProvider(inner, _options, sinks);
+        // Snapshot the policy: mutating the options after Build() must not change a built provider.
+        return new AuditSecretProvider(
+            inner,
+            _options.ProviderName!,
+            _options.Scope,
+            _options.OnSinkFailure,
+            _options.OnSinkError,
+            _options.ActorAccessor ?? AmbientSecretActorAccessor.Instance,
+            _options.Sinks.ToArray());
     }
 
-    /// <inheritdoc />
-    public void SetProviderName(string providerName)
+    void IProviderNameAwareLayer.SetProviderName(string providerName)
     {
         _options.ProviderName = providerName;
     }
 
     private sealed class AuditSecretProvider(
         ISecretProvider inner,
-        AuditLayerOptions options,
+        string providerName,
+        SecretAuditScope scope,
+        AuditFailureMode onSinkFailure,
+        Action<Exception>? onSinkError,
+        ISecretActorAccessor actorAccessor,
         IReadOnlyList<ISecretAuditSink> sinks) : ISecretProvider
     {
         private readonly ISecretProvider _inner = inner;
-        private readonly AuditLayerOptions _options = options;
-        private readonly IReadOnlyList<ISecretAuditSink> _sinks = sinks;
-        private readonly ISecretActorAccessor _actorAccessor =
-            options.ActorAccessor ?? AmbientSecretActorAccessor.Instance;
 
         public Task<SecretValue> GetSecretAsync(
             string key,
@@ -165,7 +171,9 @@ public sealed class AuditLayer : ISecretProviderLayer, IProviderNameAwareLayer
                     CreateEvent(
                         operation,
                         key,
-                        SecretAuditOutcome.Failure,
+                        ex is OperationCanceledException
+                            ? SecretAuditOutcome.Cancelled
+                            : SecretAuditOutcome.Failure,
                         context,
                         started,
                         null,
@@ -189,14 +197,14 @@ public sealed class AuditLayer : ISecretProviderLayer, IProviderNameAwareLayer
             return result;
         }
 
-        private bool ShouldAudit(SecretAuditScope scope) => (_options.Scope & scope) == scope;
+        private bool ShouldAudit(SecretAuditScope operationScope) => (scope & operationScope) == operationScope;
 
         private AuditContext CaptureContext()
         {
             var activity = Activity.Current;
             return new AuditContext(
                 DateTimeOffset.UtcNow,
-                _actorAccessor.Current,
+                actorAccessor.Current,
                 activity?.TraceId.ToString(),
                 activity?.GetBaggageItem("correlation.id")
                     ?? activity?.GetBaggageItem("correlation-id"));
@@ -214,7 +222,7 @@ public sealed class AuditLayer : ISecretProviderLayer, IProviderNameAwareLayer
             return new SecretAuditEvent
             {
                 Operation = operation,
-                Provider = _options.ProviderName!,
+                Provider = providerName,
                 Key = key,
                 Version = version,
                 Outcome = outcome,
@@ -230,25 +238,38 @@ public sealed class AuditLayer : ISecretProviderLayer, IProviderNameAwareLayer
 
         private async ValueTask EmitAsync(SecretAuditEvent auditEvent, bool forceIgnoreFailures)
         {
-            foreach (var sink in _sinks)
+            Exception? firstFailure = null;
+
+            foreach (var sink in sinks)
             {
                 try
                 {
                     // Deliberately not the caller's token: an audit record must survive cancellation.
                     await sink.WriteAsync(auditEvent, CancellationToken.None).ConfigureAwait(false);
                 }
-                catch (Exception ex) when (
-                    forceIgnoreFailures || _options.OnSinkFailure == AuditFailureMode.Ignore)
+                catch (Exception ex)
                 {
-                    try
-                    {
-                        _options.OnSinkError?.Invoke(ex);
-                    }
-                    catch
-                    {
-                        // The error callback must never affect the secret operation.
-                    }
+                    firstFailure ??= ex;
+
+                    // Throw mode still delivers the record to every sink before it rethrows.
+                    if (forceIgnoreFailures || onSinkFailure == AuditFailureMode.Ignore)
+                        NotifySinkError(ex);
                 }
+            }
+
+            if (!forceIgnoreFailures && onSinkFailure == AuditFailureMode.Throw && firstFailure is not null)
+                throw firstFailure;
+        }
+
+        private void NotifySinkError(Exception exception)
+        {
+            try
+            {
+                onSinkError?.Invoke(exception);
+            }
+            catch
+            {
+                // The error callback must never affect the secret operation.
             }
         }
 

@@ -13,8 +13,9 @@ public sealed class FileSecretAuditSinkOptions
     public bool FlushEachWrite { get; set; } = true;
 
     /// <summary>
-    /// Optional maximum file size in bytes before the file is rotated to <c>&lt;path&gt;.&lt;UTC timestamp&gt;</c>. Rotated files are never
-    /// overwritten or deleted.
+    /// Optional maximum file size in bytes before the file is rotated to
+    /// <c>&lt;name&gt;.&lt;UTC timestamp&gt;&lt;extension&gt;</c>. Rotated files are never overwritten
+    /// or deleted.
     /// </summary>
     public long? MaxFileSizeBytes { get; set; }
 }

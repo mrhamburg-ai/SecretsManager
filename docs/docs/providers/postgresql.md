@@ -196,7 +196,6 @@ var provider = new SecretProviderBuilder()
         options.ConnectionString = "Host=localhost;Database=secrets;Username=audit_app;Password=secret";
         options.Schema = "public";
         options.TableName = "sm_secret_audit_log";
-        options.AutoCreateSchema = true;
     })
     .Build();
 ```
@@ -205,8 +204,8 @@ var provider = new SecretProviderBuilder()
 |--------|------|----------|---------|-------------|
 | `ConnectionString` | `string` | Yes | `""` | PostgreSQL connection string |
 | `Schema` | `string` | No | `"public"` | Schema for the audit table |
-| `TableName` | `string` | No | `"sm_secret_audit_log"` | Audit table name |
-| `AutoCreateSchema` | `bool` | No | `false` | Create the table and timestamp index on first write |
+| `TableName` | `string` | No | `"sm_secret_audit_log"` | Audit table name (48 characters or fewer, so the generated index name fits) |
+| `AutoCreateSchema` | `bool` | No | `false` | Create the table and timestamp index on first write. Requires `CREATE` on the schema |
 
 The sink writes one row per audited operation. It stores the operation, provider, key, version,
 outcome, timestamp, duration, actor, correlation id, trace id, and failure type. It never stores a
