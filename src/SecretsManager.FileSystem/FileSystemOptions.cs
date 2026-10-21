@@ -36,12 +36,6 @@ public sealed class FileSystemOptions
     public IEncryptionKeyProvider? EncryptionKeyProvider { get; set; }
 
     /// <summary>
-    /// Base64-encoded key used only to <em>decrypt</em> values written before key ids were recorded.
-    /// Set this when migrating an existing store to <see cref="EncryptionKeyProvider"/>.
-    /// </summary>
-    public string? LegacyEncryptionKey { get; set; }
-
-    /// <summary>
     /// Validates the options and returns error messages.
     /// </summary>
     /// <returns>Validation error messages. An empty collection indicates the options are valid.</returns>
@@ -60,8 +54,5 @@ public sealed class FileSystemOptions
         };
         if (writeSources.Count(x => x) > 1)
             yield return "EncryptionKey, EncryptionKeyFile and EncryptionKeyProvider are mutually exclusive";
-
-        if (LegacyEncryptionKey is not null && EncryptionKeyProvider is null)
-            yield return "LegacyEncryptionKey is only meaningful alongside EncryptionKeyProvider";
     }
 }

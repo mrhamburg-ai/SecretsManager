@@ -194,40 +194,6 @@ public sealed class FileSystemKeyProviderTests : IAsyncLifetime
             () => ((FileSystemSecretProvider)provider).WarmUpAsync().AsTask());
     }
 
-    // --- migration: values written before key ids existed ---
-
-    [Fact]
-    public async Task LegacyKey_DecryptsEnvelopesWithNoKeyId()
-    {
-        var legacy = RandomNumberGenerator.GetBytes(32);
-
-        // Write with a plain static key, producing an envelope with no keyId.
-        await using (var legacyProvider = new SecretProviderBuilder()
-            .WithFileSystem(o => { o.BasePath = _tempDir; o.EncryptionKey = Convert.ToBase64String(legacy); })
-            .Build())
-        {
-            await legacyProvider.PutSecretAsync("old", "legacy-value");
-        }
-
-        Assert.DoesNotContain("\"keyId\"", RawEnvelope("old"));
-
-        // Read it back with a key provider plus the legacy key as a decrypt-only fallback.
-        await using var migrated = new SecretProviderBuilder()
-            .WithFileSystem(o =>
-            {
-                o.BasePath = _tempDir;
-                o.EncryptionKeyProvider = new StaticKeySource(_key);
-                o.LegacyEncryptionKey = Convert.ToBase64String(legacy);
-            })
-            .Build();
-
-        Assert.Equal("legacy-value", (await migrated.GetSecretAsync("old")).Value);
-
-        // New writes use the key provider and record its key id.
-        await migrated.PutSecretAsync("new", "new-value");
-        Assert.Contains("\"keyId\": \"test@1\"", RawEnvelope("new"));
-    }
-
     [Fact]
     public async Task EnvelopeWithKeyIdButNoProvider_Throws()
     {
@@ -422,18 +388,6 @@ public sealed class FileSystemOptionsKeyValidationTests
     }
 
     [Fact]
-    public void Validate_AcceptsLegacyKeyWithKeyProvider()
-    {
-        var options = Options(o =>
-        {
-            o.EncryptionKeyProvider = new StaticKeySource(new byte[32]);
-            o.LegacyEncryptionKey = Convert.ToBase64String(new byte[32]);
-        });
-
-        Assert.Empty(options.Validate());
-    }
-
-    [Fact]
     public void Validate_RejectsKeyProviderWithStaticKey()
     {
         var options = Options(o =>
@@ -443,13 +397,5 @@ public sealed class FileSystemOptionsKeyValidationTests
         });
 
         Assert.Contains("mutually exclusive", Assert.Single(options.Validate()));
-    }
-
-    [Fact]
-    public void Validate_RejectsLegacyKeyWithoutKeyProvider()
-    {
-        var options = Options(o => o.LegacyEncryptionKey = Convert.ToBase64String(new byte[32]));
-
-        Assert.Contains("only meaningful alongside", Assert.Single(options.Validate()));
     }
 }

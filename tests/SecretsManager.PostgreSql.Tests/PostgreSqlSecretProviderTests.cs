@@ -15,11 +15,11 @@ public sealed class PostgreSqlSecretProviderTests
 
     /// <summary>A provider with no encryption key configured.</summary>
     private PostgreSqlSecretProvider CreateProvider() =>
-        new(_mockStore, new EncryptionKeyResolver(null, null, null, null));
+        new(_mockStore, new EncryptionKeyResolver(null, null, null));
 
     /// <summary>A provider with a real 32-byte AES-256 key, so the crypto path is exercised for real.</summary>
     private PostgreSqlSecretProvider CreateProviderWithKey() =>
-        new(_mockStore, new EncryptionKeyResolver(Convert.ToBase64String(_key), null, null, null));
+        new(_mockStore, new EncryptionKeyResolver(Convert.ToBase64String(_key), null, null));
 
     /// <summary>Builds the stored JSON for an encrypted row, using the same format the provider writes.</summary>
     private string EncryptedPayloadFor(string plaintext, string secretKey = "my-secret")

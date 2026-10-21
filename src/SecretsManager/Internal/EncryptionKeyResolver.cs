@@ -65,7 +65,6 @@ public sealed class EncryptionKeyResolver : IAsyncDisposable
     private readonly string? _base64Key;
     private readonly string? _keyFilePath;
     private readonly IEncryptionKeyProvider? _provider;
-    private readonly string? _legacyBase64Key;
 
     private readonly SemaphoreSlim _lock = new(1, 1);
 
@@ -83,17 +82,14 @@ public sealed class EncryptionKeyResolver : IAsyncDisposable
     /// <param name="base64Key">Base64-encoded key, or null.</param>
     /// <param name="keyFilePath">Path to a key file, or null.</param>
     /// <param name="provider">External key source, or null.</param>
-    /// <param name="legacyBase64Key">Key used only to decrypt values written before key ids existed, or null.</param>
     public EncryptionKeyResolver(
         string? base64Key,
         string? keyFilePath,
-        IEncryptionKeyProvider? provider,
-        string? legacyBase64Key)
+        IEncryptionKeyProvider? provider)
     {
         _base64Key = base64Key;
         _keyFilePath = keyFilePath;
         _provider = provider;
-        _legacyBase64Key = legacyBase64Key;
     }
 
     /// <summary>
@@ -157,8 +153,7 @@ public sealed class EncryptionKeyResolver : IAsyncDisposable
 
     /// <summary>
     /// Resolves the encryptor that produced a given key id, for reading existing ciphertext.
-    /// A null key id means the value predates key ids: it is read with
-    /// <c>LegacyEncryptionKey</c> when set, otherwise with the static key.
+    /// A null key id means the value was written with the static key or key file.
     /// </summary>
     /// <param name="keyId">The key id recorded alongside the ciphertext, or null.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
@@ -169,16 +164,12 @@ public sealed class EncryptionKeyResolver : IAsyncDisposable
     {
         if (keyId is null)
         {
-            var legacy = _legacyBase64Key ?? _base64Key;
-            if (legacy is not null)
-                return GetOrCreateEncryptor(string.Empty, Convert.FromBase64String(legacy)).Encryptor;
-
-            if (_keyFilePath is not null)
+            if (_base64Key is not null || _keyFilePath is not null)
                 return GetOrCreateEncryptor(string.Empty, ReadStaticKey()).Encryptor;
 
             throw new SecretProviderException(
-                "This value was written without a key id and no LegacyEncryptionKey is configured, " +
-                "so the key that encrypted it cannot be resolved.");
+                "This value was written without a key id, but no static encryption key is configured " +
+                "to decrypt it.");
         }
 
         if (_provider is null)

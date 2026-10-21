@@ -37,9 +37,8 @@ dotnet add package SecretsManager.FileSystem
 | `EncryptionKey` | `string?` | No | `null` | Base64-encoded AES-256 key (32 bytes). When set, secrets are encrypted at rest |
 | `EncryptionKeyFile` | `string?` | No | `null` | Path to a file containing the raw or base64-encoded AES-256 key |
 | `EncryptionKeyProvider` | `IEncryptionKeyProvider?` | No | `null` | Supplies the encryption key from an external source, for example another secret provider. Fluent API only — it is an object, so it cannot come from appsettings.json, YAML, or an environment variable |
-| `LegacyEncryptionKey` | `string?` | No | `null` | Base64-encoded key used only to *decrypt* values written before key ids were recorded. Set this when migrating an existing store to `EncryptionKeyProvider` |
 
-`FileSystemOptions.Validate()` requires `BasePath`. `EncryptionKey`, `EncryptionKeyFile` and `EncryptionKeyProvider` are **mutually exclusive** — setting more than one is a validation error. `LegacyEncryptionKey` is only meaningful alongside `EncryptionKeyProvider`. With no key source set at all, secrets are stored in plaintext (development only).
+`FileSystemOptions.Validate()` requires `BasePath`. `EncryptionKey`, `EncryptionKeyFile` and `EncryptionKeyProvider` are **mutually exclusive** — setting more than one is a validation error. With no key source set at all, secrets are stored in plaintext (development only).
 
 Secret keys are validated before any filesystem access: an empty key, or a key of `.` or `..`, is rejected with `ArgumentException`. Version identifiers must match `v<number>` (for example `v1`); anything else — including `current`, a path separator, or an absolute path — is rejected the same way. Both checks exist because a key or version previously reached the filesystem unchecked, letting `../other-secret/v1` read a different secret and `.` resolve to the store root.
 
@@ -123,23 +122,6 @@ The key id is **derived from the version the source reports** (`{key}@{version}`
 :::tip
 Call `WarmUpAsync()` to resolve the key (and, for PostgreSQL, ensure the schema) at startup rather than on the first read or write. Without it, a misconfigured key source surfaces only when the first secret is accessed.
 :::
-
-### Migrating an Existing Store
-
-Every envelope written before this feature has no key id. When you set `EncryptionKeyProvider`, also set `LegacyEncryptionKey` to the key the existing values were written with:
-
-```csharp
-await using var provider = new SecretProviderBuilder()
-    .WithFileSystem(options =>
-    {
-        options.BasePath = "/var/secrets";
-        options.EncryptionKeyProvider = new SecretProviderKeySource(keyProvider, "sm/data-key");
-        options.LegacyEncryptionKey = previousBase64Key;
-    })
-    .Build();
-```
-
-Values without a key id decrypt with `LegacyEncryptionKey`; new writes record the key id from the provider and need it no longer. Re-encrypting the old values is optional cleanup, not a precondition.
 
 ### YAML Configuration
 

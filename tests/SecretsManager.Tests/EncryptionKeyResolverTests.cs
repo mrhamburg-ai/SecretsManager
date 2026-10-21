@@ -32,7 +32,7 @@ public sealed class EncryptionKeyResolverTests
     [Fact]
     public async Task NoKeyConfigured_IsDisabled()
     {
-        await using var resolver = new EncryptionKeyResolver(null, null, null, null);
+        await using var resolver = new EncryptionKeyResolver(null, null, null);
 
         Assert.False(resolver.IsEnabled);
     }
@@ -40,7 +40,7 @@ public sealed class EncryptionKeyResolverTests
     [Fact]
     public async Task NoKeyConfigured_ReturnsNullEncryptor()
     {
-        await using var resolver = new EncryptionKeyResolver(null, null, null, null);
+        await using var resolver = new EncryptionKeyResolver(null, null, null);
 
         var (encryptor, keyId) = await resolver.GetCurrentAsync();
 
@@ -51,7 +51,7 @@ public sealed class EncryptionKeyResolverTests
     [Fact]
     public async Task StaticKey_IsEnabledAndHasNoKeyId()
     {
-        await using var resolver = new EncryptionKeyResolver(KeyBase64, null, null, null);
+        await using var resolver = new EncryptionKeyResolver(KeyBase64, null, null);
 
         Assert.True(resolver.IsEnabled);
 
@@ -69,7 +69,7 @@ public sealed class EncryptionKeyResolverTests
 
         try
         {
-            await using var resolver = new EncryptionKeyResolver(null, path, null, null);
+            await using var resolver = new EncryptionKeyResolver(null, path, null);
             var (encryptor, _) = await resolver.GetCurrentAsync();
 
             Assert.IsType<AesGcmEncryptor>(encryptor);
@@ -83,7 +83,7 @@ public sealed class EncryptionKeyResolverTests
     [Fact]
     public async Task KeyProvider_IsEnabledAndReturnsItsKeyId()
     {
-        await using var resolver = new EncryptionKeyResolver(null, null, new CountingSource(Key), null);
+        await using var resolver = new EncryptionKeyResolver(null, null, new CountingSource(Key));
 
         var (encryptor, keyId) = await resolver.GetCurrentAsync();
 
@@ -95,7 +95,7 @@ public sealed class EncryptionKeyResolverTests
     public async Task KeyProvider_IsFetchedOnceAndCached()
     {
         var source = new CountingSource(Key);
-        await using var resolver = new EncryptionKeyResolver(null, null, source, null);
+        await using var resolver = new EncryptionKeyResolver(null, null, source);
 
         await resolver.GetCurrentAsync();
         await resolver.GetCurrentAsync();
@@ -108,7 +108,7 @@ public sealed class EncryptionKeyResolverTests
     public async Task InvalidateKey_ForcesRefetch()
     {
         var source = new CountingSource(Key);
-        await using var resolver = new EncryptionKeyResolver(null, null, source, null);
+        await using var resolver = new EncryptionKeyResolver(null, null, source);
 
         await resolver.GetCurrentAsync();
         resolver.InvalidateKey();
@@ -121,7 +121,7 @@ public sealed class EncryptionKeyResolverTests
     public async Task InvalidateKey_KeepsHistoricalKeys()
     {
         var source = new CountingSource(Key);
-        await using var resolver = new EncryptionKeyResolver(null, null, source, null);
+        await using var resolver = new EncryptionKeyResolver(null, null, source);
 
         await resolver.GetCurrentAsync();
         await resolver.GetByKeyIdAsync("k@1");
@@ -137,7 +137,7 @@ public sealed class EncryptionKeyResolverTests
     public async Task FailedFirstFetch_IsRetried()
     {
         var source = new FailingThenSucceedingSource(Key);
-        await using var resolver = new EncryptionKeyResolver(null, null, source, null);
+        await using var resolver = new EncryptionKeyResolver(null, null, source);
 
         await Assert.ThrowsAsync<SecretProviderException>(() => resolver.GetCurrentAsync().AsTask());
         var (encryptor, _) = await resolver.GetCurrentAsync();
@@ -147,19 +147,9 @@ public sealed class EncryptionKeyResolverTests
     }
 
     [Fact]
-    public async Task GetByKeyId_NullKeyId_UsesLegacyKeyWhenSet()
-    {
-        await using var resolver = new EncryptionKeyResolver(null, null, null, KeyBase64);
-
-        var encryptor = await resolver.GetByKeyIdAsync(null);
-
-        Assert.IsType<AesGcmEncryptor>(encryptor);
-    }
-
-    [Fact]
     public async Task GetByKeyId_NullKeyId_FallsBackToStaticKey()
     {
-        await using var resolver = new EncryptionKeyResolver(KeyBase64, null, null, null);
+        await using var resolver = new EncryptionKeyResolver(KeyBase64, null, null);
 
         var encryptor = await resolver.GetByKeyIdAsync(null);
 
@@ -169,7 +159,7 @@ public sealed class EncryptionKeyResolverTests
     [Fact]
     public async Task GetByKeyId_NullKeyId_NoKeyAtAll_Throws()
     {
-        await using var resolver = new EncryptionKeyResolver(null, null, null, null);
+        await using var resolver = new EncryptionKeyResolver(null, null, null);
 
         await Assert.ThrowsAsync<SecretProviderException>(() => resolver.GetByKeyIdAsync(null).AsTask());
     }
@@ -177,7 +167,7 @@ public sealed class EncryptionKeyResolverTests
     [Fact]
     public async Task GetByKeyId_WithKeyIdButNoProvider_Throws()
     {
-        await using var resolver = new EncryptionKeyResolver(KeyBase64, null, null, null);
+        await using var resolver = new EncryptionKeyResolver(KeyBase64, null, null);
 
         var ex = await Assert.ThrowsAsync<SecretProviderException>(
             () => resolver.GetByKeyIdAsync("k@1").AsTask());
@@ -189,7 +179,7 @@ public sealed class EncryptionKeyResolverTests
     public async Task GetByKeyId_ResolvesThroughProvider()
     {
         var source = new CountingSource(Key);
-        await using var resolver = new EncryptionKeyResolver(null, null, source, null);
+        await using var resolver = new EncryptionKeyResolver(null, null, source);
 
         var encryptor = await resolver.GetByKeyIdAsync("k@1");
 
@@ -200,7 +190,7 @@ public sealed class EncryptionKeyResolverTests
     [Fact]
     public async Task ResolvedKeyOfWrongLength_Throws()
     {
-        await using var resolver = new EncryptionKeyResolver(Convert.ToBase64String(new byte[16]), null, null, null);
+        await using var resolver = new EncryptionKeyResolver(Convert.ToBase64String(new byte[16]), null, null);
 
         var ex = await Assert.ThrowsAsync<SecretProviderException>(() => resolver.GetCurrentAsync().AsTask());
 
@@ -210,7 +200,7 @@ public sealed class EncryptionKeyResolverTests
     [Fact]
     public async Task EncryptorRoundTrips()
     {
-        await using var resolver = new EncryptionKeyResolver(KeyBase64, null, null, null);
+        await using var resolver = new EncryptionKeyResolver(KeyBase64, null, null);
 
         var (encryptor, _) = await resolver.GetCurrentAsync();
         var payload = encryptor.Encrypt(Encoding.UTF8.GetBytes("hello"));
@@ -226,7 +216,7 @@ public sealed class EncryptionKeyResolverTests
         second[0] = 1;
 
         var source = new SwappingKeySource(first, second);
-        await using var resolver = new EncryptionKeyResolver(null, null, source, null);
+        await using var resolver = new EncryptionKeyResolver(null, null, source);
 
         // First write resolves the key id and caches it.
         var (encryptor, keyId) = await resolver.GetCurrentAsync();
@@ -269,7 +259,7 @@ public sealed class EncryptionKeyResolverTests
     public async Task GetByKeyId_ConcurrentReads_DoNotThrow()
     {
         var source = new RotatingSource();
-        await using var resolver = new EncryptionKeyResolver(null, null, source, null);
+        await using var resolver = new EncryptionKeyResolver(null, null, source);
 
         var tasks = Enumerable.Range(0, 32)
             .Select(_ => Task.Run(async () =>
@@ -286,7 +276,7 @@ public sealed class EncryptionKeyResolverTests
     public async Task DisposeAsync_IsIdempotent()
     {
         await using var resolver = new EncryptionKeyResolver(
-            Convert.ToBase64String(Key), null, null, null);
+            Convert.ToBase64String(Key), null, null);
 
         await resolver.DisposeAsync();
         await resolver.DisposeAsync();
@@ -296,7 +286,7 @@ public sealed class EncryptionKeyResolverTests
     public async Task Dispose_DoesNotThrow_WhenAFetchIsInFlight()
     {
         var gate = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        await using var resolver = new EncryptionKeyResolver(null, null, new GatedSource(gate.Task), null);
+        await using var resolver = new EncryptionKeyResolver(null, null, new GatedSource(gate.Task));
 
         var fetch = resolver.GetCurrentAsync();
         await Task.Delay(100);
@@ -311,7 +301,7 @@ public sealed class EncryptionKeyResolverTests
     public async Task InvalidateKey_DuringConcurrentPuts_DoesNotThrow()
     {
         var source = new CountingSource(Key);
-        await using var resolver = new EncryptionKeyResolver(null, null, source, null);
+        await using var resolver = new EncryptionKeyResolver(null, null, source);
 
         var puts = Enumerable.Range(0, 16)
             .Select(_ => Task.Run(async () =>

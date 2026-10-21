@@ -57,12 +57,6 @@ public sealed class PostgreSqlOptions
     public IEncryptionKeyProvider? EncryptionKeyProvider { get; set; }
 
     /// <summary>
-    /// Base64-encoded key used only to <em>decrypt</em> values written before key ids were recorded.
-    /// Set this when migrating an existing database to <see cref="EncryptionKeyProvider"/>.
-    /// </summary>
-    public string? LegacyEncryptionKey { get; set; }
-
-    /// <summary>
     /// Validates the options and returns a collection of error messages.
     /// An empty collection indicates the options are valid.
     /// </summary>
@@ -95,9 +89,6 @@ public sealed class PostgreSqlOptions
         };
         if (writeSources.Count(x => x) > 1)
             yield return "EncryptionKey, EncryptionKeyFile and EncryptionKeyProvider are mutually exclusive";
-
-        if (LegacyEncryptionKey is not null && EncryptionKeyProvider is null)
-            yield return "LegacyEncryptionKey is only meaningful alongside EncryptionKeyProvider";
 
         if (TablePrefix.Length > MaxTablePrefixLength)
             yield return $"TablePrefix must be {MaxTablePrefixLength} characters or fewer";
