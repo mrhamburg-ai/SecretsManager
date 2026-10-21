@@ -257,6 +257,8 @@ Run tests with code coverage:
 dotnet test --collect:"XPlat Code Coverage"
 ```
 
+All assemblies are strong-named with the committed `SecretsManager.snk` key.
+
 ## Adding a New Provider
 
 1. Create `src/SecretsManager.<Name>/` with a project reference to the core `SecretsManager` library
