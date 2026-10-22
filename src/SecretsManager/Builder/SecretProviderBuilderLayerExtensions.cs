@@ -66,6 +66,28 @@ public static class SecretProviderBuilderLayerExtensions
     }
 
     /// <summary>
+    /// Adds a logging layer that writes to the given logger, for example the
+    /// <see cref="ISecretProviderLogger"/> resolved from dependency injection.
+    /// </summary>
+    /// <param name="builder">The builder to add the layer to.</param>
+    /// <param name="logger">The log sink.</param>
+    /// <param name="configure">Optional callback to adjust the other layer options.</param>
+    /// <returns>The same builder for chaining.</returns>
+    public static SecretProviderBuilder WithLogging(
+        this SecretProviderBuilder builder,
+        ISecretProviderLogger logger,
+        Action<LoggingLayerOptions>? configure = null)
+    {
+        ArgumentNullException.ThrowIfNull(logger);
+
+        var options = new LoggingLayerOptions { Logger = logger };
+        configure?.Invoke(options);
+
+        builder.AddLayer(new LoggingLayer(options));
+        return builder;
+    }
+
+    /// <summary>
     /// Adds OpenTelemetry metrics layer.
     /// </summary>
     public static SecretProviderBuilder WithOtelMetrics(

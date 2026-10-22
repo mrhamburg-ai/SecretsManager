@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using SecretsManager.Builder;
 
 namespace SecretsManager;
@@ -13,7 +14,9 @@ public static class SecretsManagerServiceCollectionExtensions
     /// <summary>
     /// Registers <see cref="SecretProviderBuilder"/> as a transient service so it can be injected
     /// and configured with the fluent API or the <c>With*</c> extension methods. Also registers
-    /// <see cref="AmbientSecretActorAccessor.Instance"/> as the default <see cref="ISecretActorAccessor"/>.
+    /// <see cref="AmbientSecretActorAccessor.Instance"/> as the default <see cref="ISecretActorAccessor"/>
+    /// and an <see cref="ISecretProviderLogger"/> backed by the application's <see cref="ILoggerFactory"/>
+    /// (a no-op logger when none is registered).
     /// </summary>
     /// <param name="services">The service collection to add to.</param>
     /// <returns>The same <see cref="IServiceCollection"/> for chaining.</returns>
@@ -21,6 +24,7 @@ public static class SecretsManagerServiceCollectionExtensions
     {
         services.AddTransient<SecretProviderBuilder>();
         services.TryAddSingleton<ISecretActorAccessor>(AmbientSecretActorAccessor.Instance);
+        AddSecretProviderLogger(services);
         return services;
     }
 
@@ -39,8 +43,20 @@ public static class SecretsManagerServiceCollectionExtensions
     {
         services.AddTransient<SecretProviderBuilder>();
         services.TryAddSingleton<ISecretActorAccessor>(AmbientSecretActorAccessor.Instance);
+        AddSecretProviderLogger(services);
         services.Configure<SecretsManagerOptions>(configuration.GetSection("SecretsManager"));
         return services;
+    }
+    private static void AddSecretProviderLogger(IServiceCollection services)
+    {
+        // TryAdd: an application-supplied ISecretProviderLogger always wins.
+        services.TryAddSingleton<ISecretProviderLogger>(serviceProvider =>
+        {
+            var factory = serviceProvider.GetService<ILoggerFactory>();
+            return factory is null
+                ? new NullSecretProviderLogger()
+                : new LoggerSecretProviderLogger(factory.CreateLogger("SecretsManager"));
+        });
     }
 }
 
