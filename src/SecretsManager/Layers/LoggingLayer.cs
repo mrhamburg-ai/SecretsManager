@@ -45,6 +45,8 @@ public sealed class LoggingLayer : ISecretProviderLayer, IProviderNameAwareLayer
         _options.ProviderName = providerName;
     }
 
+    internal LoggingLayerOptions Options => _options;
+
     private sealed class LoggingSecretProvider(ISecretProvider inner, LoggingLayerOptions options) : ISecretProvider
     {
         private readonly ISecretProvider _inner = inner;

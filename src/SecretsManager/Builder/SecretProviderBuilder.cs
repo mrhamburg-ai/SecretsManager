@@ -108,6 +108,17 @@ public sealed class SecretProviderBuilder
 
         var provider = factory.Create(_configuration.Settings);
 
+        var logger = _layers
+            .OfType<LoggingLayer>()
+            .Select(layer => layer.Options.Logger)
+            .FirstOrDefault();
+
+        if (logger is not null)
+        {
+            foreach (var layer in _layers.OfType<ISecretProviderLoggerAwareLayer>())
+                layer.SetLogger(logger);
+        }
+
         for (var i = _layers.Count - 1; i >= 0; i--)
         {
             if (_layers[i] is IProviderNameAwareLayer aware)
