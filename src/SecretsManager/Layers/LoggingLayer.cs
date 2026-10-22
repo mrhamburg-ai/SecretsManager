@@ -10,7 +10,7 @@ namespace SecretsManager;
 /// <summary>
 /// Adds logging hooks around provider operations.
 /// </summary>
-public sealed class LoggingLayer : ISecretProviderLayer
+public sealed class LoggingLayer : ISecretProviderLayer, IProviderNameAwareLayer
 {
     private readonly LoggingLayerOptions _options;
 
@@ -38,6 +38,11 @@ public sealed class LoggingLayer : ISecretProviderLayer
     {
         ArgumentNullException.ThrowIfNull(inner);
         return new LoggingSecretProvider(inner, _options);
+    }
+
+    void IProviderNameAwareLayer.SetProviderName(string providerName)
+    {
+        _options.ProviderName = providerName;
     }
 
     private sealed class LoggingSecretProvider(ISecretProvider inner, LoggingLayerOptions options) : ISecretProvider

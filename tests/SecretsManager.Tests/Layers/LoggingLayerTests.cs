@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using SecretsManager.Builder;
 
 namespace SecretsManager.Tests;
 
@@ -208,5 +209,26 @@ public sealed class LoggingLayerTests
         await provider.GetSecretAsync("key");
 
         Assert.Empty(logger.Entries);
+    }
+
+    [Fact]
+    public async Task Builder_SetsProviderNameOnLoggingLayer()
+    {
+        var logger = new RecordingLogger();
+        var baseProvider = new DelegatingSecretProvider
+        {
+            GetSecretAsyncImpl = (key, _, _) =>
+                Task.FromResult(new SecretValue { Key = key, Value = "ok" })
+        };
+
+        var builder = new SecretProviderBuilder()
+            .RegisterProvider(new TestLayerProviderFactory(baseProvider))
+            .UseProvider("test")
+            .WithLogging(options => options.Logger = logger);
+
+        await using var provider = builder.Build();
+        await provider.GetSecretAsync("key");
+
+        Assert.All(logger.Entries, entry => Assert.Equal("test", entry.Context.Provider));
     }
 }
