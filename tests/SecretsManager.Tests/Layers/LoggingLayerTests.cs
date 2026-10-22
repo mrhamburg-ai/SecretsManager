@@ -92,36 +92,36 @@ public sealed class LoggingLayerTests
     [Fact]
     public async Task LoggingLayer_ThrowingIsEnabled_StillReturnsSecret()
     {
-        var provider = new LoggingLayer(new LoggingLayerOptions
-        {
-            Logger = new ThrowingSecretProviderLogger { ThrowOnIsEnabled = true }
-        }).Wrap(new DelegatingSecretProvider
-        {
-            GetSecretAsyncImpl = (key, _, _) =>
-                Task.FromResult(new SecretValue { Key = key, Value = "ok" })
-        });
+        var logger = new ThrowingSecretProviderLogger { ThrowOnIsEnabled = true };
+        var provider = new LoggingLayer(new LoggingLayerOptions { Logger = logger })
+            .Wrap(new DelegatingSecretProvider
+            {
+                GetSecretAsyncImpl = (key, _, _) =>
+                    Task.FromResult(new SecretValue { Key = key, Value = "ok" })
+            });
 
         var result = await provider.GetSecretAsync("key");
 
         Assert.Equal("ok", result.Value);
+        Assert.Empty(logger.Calls);
     }
 
     [Fact]
     public async Task LoggingLayer_ThrowingIsEnabled_PreservesOriginalException()
     {
-        var provider = new LoggingLayer(new LoggingLayerOptions
-        {
-            Logger = new ThrowingSecretProviderLogger { ThrowOnIsEnabled = true }
-        }).Wrap(new DelegatingSecretProvider
-        {
-            GetSecretAsyncImpl = (_, _, _) =>
-                Task.FromException<SecretValue>(new InvalidOperationException("backend failed"))
-        });
+        var logger = new ThrowingSecretProviderLogger { ThrowOnIsEnabled = true };
+        var provider = new LoggingLayer(new LoggingLayerOptions { Logger = logger })
+            .Wrap(new DelegatingSecretProvider
+            {
+                GetSecretAsyncImpl = (_, _, _) =>
+                    Task.FromException<SecretValue>(new InvalidOperationException("backend failed"))
+            });
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => provider.GetSecretAsync("key"));
 
         Assert.Equal("backend failed", ex.Message);
+        Assert.Empty(logger.Calls);
     }
 
     [Fact]
@@ -171,6 +171,9 @@ public sealed class LoggingLayerTests
     public async Task LoggingLayer_WhenDebugEnabled_EmitsStartAndSuccess()
     {
         var logger = new RecordingLogger();
+        logger.EnabledLevels.Clear();
+        logger.EnabledLevels.Add(SecretProviderLogLevel.Debug);
+
         var provider = new LoggingLayer(new LoggingLayerOptions { Logger = logger })
             .Wrap(new DelegatingSecretProvider
             {
@@ -185,5 +188,25 @@ public sealed class LoggingLayerTests
         Assert.Null(logger.Entries[0].Context.Outcome);
         Assert.Equal("success", logger.Entries[1].Type);
         Assert.Equal(SecretProviderLogOutcome.Success, logger.Entries[1].Context.Outcome);
+        Assert.Equal(logger.Entries[0].Context.Timestamp, logger.Entries[1].Context.Timestamp);
+    }
+
+    [Fact]
+    public async Task LoggingLayer_WhenOnlyWarningEnabled_EmitsNothing()
+    {
+        var logger = new RecordingLogger();
+        logger.EnabledLevels.Clear();
+        logger.EnabledLevels.Add(SecretProviderLogLevel.Warning);
+
+        var provider = new LoggingLayer(new LoggingLayerOptions { Logger = logger })
+            .Wrap(new DelegatingSecretProvider
+            {
+                GetSecretAsyncImpl = (key, _, _) =>
+                    Task.FromResult(new SecretValue { Key = key, Value = "ok" })
+            });
+
+        await provider.GetSecretAsync("key");
+
+        Assert.Empty(logger.Entries);
     }
 }
