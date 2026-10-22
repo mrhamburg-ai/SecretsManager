@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
 
     steps:
     - uses: actions/checkout@v7
@@ -90,7 +90,7 @@ jobs:
         retention-days: 7
 
   unit-tests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: build
 
     steps:
@@ -135,7 +135,7 @@ jobs:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   integration-tests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: build
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
