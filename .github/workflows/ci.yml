@@ -141,7 +141,7 @@ jobs:
   filesystem:
     name: Filesystem
     runs-on: ubuntu-26.04
-    needs: build
+    needs: unit-tests
     if: github.event_name != 'pull_request'
     steps:
     - uses: actions/checkout@v7
@@ -155,7 +155,7 @@ jobs:
   azure-keyvault:
     name: Azure Key Vault
     runs-on: ubuntu-26.04
-    needs: build
+    needs: unit-tests
     if: github.event_name != 'pull_request' && vars.HAS_AZURE_SECRETS == 'true'
     steps:
     - uses: actions/checkout@v7
@@ -174,7 +174,7 @@ jobs:
   scaleway:
     name: Scaleway
     runs-on: ubuntu-26.04
-    needs: build
+    needs: unit-tests
     if: github.event_name != 'pull_request' && vars.HAS_SCALEWAY_SECRETS == 'true'
     steps:
     - uses: actions/checkout@v7
@@ -194,7 +194,7 @@ jobs:
   postgresql:
     name: PostgreSQL
     runs-on: ubuntu-26.04
-    needs: build
+    needs: unit-tests
     if: github.event_name != 'pull_request'
     services:
       postgres:
@@ -231,7 +231,7 @@ jobs:
   ovh:
     name: OVH
     runs-on: ubuntu-26.04
-    needs: build
+    needs: unit-tests
     if: github.event_name != 'pull_request' && vars.HAS_OVH_SECRETS == 'true'
     steps:
     - uses: actions/checkout@v7
@@ -252,7 +252,7 @@ jobs:
   aws:
     name: AWS
     runs-on: ubuntu-26.04
-    needs: build
+    needs: unit-tests
     if: github.event_name != 'pull_request' && vars.HAS_AWS_SECRETS == 'true'
     steps:
     - uses: actions/checkout@v7
@@ -270,7 +270,7 @@ jobs:
   oracle-vault:
     name: Oracle Vault
     runs-on: ubuntu-26.04
-    needs: build
+    needs: unit-tests
     if: github.event_name != 'pull_request' && vars.HAS_ORACLE_VAULT_SECRETS == 'true'
     steps:
     - uses: actions/checkout@v7
@@ -291,7 +291,7 @@ jobs:
   google-secret-manager:
     name: Google Secret Manager
     runs-on: ubuntu-26.04
-    needs: build
+    needs: unit-tests
     if: github.event_name != 'pull_request' && vars.HAS_GCP_SECRETS == 'true'
     steps:
     - uses: actions/checkout@v7
@@ -308,7 +308,7 @@ jobs:
   passbolt:
     name: Passbolt
     runs-on: ubuntu-26.04
-    needs: build
+    needs: unit-tests
     if: false
     services:
       passbolt-db:
@@ -430,7 +430,7 @@ jobs:
   aliyun-kms:
     name: Aliyun KMS
     runs-on: ubuntu-26.04
-    needs: build
+    needs: unit-tests
     if: github.event_name != 'pull_request' && vars.HAS_ALIYUN_SECRETS == 'true'
     steps:
     - uses: actions/checkout@v7
@@ -448,7 +448,7 @@ jobs:
   ibm-cloud-secrets-manager:
     name: IBM Cloud Secrets Manager
     runs-on: ubuntu-26.04
-    needs: build
+    needs: unit-tests
     if: github.event_name != 'pull_request' && vars.HAS_IBM_CLOUD_SECRETS == 'true'
     steps:
     - uses: actions/checkout@v7
@@ -464,7 +464,7 @@ jobs:
   tencent-cloud:
     name: Tencent Cloud
     runs-on: ubuntu-26.04
-    needs: build
+    needs: unit-tests
     if: github.event_name != 'pull_request' && vars.HAS_TENCENT_CLOUD_SECRETS == 'true'
     steps:
     - uses: actions/checkout@v7
@@ -481,7 +481,7 @@ jobs:
   vault:
     name: HashiCorp Vault
     runs-on: ubuntu-26.04
-    needs: build
+    needs: unit-tests
     if: github.event_name != 'pull_request'
     services:
       vault:
@@ -517,7 +517,7 @@ jobs:
   conjur:
     name: CyberArk Conjur
     runs-on: ubuntu-26.04
-    needs: build
+    needs: unit-tests
     if: github.event_name != 'pull_request'
     services:
       postgres:
