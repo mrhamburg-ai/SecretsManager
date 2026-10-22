@@ -70,7 +70,7 @@ public sealed class AwsSecretsManagerSecretProvider : ISecretProvider
         }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
-            throw SecretProviderException.Wrap(
+            throw new SecretProviderException(
                 $"AWS Secrets Manager error for secret '{key}': {ex.Message}", ex);
         }
     }
@@ -104,7 +104,7 @@ public sealed class AwsSecretsManagerSecretProvider : ISecretProvider
         }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
-            throw SecretProviderException.Wrap(
+            throw new SecretProviderException(
                 $"AWS Secrets Manager error putting secret '{key}': {ex.Message}", ex);
         }
     }
@@ -128,7 +128,7 @@ public sealed class AwsSecretsManagerSecretProvider : ISecretProvider
         }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
-            throw SecretProviderException.Wrap(
+            throw new SecretProviderException(
                 $"AWS Secrets Manager error deleting secret '{key}': {ex.Message}", ex);
         }
     }
@@ -165,7 +165,7 @@ public sealed class AwsSecretsManagerSecretProvider : ISecretProvider
         }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
-            throw SecretProviderException.Wrap(
+            throw new SecretProviderException(
                 $"AWS Secrets Manager error listing versions for '{key}': {ex.Message}", ex);
         }
     }
@@ -185,7 +185,7 @@ public sealed class AwsSecretsManagerSecretProvider : ISecretProvider
         }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
-            throw SecretProviderException.Wrap(
+            throw new SecretProviderException(
                 $"AWS Secrets Manager error checking existence of '{key}': {ex.Message}", ex);
         }
     }

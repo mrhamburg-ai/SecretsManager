@@ -67,7 +67,7 @@ public sealed class VaultSecretProvider : ISecretProvider
         }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
-            throw SecretProviderException.Wrap(
+            throw new SecretProviderException(
                 $"Vault error for secret '{key}': {ex.Message}", ex);
         }
     }
@@ -100,7 +100,7 @@ public sealed class VaultSecretProvider : ISecretProvider
         }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
-            throw SecretProviderException.Wrap(
+            throw new SecretProviderException(
                 $"Vault error putting secret '{key}': {ex.Message}", ex);
         }
     }
@@ -119,7 +119,7 @@ public sealed class VaultSecretProvider : ISecretProvider
         }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
-            throw SecretProviderException.Wrap(
+            throw new SecretProviderException(
                 $"Vault error deleting secret '{key}': {ex.Message}", ex);
         }
     }
@@ -151,7 +151,7 @@ public sealed class VaultSecretProvider : ISecretProvider
         }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
-            throw SecretProviderException.Wrap(
+            throw new SecretProviderException(
                 $"Vault error listing versions for '{key}': {ex.Message}", ex);
         }
     }
@@ -171,7 +171,7 @@ public sealed class VaultSecretProvider : ISecretProvider
         }
         catch (Exception ex)
         {
-            throw SecretProviderException.Wrap(
+            throw new SecretProviderException(
                 $"Vault error checking existence of '{key}': {ex.Message}", ex);
         }
     }

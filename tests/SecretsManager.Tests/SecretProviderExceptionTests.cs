@@ -3,35 +3,34 @@ namespace SecretsManager.Tests;
 public class SecretProviderExceptionTests
 {
     [Fact]
-    public void Wrap_RethrowsCancellation()
+    public void Constructor_RethrowsCancellation()
     {
         var cancellation = new OperationCanceledException("cancelled");
 
         var thrown = Assert.Throws<OperationCanceledException>(
-            (Action)(() => { throw SecretProviderException.Wrap("provider failed", cancellation); }));
+            (Action)(() => _ = new SecretProviderException("provider failed", cancellation)));
 
         Assert.Same(cancellation, thrown);
     }
 
     [Fact]
-    public void Wrap_RethrowsCancellationFromAggregate()
+    public void Constructor_RethrowsCancellationFromAggregate()
     {
         var cancellation = new OperationCanceledException("cancelled");
         var aggregate = new AggregateException(new InvalidOperationException(), cancellation);
 
         var thrown = Assert.Throws<OperationCanceledException>(
-            (Action)(() => { throw SecretProviderException.Wrap("provider failed", aggregate); }));
+            (Action)(() => _ = new SecretProviderException("provider failed", aggregate)));
 
         Assert.Same(cancellation, thrown);
     }
 
     [Fact]
-    public void Wrap_WrapsNonCancellationFailure()
+    public void Constructor_WrapsNonCancellationFailure()
     {
         var failure = new InvalidOperationException("backend failed");
 
-        var wrapped = Assert.IsType<SecretProviderException>(
-            SecretProviderException.Wrap("provider failed", failure));
+        var wrapped = new SecretProviderException("provider failed", failure);
 
         Assert.Equal("provider failed", wrapped.Message);
         Assert.Same(failure, wrapped.InnerException);

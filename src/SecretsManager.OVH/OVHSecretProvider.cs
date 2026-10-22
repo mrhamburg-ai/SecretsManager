@@ -72,7 +72,7 @@ public sealed class OVHSecretProvider : ISecretProvider
         }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
-            throw SecretProviderException.Wrap(
+            throw new SecretProviderException(
                 $"OVH error for secret '{key}': {ex.Message}", ex);
         }
     }
@@ -123,7 +123,7 @@ public sealed class OVHSecretProvider : ISecretProvider
         }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
-            throw SecretProviderException.Wrap(
+            throw new SecretProviderException(
                 $"OVH error putting secret '{key}': {ex.Message}", ex);
         }
     }
@@ -142,7 +142,7 @@ public sealed class OVHSecretProvider : ISecretProvider
         }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
-            throw SecretProviderException.Wrap(
+            throw new SecretProviderException(
                 $"OVH error deleting secret '{key}': {ex.Message}", ex);
         }
     }
@@ -175,7 +175,7 @@ public sealed class OVHSecretProvider : ISecretProvider
         }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
-            throw SecretProviderException.Wrap(
+            throw new SecretProviderException(
                 $"OVH error listing versions for '{key}': {ex.Message}", ex);
         }
     }
@@ -196,7 +196,7 @@ public sealed class OVHSecretProvider : ISecretProvider
         }
         catch (Exception ex)
         {
-            throw SecretProviderException.Wrap(
+            throw new SecretProviderException(
                 $"OVH error checking existence of '{key}': {ex.Message}", ex);
         }
     }

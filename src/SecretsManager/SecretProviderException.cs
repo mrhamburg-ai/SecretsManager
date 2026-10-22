@@ -20,24 +20,18 @@ public class SecretProviderException : Exception
     /// </summary>
     /// <param name="message">The message that describes the error.</param>
     /// <param name="innerException">The exception that caused the current exception.</param>
+    /// <remarks>
+    /// When <paramref name="innerException"/> represents a cancellation, the original
+    /// <see cref="OperationCanceledException"/> is rethrown instead of being wrapped.
+    /// </remarks>
+    /// <exception cref="OperationCanceledException">
+    /// The backend failure was caused by cancellation.
+    /// </exception>
     public SecretProviderException(string message, Exception innerException)
-        : base(message, innerException) { }
-
-    /// <summary>
-    /// Wraps a backend failure in a <see cref="SecretProviderException"/>, preserving
-    /// cancellation by rethrowing the original <see cref="OperationCanceledException"/>.
-    /// </summary>
-    /// <param name="message">The message that describes the error.</param>
-    /// <param name="exception">The exception raised by the backend.</param>
-    /// <returns>A provider exception when the failure is not a cancellation.</returns>
-    public static Exception Wrap(string message, Exception exception)
+        : base(message, innerException)
     {
-        ArgumentNullException.ThrowIfNull(exception);
-
-        if (FindCancellation(exception) is { } cancellation)
+        if (FindCancellation(innerException) is { } cancellation)
             ExceptionDispatchInfo.Capture(cancellation).Throw();
-
-        return new SecretProviderException(message, exception);
     }
 
     private static OperationCanceledException? FindCancellation(Exception exception)

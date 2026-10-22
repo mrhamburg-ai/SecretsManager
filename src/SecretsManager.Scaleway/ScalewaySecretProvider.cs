@@ -68,7 +68,7 @@ public sealed class ScalewaySecretProvider : ISecretProvider
         }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
-            throw SecretProviderException.Wrap(
+            throw new SecretProviderException(
                 $"Scaleway error for secret '{key}': {ex.Message}", ex);
         }
     }
@@ -110,7 +110,7 @@ public sealed class ScalewaySecretProvider : ISecretProvider
         }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
-            throw SecretProviderException.Wrap(
+            throw new SecretProviderException(
                 $"Scaleway error putting secret '{key}': {ex.Message}", ex);
         }
     }
@@ -133,7 +133,7 @@ public sealed class ScalewaySecretProvider : ISecretProvider
         }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
-            throw SecretProviderException.Wrap(
+            throw new SecretProviderException(
                 $"Scaleway error deleting secret '{key}': {ex.Message}", ex);
         }
     }
@@ -168,7 +168,7 @@ public sealed class ScalewaySecretProvider : ISecretProvider
         }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
-            throw SecretProviderException.Wrap(
+            throw new SecretProviderException(
                 $"Scaleway error listing versions for '{key}': {ex.Message}", ex);
         }
     }
@@ -189,7 +189,7 @@ public sealed class ScalewaySecretProvider : ISecretProvider
         }
         catch (Exception ex)
         {
-            throw SecretProviderException.Wrap(
+            throw new SecretProviderException(
                 $"Scaleway error checking existence of '{key}': {ex.Message}", ex);
         }
     }
