@@ -120,7 +120,8 @@ Default timeout is `10` seconds.
 
 ## Logging
 
-Emits lifecycle events for each operation.
+Emits lifecycle events for each operation: start, success, failure, and retries. See
+[Logging](./logging.md) for the full guide.
 
 ```csharp
 var provider = new SecretProviderBuilder()
@@ -129,10 +130,11 @@ var provider = new SecretProviderBuilder()
         options.Region = "fr-par";
         options.ProjectId = "...";
     })
+    .WithRetry()
     .WithLogging(options =>
     {
         options.OperationPrefix = "secret";
-        options.Logger = new MyLogger();
+        options.Logger = new LoggerSecretProviderLogger(logger); // Microsoft.Extensions.Logging
     })
     .Build();
 ```
@@ -142,13 +144,24 @@ var provider = new SecretProviderBuilder()
 ```csharp
 public interface ISecretProviderLogger
 {
+    bool IsEnabled(SecretProviderLogLevel level);
     void LogStart(SecretProviderLogContext context);
     void LogSuccess(SecretProviderLogContext context, TimeSpan duration);
     void LogFailure(SecretProviderLogContext context, Exception exception, TimeSpan duration);
+    void LogRetry(SecretProviderLogContext context, int attempt, TimeSpan delay);
 }
 ```
 
-`OperationPrefix` prepends operation names (for example `secret.GetSecretAsync`).
+| Event | `SecretProviderLogLevel` | MEL `LogLevel` |
+| --- | --- | --- |
+| Start, success | `Debug` | `Debug` |
+| Retry | `Warning` | `Warning` |
+| Failure | `Error` | `Error` |
+
+- `OperationPrefix` prepends operation names (for example `secret.GetSecretAsync`).
+- The builder sets `Provider` on every event, so logs can be attributed to a backend.
+- With `WithLogging` and `WithRetry`, each retry is logged with the attempt number and delay.
+- A logger that throws never changes the result of a secret operation.
 
 If no logger is provided, `NullSecretProviderLogger` is used.
 
