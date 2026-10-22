@@ -66,9 +66,9 @@ public sealed class ScalewaySecretProvider : ISecretProvider
                 UpdatedAt = secret.UpdatedAt
             };
         }
-        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
+        catch (Exception ex) when (ex is not SecretProviderException)
         {
-            throw new SecretProviderException(
+            throw SecretProviderException.Wrap(
                 $"Scaleway error for secret '{key}': {ex.Message}", ex);
         }
     }
@@ -108,9 +108,9 @@ public sealed class ScalewaySecretProvider : ISecretProvider
                 UpdatedAt = version.UpdatedAt
             };
         }
-        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
+        catch (Exception ex) when (ex is not SecretProviderException)
         {
-            throw new SecretProviderException(
+            throw SecretProviderException.Wrap(
                 $"Scaleway error putting secret '{key}': {ex.Message}", ex);
         }
     }
@@ -131,9 +131,9 @@ public sealed class ScalewaySecretProvider : ISecretProvider
 
             await _client.DeleteSecretAsync(secret.Id, cancellationToken);
         }
-        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
+        catch (Exception ex) when (ex is not SecretProviderException)
         {
-            throw new SecretProviderException(
+            throw SecretProviderException.Wrap(
                 $"Scaleway error deleting secret '{key}': {ex.Message}", ex);
         }
     }
@@ -166,9 +166,9 @@ public sealed class ScalewaySecretProvider : ISecretProvider
                 .ToList()
                 .AsReadOnly();
         }
-        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
+        catch (Exception ex) when (ex is not SecretProviderException)
         {
-            throw new SecretProviderException(
+            throw SecretProviderException.Wrap(
                 $"Scaleway error listing versions for '{key}': {ex.Message}", ex);
         }
     }
@@ -187,9 +187,9 @@ public sealed class ScalewaySecretProvider : ISecretProvider
             var secret = await _client.FindSecretByNameAsync(key, cancellationToken);
             return secret is not null;
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex)
         {
-            throw new SecretProviderException(
+            throw SecretProviderException.Wrap(
                 $"Scaleway error checking existence of '{key}': {ex.Message}", ex);
         }
     }

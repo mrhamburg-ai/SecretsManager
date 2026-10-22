@@ -65,9 +65,9 @@ public sealed class VaultSecretProvider : ISecretProvider
                 UpdatedAt = secret.UpdatedAt
             };
         }
-        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
+        catch (Exception ex) when (ex is not SecretProviderException)
         {
-            throw new SecretProviderException(
+            throw SecretProviderException.Wrap(
                 $"Vault error for secret '{key}': {ex.Message}", ex);
         }
     }
@@ -98,9 +98,9 @@ public sealed class VaultSecretProvider : ISecretProvider
                 UpdatedAt = result.UpdatedAt
             };
         }
-        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
+        catch (Exception ex) when (ex is not SecretProviderException)
         {
-            throw new SecretProviderException(
+            throw SecretProviderException.Wrap(
                 $"Vault error putting secret '{key}': {ex.Message}", ex);
         }
     }
@@ -117,9 +117,9 @@ public sealed class VaultSecretProvider : ISecretProvider
         {
             await _client.DeleteSecretAsync(key, cancellationToken);
         }
-        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
+        catch (Exception ex) when (ex is not SecretProviderException)
         {
-            throw new SecretProviderException(
+            throw SecretProviderException.Wrap(
                 $"Vault error deleting secret '{key}': {ex.Message}", ex);
         }
     }
@@ -149,9 +149,9 @@ public sealed class VaultSecretProvider : ISecretProvider
                 .ToList()
                 .AsReadOnly();
         }
-        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
+        catch (Exception ex) when (ex is not SecretProviderException)
         {
-            throw new SecretProviderException(
+            throw SecretProviderException.Wrap(
                 $"Vault error listing versions for '{key}': {ex.Message}", ex);
         }
     }
@@ -169,9 +169,9 @@ public sealed class VaultSecretProvider : ISecretProvider
         {
             return await _client.SecretExistsAsync(key, cancellationToken);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex)
         {
-            throw new SecretProviderException(
+            throw SecretProviderException.Wrap(
                 $"Vault error checking existence of '{key}': {ex.Message}", ex);
         }
     }

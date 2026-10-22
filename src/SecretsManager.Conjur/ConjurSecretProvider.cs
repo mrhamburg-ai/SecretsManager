@@ -75,9 +75,9 @@ public sealed class ConjurSecretProvider : ISecretProvider
                 CreatedAt = resolved?.CreatedAt
             };
         }
-        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
+        catch (Exception ex) when (ex is not SecretProviderException)
         {
-            throw new SecretProviderException(
+            throw SecretProviderException.Wrap(
                 $"Conjur error for secret '{key}': {ex.Message}", ex);
         }
     }
@@ -109,9 +109,9 @@ public sealed class ConjurSecretProvider : ISecretProvider
                 CreatedAt = latest?.CreatedAt
             };
         }
-        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
+        catch (Exception ex) when (ex is not SecretProviderException)
         {
-            throw new SecretProviderException(
+            throw SecretProviderException.Wrap(
                 $"Conjur error putting secret '{key}': {ex.Message}", ex);
         }
     }
@@ -129,9 +129,9 @@ public sealed class ConjurSecretProvider : ISecretProvider
         {
             await _client.DeleteSecretAsync(key, cancellationToken);
         }
-        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
+        catch (Exception ex) when (ex is not SecretProviderException)
         {
-            throw new SecretProviderException(
+            throw SecretProviderException.Wrap(
                 $"Conjur error deleting secret '{key}': {ex.Message}", ex);
         }
     }
@@ -160,9 +160,9 @@ public sealed class ConjurSecretProvider : ISecretProvider
                 .ToList()
                 .AsReadOnly();
         }
-        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
+        catch (Exception ex) when (ex is not SecretProviderException)
         {
-            throw new SecretProviderException(
+            throw SecretProviderException.Wrap(
                 $"Conjur error listing versions for '{key}': {ex.Message}", ex);
         }
     }
@@ -180,9 +180,9 @@ public sealed class ConjurSecretProvider : ISecretProvider
         {
             return await _client.SecretExistsAsync(key, cancellationToken);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex)
         {
-            throw new SecretProviderException(
+            throw SecretProviderException.Wrap(
                 $"Conjur error checking existence of '{key}': {ex.Message}", ex);
         }
     }

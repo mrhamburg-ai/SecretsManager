@@ -76,9 +76,9 @@ public sealed class PassboltSecretProvider : ISecretProvider
                 UpdatedAt = resource.Modified
             };
         }
-        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
+        catch (Exception ex) when (ex is not SecretProviderException)
         {
-            throw new SecretProviderException(
+            throw SecretProviderException.Wrap(
                 $"Passbolt error for secret '{key}': {ex.Message}", ex);
         }
     }
@@ -128,9 +128,9 @@ public sealed class PassboltSecretProvider : ISecretProvider
                 UpdatedAt = resource.Modified
             };
         }
-        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
+        catch (Exception ex) when (ex is not SecretProviderException)
         {
-            throw new SecretProviderException(
+            throw SecretProviderException.Wrap(
                 $"Passbolt error putting secret '{key}': {ex.Message}", ex);
         }
     }
@@ -151,9 +151,9 @@ public sealed class PassboltSecretProvider : ISecretProvider
 
             await _client.DeleteResourceAsync(resource.Id, cancellationToken);
         }
-        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
+        catch (Exception ex) when (ex is not SecretProviderException)
         {
-            throw new SecretProviderException(
+            throw SecretProviderException.Wrap(
                 $"Passbolt error deleting secret '{key}': {ex.Message}", ex);
         }
     }
@@ -184,9 +184,9 @@ public sealed class PassboltSecretProvider : ISecretProvider
                 }
             }.ToList().AsReadOnly();
         }
-        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
+        catch (Exception ex) when (ex is not SecretProviderException)
         {
-            throw new SecretProviderException(
+            throw SecretProviderException.Wrap(
                 $"Passbolt error listing versions for '{key}': {ex.Message}", ex);
         }
     }
@@ -205,9 +205,9 @@ public sealed class PassboltSecretProvider : ISecretProvider
             var resource = await FindResourceByNameAsync(key, cancellationToken);
             return resource is not null;
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex)
         {
-            throw new SecretProviderException(
+            throw SecretProviderException.Wrap(
                 $"Passbolt error checking existence of '{key}': {ex.Message}", ex);
         }
     }
