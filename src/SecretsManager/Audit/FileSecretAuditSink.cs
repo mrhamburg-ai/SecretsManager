@@ -15,6 +15,8 @@ public sealed class FileSecretAuditSink : ISecretAuditSink
     private static readonly JsonSerializerOptions SerializerOptions =
         new(JsonSerializerDefaults.Web);
 
+    private static readonly byte[] NewLineBytes = Encoding.UTF8.GetBytes(Environment.NewLine);
+
     private readonly string _path;
     private readonly FileSecretAuditSinkOptions _options;
     private readonly SemaphoreSlim _lock;
@@ -49,8 +51,7 @@ public sealed class FileSecretAuditSink : ISecretAuditSink
     {
         ArgumentNullException.ThrowIfNull(auditEvent);
 
-        var line = JsonSerializer.Serialize(auditEvent, SerializerOptions) + Environment.NewLine;
-        var bytes = Encoding.UTF8.GetBytes(line);
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(auditEvent, SerializerOptions);
 
         await _lock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
@@ -71,6 +72,7 @@ public sealed class FileSecretAuditSink : ISecretAuditSink
 
             await using var stream = new FileStream(_path, streamOptions);
             await stream.WriteAsync(bytes, cancellationToken).ConfigureAwait(false);
+            await stream.WriteAsync(NewLineBytes, cancellationToken).ConfigureAwait(false);
 
             if (_options.FlushEachWrite)
                 stream.Flush(flushToDisk: true);

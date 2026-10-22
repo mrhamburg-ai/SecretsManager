@@ -44,5 +44,7 @@ public sealed class OVHOptions
             yield return "ApplicationSecret is required";
         if (string.IsNullOrWhiteSpace(ConsumerKey))
             yield return "ConsumerKey is required";
+        if (string.IsNullOrWhiteSpace(OkmsId))
+            yield return "OkmsId is required";
     }
 }

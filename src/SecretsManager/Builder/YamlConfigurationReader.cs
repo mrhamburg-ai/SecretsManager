@@ -33,6 +33,7 @@ public static class YamlConfigurationReader
 
         var deserializer = new DeserializerBuilder()
             .WithNamingConvention(CamelCaseNamingConvention.Instance)
+            .WithDuplicateKeyChecking()
             .Build();
 
         var root = deserializer.Deserialize<Dictionary<string, object>>(yaml)

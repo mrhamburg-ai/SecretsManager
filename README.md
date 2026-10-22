@@ -140,7 +140,7 @@ var provider = new SecretProviderBuilder()
 ```
 
 `SecretsManager.PostgreSql` also ships `PostgreSqlSecretAuditSink`, available through
-`.WithPostgreSqlAuditSink(...)`. See [Audit Trail](docs/advanced/audit-trail.md) for actor
+`.WithPostgreSqlAuditSink(...)`. See [Audit Trail](docs/docs/advanced/audit-trail.md) for actor
 propagation, scopes, failure modes, and the PostgreSQL table schema.
 
 ## Configuration
@@ -224,11 +224,11 @@ var provider = new SecretProviderBuilder()
 
 See the full provider setup and configuration details in the docs:
 
-- [Getting Started](docs/getting-started/quick-start.md)
-- [Provider overview](docs/providers/overview.md)
-- [JSON extraction guide](docs/advanced/json-extraction.md)
-- [Versioning guide](docs/advanced/versioning.md)
-- [Audit trail guide](docs/advanced/audit-trail.md)
+- [Getting Started](docs/docs/getting-started/quick-start.md)
+- [Provider overview](docs/docs/providers/overview.md)
+- [JSON extraction guide](docs/docs/advanced/json-extraction.md)
+- [Versioning guide](docs/docs/advanced/versioning.md)
+- [Audit trail guide](docs/docs/advanced/audit-trail.md)
 
 ## API Reference
 

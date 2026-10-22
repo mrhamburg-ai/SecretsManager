@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Collections.Concurrent;
 using System.Diagnostics.Metrics;
 using System.Threading;
 using System.Threading.Tasks;
@@ -50,11 +51,18 @@ public sealed class OtelMetricsLayer : ISecretProviderLayer
         private readonly UpDownCounter<long> _inFlight;
         private readonly string _metricPrefix;
         private static readonly double TimestampFrequency = 1000d / Stopwatch.Frequency;
+        private static readonly ConcurrentDictionary<string, Meter> SharedMeters =
+            new(StringComparer.Ordinal);
 
         public OtelMetricsSecretProvider(ISecretProvider inner, OtelMetricsLayerOptions options)
         {
             _inner = inner;
-            _meter = new Meter(options.MeterName, options.MeterVersion);
+            // Meters are process-wide and must not be disposed per wrapper; reuse a single
+            // instance so repeated Wrap calls do not leak duplicate meters.
+            var meterKey = options.MeterName + "\u0000" + options.MeterVersion;
+            _meter = SharedMeters.GetOrAdd(
+                meterKey,
+                _ => new Meter(options.MeterName, options.MeterVersion));
             _metricPrefix = NormalizeMetricPrefix(options.MetricPrefix);
 
             _callCounter = _meter.CreateCounter<long>(
@@ -151,7 +159,6 @@ public sealed class OtelMetricsLayer : ISecretProviderLayer
 
         public ValueTask DisposeAsync()
         {
-            _meter.Dispose();
             return _inner.DisposeAsync();
         }
 
@@ -180,12 +187,7 @@ public sealed class OtelMetricsLayer : ISecretProviderLayer
 
             try
             {
-                var result = await operationExecutor(cancellationToken);
-
-                var stop = Stopwatch.GetTimestamp();
-                var durationMs = (stop - start) * TimestampFrequency;
-                _durationMs.Record(durationMs, inFlight);
-                return result;
+                return await operationExecutor(cancellationToken);
             }
             catch (Exception)
             {
@@ -194,6 +196,8 @@ public sealed class OtelMetricsLayer : ISecretProviderLayer
             }
             finally
             {
+                var stop = Stopwatch.GetTimestamp();
+                _durationMs.Record((stop - start) * TimestampFrequency, inFlight);
                 _inFlight.Add(-1, inFlight);
             }
         }

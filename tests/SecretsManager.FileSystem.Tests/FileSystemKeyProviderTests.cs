@@ -76,19 +76,20 @@ public sealed class FileSystemKeyProviderTests : IAsyncLifetime
     {
         // The key fetch blocks, so PutSecretAsync still holds the per-key lock when we dispose.
         var gate = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var started = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
         var provider = new SecretProviderBuilder()
             .WithFileSystem(o =>
             {
                 o.BasePath = _tempDir;
-                o.EncryptionKeyProvider = new GatedKeySource(_key, gate.Task);
+                o.EncryptionKeyProvider = new GatedKeySource(_key, gate.Task, started);
             })
             .Build();
 
         var put = provider.PutSecretAsync("k", "value");
 
-        // Let the put reach the store lock, then dispose while it is held.
-        await Task.Delay(200);
+        // Wait until the put reaches the store lock, then dispose while it is held.
+        await started.Task;
 
         var dispose = Task.Run(() => provider.DisposeAsync().AsTask());
         var completed = await Task.WhenAny(dispose, Task.Delay(TimeSpan.FromSeconds(10)));
@@ -300,7 +301,8 @@ public sealed class FileSystemKeyProviderTests : IAsyncLifetime
     public async Task DisposeAsync_DuringInFlightKeyFetch_DoesNotThrow()
     {
         var gate = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        var source = new GatedKeySource(_key, gate.Task);
+        var started = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var source = new GatedKeySource(_key, gate.Task, started);
 
         var provider = new SecretProviderBuilder()
             .WithFileSystem(o => { o.BasePath = _tempDir; o.EncryptionKeyProvider = source; })
@@ -308,8 +310,8 @@ public sealed class FileSystemKeyProviderTests : IAsyncLifetime
 
         var put = provider.PutSecretAsync("k", "value");
 
-        // Let the fetch reach the resolver, then dispose while it is still pending.
-        await Task.Delay(200);
+        // Wait until the fetch reaches the resolver, then dispose while it is still pending.
+        await started.Task;
         await provider.DisposeAsync();
 
         // Release the fetch. A correct implementation neither blocks nor throws here.
@@ -321,10 +323,12 @@ public sealed class FileSystemKeyProviderTests : IAsyncLifetime
     /// A key source that blocks until a gate opens, to hold a fetch open across a dispose.
     /// Honours the token so it behaves like a real network-backed source.
     /// </summary>
-    private sealed class GatedKeySource(byte[] key, Task gate) : IEncryptionKeyProvider
+    private sealed class GatedKeySource(
+        byte[] key, Task gate, TaskCompletionSource<bool>? started = null) : IEncryptionKeyProvider
     {
         public async ValueTask<EncryptionKeyMaterial> GetCurrentKeyAsync(CancellationToken cancellationToken = default)
         {
+            started?.TrySetResult(true);
             await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
             return new EncryptionKeyMaterial(key, "gated@1");
         }

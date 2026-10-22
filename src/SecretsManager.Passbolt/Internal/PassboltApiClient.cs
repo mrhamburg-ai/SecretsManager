@@ -10,17 +10,21 @@ namespace SecretsManager.Passbolt.Internal;
 internal sealed class PassboltApiClient : IPassboltApiClient
 {
     private readonly HttpClient _http;
+    private readonly bool _ownsHttp;
     private readonly string _userPrivateKey;
     private readonly string _userPrivateKeyPassphrase;
     private readonly string _userKeyFingerprint;
 
     private string? _accessToken;
-    private bool _isAuthenticated;
-    private readonly object _authLock = new();
+    private volatile bool _isAuthenticated;
+    private readonly SemaphoreSlim _authLock = new(1, 1);
 
-    private PgpPublicKey? _serverPublicKey;
-    private PgpSecretKey? _userSecretKey;
-    private PgpPrivateKey? _userPrivateKeyObj;
+    private PgpPublicKey? _serverEncryptionKey;
+    private PgpPublicKey? _serverSigningKey;
+    private PgpSecretKey? _userSigningSecretKey;
+    private PgpPrivateKey? _userSigningPrivateKey;
+    private PgpSecretKey? _userEncryptionSecretKey;
+    private PgpPrivateKey? _userEncryptionPrivateKey;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -33,6 +37,7 @@ internal sealed class PassboltApiClient : IPassboltApiClient
     {
         var baseUrl = options.BaseUrl.TrimEnd('/');
         _http = new HttpClient { BaseAddress = new Uri(baseUrl) };
+        _ownsHttp = true;
         _userPrivateKey = options.UserPrivateKey;
         _userPrivateKeyPassphrase = options.UserPrivateKeyPassphrase;
         _userKeyFingerprint = options.UserKeyFingerprint;
@@ -41,6 +46,7 @@ internal sealed class PassboltApiClient : IPassboltApiClient
     internal PassboltApiClient(HttpClient httpClient, string userPrivateKey, string userPrivateKeyPassphrase, string userKeyFingerprint)
     {
         _http = httpClient;
+        _ownsHttp = false;
         _userPrivateKey = userPrivateKey;
         _userPrivateKeyPassphrase = userPrivateKeyPassphrase;
         _userKeyFingerprint = userKeyFingerprint;
@@ -48,14 +54,19 @@ internal sealed class PassboltApiClient : IPassboltApiClient
 
     public async Task EnsureAuthenticatedAsync(CancellationToken cancellationToken)
     {
-        if (_isAuthenticated) return;
+        if (_isAuthenticated)
+            return;
 
-        lock (_authLock)
+        await _authLock.WaitAsync(cancellationToken);
+        try
         {
-            if (_isAuthenticated) return;
+            if (!_isAuthenticated)
+                await AuthenticateAsync(cancellationToken);
         }
-
-        await AuthenticateAsync(cancellationToken);
+        finally
+        {
+            _authLock.Release();
+        }
     }
 
     private async Task AuthenticateAsync(CancellationToken cancellationToken)
@@ -75,7 +86,10 @@ internal sealed class PassboltApiClient : IPassboltApiClient
 
         var challengeJson = JsonSerializer.Serialize(challengePayload, JsonOptions);
         var encryptedChallenge = PassboltPgpHelper.EncryptAndSign(
-            challengeJson, _serverPublicKey!, _userSecretKey!.PublicKey, _userPrivateKeyObj!);
+            challengeJson,
+            _serverEncryptionKey!,
+            _userSigningSecretKey!.PublicKey,
+            _userSigningPrivateKey!);
 
         var loginPayload = new Dictionary<string, object>
         {
@@ -87,7 +101,7 @@ internal sealed class PassboltApiClient : IPassboltApiClient
             JsonSerializer.Serialize(loginPayload, JsonOptions),
             Encoding.UTF8, "application/json");
 
-        var response = await _http.PostAsync("/auth/login.json?api-version=v2", content, cancellationToken);
+        using var response = await _http.PostAsync("/auth/login.json?api-version=v2", content, cancellationToken);
         await EnsureSuccess(response, "authenticating", cancellationToken);
 
         var loginResponse = await response.Content.ReadFromJsonAsync<LoginResponse>(JsonOptions, cancellationToken)
@@ -98,7 +112,10 @@ internal sealed class PassboltApiClient : IPassboltApiClient
 
         var encryptedResponse = loginResponse.Body.Data;
         var decryptedResponse = PassboltPgpHelper.DecryptAndVerify(
-            encryptedResponse, _userSecretKey!, _userPrivateKeyObj!);
+            encryptedResponse,
+            _userEncryptionSecretKey!,
+            _userEncryptionPrivateKey!,
+            _serverSigningKey);
 
         var authResult = JsonSerializer.Deserialize<AuthResult>(decryptedResponse, JsonOptions)
             ?? throw new SecretProviderException("Failed to parse authentication response.");
@@ -113,15 +130,22 @@ internal sealed class PassboltApiClient : IPassboltApiClient
 
     private async Task FetchServerPublicKeyAsync(CancellationToken cancellationToken)
     {
-        var response = await _http.GetAsync("/auth/verify.json", cancellationToken);
+        using var response = await _http.GetAsync("/auth/verify.json", cancellationToken);
         await EnsureSuccess(response, "fetching server public key", cancellationToken);
 
         var verifyResponse = await response.Content.ReadFromJsonAsync<VerifyResponse>(JsonOptions, cancellationToken)
             ?? throw new SecretProviderException("Empty response when fetching server public key.");
 
-        _serverPublicKey = PassboltPgpHelper.ReadPublicKey(verifyResponse.Body.ServerKey);
-        _userSecretKey = PassboltPgpHelper.ReadSecretKey(_userPrivateKey);
-        _userPrivateKeyObj = PassboltPgpHelper.ExtractPrivateKey(_userSecretKey, _userPrivateKeyPassphrase);
+        _serverEncryptionKey = PassboltPgpHelper.ReadPublicKey(verifyResponse.Body.ServerKey);
+        _serverSigningKey = PassboltPgpHelper.ReadSigningPublicKey(verifyResponse.Body.ServerKey);
+
+        _userSigningSecretKey = PassboltPgpHelper.ReadSecretKey(_userPrivateKey);
+        _userSigningPrivateKey = PassboltPgpHelper.ExtractPrivateKey(
+            _userSigningSecretKey, _userPrivateKeyPassphrase);
+
+        _userEncryptionSecretKey = PassboltPgpHelper.ReadEncryptionSecretKey(_userPrivateKey);
+        _userEncryptionPrivateKey = PassboltPgpHelper.ExtractPrivateKey(
+            _userEncryptionSecretKey, _userPrivateKeyPassphrase);
     }
 
     public async Task<List<PassboltResourceResult>> ListResourcesAsync(
@@ -133,7 +157,7 @@ internal sealed class PassboltApiClient : IPassboltApiClient
         if (!string.IsNullOrEmpty(search))
             url += $"&filter[has]={Uri.EscapeDataString(search)}";
 
-        var response = await _http.GetAsync(url, cancellationToken);
+        using var response = await _http.GetAsync(url, cancellationToken);
         await EnsureSuccess(response, "listing resources", cancellationToken);
 
         var apiResponse = await response.Content.ReadFromJsonAsync<PassboltApiResponse<List<ResourceDto>>>(JsonOptions, cancellationToken)
@@ -152,7 +176,7 @@ internal sealed class PassboltApiClient : IPassboltApiClient
         await EnsureAuthenticatedAsync(cancellationToken);
 
         var url = $"/resources/{Uri.EscapeDataString(resourceId)}.json?api-version=v2&contain[secret]=1";
-        var response = await _http.GetAsync(url, cancellationToken);
+        using var response = await _http.GetAsync(url, cancellationToken);
 
         if (response.StatusCode == HttpStatusCode.NotFound)
             return null;
@@ -187,7 +211,7 @@ internal sealed class PassboltApiClient : IPassboltApiClient
             JsonSerializer.Serialize(payload, JsonOptions),
             Encoding.UTF8, "application/json");
 
-        var response = await _http.PostAsync("/resources.json?api-version=v2", content, cancellationToken);
+        using var response = await _http.PostAsync("/resources.json?api-version=v2", content, cancellationToken);
         await EnsureSuccess(response, $"creating resource '{name}'", cancellationToken);
 
         var apiResponse = await response.Content.ReadFromJsonAsync<PassboltApiResponse<ResourceDto>>(JsonOptions, cancellationToken)
@@ -220,12 +244,12 @@ internal sealed class PassboltApiClient : IPassboltApiClient
             JsonSerializer.Serialize(payload, JsonOptions),
             Encoding.UTF8, "application/json");
 
-        var request = new HttpRequestMessage(HttpMethod.Put, $"/resources/{Uri.EscapeDataString(resourceId)}.json?api-version=v2")
+        using var request = new HttpRequestMessage(HttpMethod.Put, $"/resources/{Uri.EscapeDataString(resourceId)}.json?api-version=v2")
         {
             Content = content
         };
 
-        var response = await _http.SendAsync(request, cancellationToken);
+        using var response = await _http.SendAsync(request, cancellationToken);
         await EnsureSuccess(response, $"updating resource '{resourceId}'", cancellationToken);
 
         var apiResponse = await response.Content.ReadFromJsonAsync<PassboltApiResponse<ResourceDto>>(JsonOptions, cancellationToken)
@@ -244,7 +268,7 @@ internal sealed class PassboltApiClient : IPassboltApiClient
     {
         await EnsureAuthenticatedAsync(cancellationToken);
 
-        var response = await _http.DeleteAsync($"/resources/{Uri.EscapeDataString(resourceId)}.json?api-version=v2", cancellationToken);
+        using var response = await _http.DeleteAsync($"/resources/{Uri.EscapeDataString(resourceId)}.json?api-version=v2", cancellationToken);
         await EnsureSuccess(response, $"deleting resource '{resourceId}'", cancellationToken);
     }
 
@@ -253,7 +277,7 @@ internal sealed class PassboltApiClient : IPassboltApiClient
     {
         await EnsureAuthenticatedAsync(cancellationToken);
 
-        var response = await _http.GetAsync("/resource-types.json?api-version=v2", cancellationToken);
+        using var response = await _http.GetAsync("/resource-types.json?api-version=v2", cancellationToken);
         await EnsureSuccess(response, "getting resource types", cancellationToken);
 
         var apiResponse = await response.Content.ReadFromJsonAsync<PassboltApiResponse<List<ResourceTypeDto>>>(JsonOptions, cancellationToken)
@@ -268,7 +292,11 @@ internal sealed class PassboltApiClient : IPassboltApiClient
 
     public ValueTask DisposeAsync()
     {
-        _http.Dispose();
+        _authLock.Dispose();
+
+        if (_ownsHttp)
+            _http.Dispose();
+
         return ValueTask.CompletedTask;
     }
 

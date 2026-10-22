@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
@@ -10,6 +11,7 @@ namespace SecretsManager.TencentCloud.Internal;
 internal sealed class TencentCloudApiClient : ITencentCloudApiClient
 {
     private readonly HttpClient _http;
+    private readonly bool _ownsHttp;
     private readonly string _secretId;
     private readonly string _secretKey;
     private readonly string _region;
@@ -34,11 +36,13 @@ internal sealed class TencentCloudApiClient : ITencentCloudApiClient
         {
             BaseAddress = new Uri($"https://{endpoint}")
         };
+        _ownsHttp = true;
     }
 
     internal TencentCloudApiClient(HttpClient httpClient, string secretId, string secretKey, string region)
     {
         _http = httpClient;
+        _ownsHttp = false;
         _secretId = secretId;
         _secretKey = secretKey;
         _region = region;
@@ -58,7 +62,7 @@ internal sealed class TencentCloudApiClient : ITencentCloudApiClient
         if (!string.IsNullOrEmpty(versionId))
             parameters["VersionId"] = versionId;
 
-        var response = await PostAsync("GetSecretValue", parameters, cancellationToken);
+        using var response = await PostAsync("GetSecretValue", parameters, cancellationToken);
 
         if (response.StatusCode == HttpStatusCode.NotFound)
             return null;
@@ -93,7 +97,7 @@ internal sealed class TencentCloudApiClient : ITencentCloudApiClient
             ["VersionId"] = versionId
         };
 
-        var response = await PostAsync("CreateSecret", parameters, cancellationToken);
+        using var response = await PostAsync("CreateSecret", parameters, cancellationToken);
 
         var error = await TryParseErrorAsync(response, cancellationToken);
         if (error?.Code == "ResourceInUse")
@@ -122,7 +126,7 @@ internal sealed class TencentCloudApiClient : ITencentCloudApiClient
             ["VersionId"] = versionId
         };
 
-        var response = await PostAsync("PutSecretValue", parameters, cancellationToken);
+        using var response = await PostAsync("PutSecretValue", parameters, cancellationToken);
         await EnsureSuccess(response, $"putting secret value for '{secretName}'", cancellationToken);
 
         var body = await response.Content.ReadFromJsonAsync<TencentCloudPutSecretValueResponse>(JsonOptions, cancellationToken)
@@ -141,7 +145,7 @@ internal sealed class TencentCloudApiClient : ITencentCloudApiClient
             ["SecretName"] = secretName
         };
 
-        var response = await PostAsync("DeleteSecret", parameters, cancellationToken);
+        using var response = await PostAsync("DeleteSecret", parameters, cancellationToken);
 
         var error = await TryParseErrorAsync(response, cancellationToken);
         if (error?.Code == "ResourceNotFound")
@@ -168,7 +172,7 @@ internal sealed class TencentCloudApiClient : ITencentCloudApiClient
                 ["Limit"] = limit
             };
 
-            var response = await PostAsync("ListSecretVersionIds", parameters, cancellationToken);
+            using var response = await PostAsync("ListSecretVersionIds", parameters, cancellationToken);
             await EnsureSuccess(response, $"listing versions for '{secretName}'", cancellationToken);
 
             var body = await response.Content.ReadFromJsonAsync<TencentCloudListSecretVersionIdsResponse>(JsonOptions, cancellationToken)
@@ -193,7 +197,9 @@ internal sealed class TencentCloudApiClient : ITencentCloudApiClient
 
     public ValueTask DisposeAsync()
     {
-        _http.Dispose();
+        if (_ownsHttp)
+            _http.Dispose();
+
         return ValueTask.CompletedTask;
     }
 
@@ -204,28 +210,32 @@ internal sealed class TencentCloudApiClient : ITencentCloudApiClient
         var nonce = Guid.NewGuid().ToString("N");
 
         // Build canonical request
-        var canonicalRequest = BuildCanonicalRequest(action, parameters, timestamp, nonce);
+        // Prepare request body once so the signed payload and the sent payload are identical.
+        var requestBody = JsonSerializer.Serialize(parameters, JsonOptions);
+
+        // Build canonical request
+        var canonicalRequest = BuildCanonicalRequest(action, requestBody, timestamp, nonce);
 
         // Calculate signature
         var signature = CalculateSignature(canonicalRequest, timestamp, nonce);
 
-        // Set headers
-        _http.DefaultRequestHeaders.Clear();
-        _http.DefaultRequestHeaders.Add("Authorization", signature);
-        _http.DefaultRequestHeaders.Add("X-TC-Action", action);
-        _http.DefaultRequestHeaders.Add("X-TC-Version", ApiVersion);
-        _http.DefaultRequestHeaders.Add("X-TC-Timestamp", timestamp.ToString());
-        _http.DefaultRequestHeaders.Add("X-TC-Nonce", nonce);
-        _http.DefaultRequestHeaders.Add("X-TC-Region", _region);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/")
+        {
+            Content = new StringContent(requestBody, Encoding.UTF8, "application/json")
+        };
 
-        // Prepare request body
-        var requestBody = JsonSerializer.Serialize(parameters, JsonOptions);
-        var content = new StringContent(requestBody, Encoding.UTF8, "application/json");
+        request.Headers.TryAddWithoutValidation("Authorization", signature);
+        request.Headers.TryAddWithoutValidation("X-TC-Action", action);
+        request.Headers.TryAddWithoutValidation("X-TC-Version", ApiVersion);
+        request.Headers.TryAddWithoutValidation(
+            "X-TC-Timestamp", timestamp.ToString(CultureInfo.InvariantCulture));
+        request.Headers.TryAddWithoutValidation("X-TC-Nonce", nonce);
+        request.Headers.TryAddWithoutValidation("X-TC-Region", _region);
 
-        return await _http.PostAsync("/", content, cancellationToken);
+        return await _http.SendAsync(request, cancellationToken);
     }
 
-    private string BuildCanonicalRequest(string action, Dictionary<string, object> parameters, long timestamp, string nonce)
+    private string BuildCanonicalRequest(string action, string requestBody, long timestamp, string nonce)
     {
         // HTTP Method
         var httpMethod = "POST";
@@ -243,8 +253,7 @@ internal sealed class TencentCloudApiClient : ITencentCloudApiClient
         var signedHeaders = "content-type;host;x-tc-action;x-tc-nonce;x-tc-region;x-tc-timestamp";
 
         // Payload (hash of request body)
-        var payload = JsonSerializer.Serialize(parameters, JsonOptions);
-        var payloadHash = Sha256Hex(payload);
+        var payloadHash = Sha256Hex(requestBody);
 
         // Final canonical request
         return $"{httpMethod}\n{canonicalUri}\n{canonicalQueryString}\n{canonicalHeaders}\n{signedHeaders}\n{payloadHash}";
@@ -254,7 +263,7 @@ internal sealed class TencentCloudApiClient : ITencentCloudApiClient
     {
         // Create signature string
         var algorithm = "TC3-HMAC-SHA256";
-        var date = DateTimeOffset.FromUnixTimeSeconds(timestamp).ToString("yyyy-MM-dd");
+        var date = DateTimeOffset.FromUnixTimeSeconds(timestamp).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
         var service = Service;
         var credentialScope = $"{date}/{_region}/{service}/tc3_request";
         var canonicalRequestHash = Sha256Hex(canonicalRequest);
@@ -277,7 +286,7 @@ internal sealed class TencentCloudApiClient : ITencentCloudApiClient
         var dataBytes = Encoding.UTF8.GetBytes(data);
         using var hmac = new HMACSHA256(keyBytes);
         var hash = hmac.ComputeHash(dataBytes);
-        return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+        return Convert.ToHexString(hash).ToLowerInvariant();
     }
 
     private static string Sha256Hex(string data)
@@ -285,7 +294,7 @@ internal sealed class TencentCloudApiClient : ITencentCloudApiClient
         var dataBytes = Encoding.UTF8.GetBytes(data);
         using var sha256 = SHA256.Create();
         var hash = sha256.ComputeHash(dataBytes);
-        return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+        return Convert.ToHexString(hash).ToLowerInvariant();
     }
 
     private static async Task EnsureSuccess(

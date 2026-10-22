@@ -8,6 +8,7 @@ namespace SecretsManager.Vault.Internal;
 internal sealed class VaultApiClient : IVaultApiClient
 {
     private readonly HttpClient _http;
+    private readonly bool _ownsHttp;
     private readonly string _mountPath;
     private readonly string _basePath;
 
@@ -31,11 +32,13 @@ internal sealed class VaultApiClient : IVaultApiClient
             BaseAddress = new Uri(options.Url.TrimEnd('/'))
         };
         _http.DefaultRequestHeaders.Add("X-Vault-Token", options.Token);
+        _ownsHttp = true;
     }
 
     internal VaultApiClient(HttpClient httpClient, string mountPath)
     {
         _http = httpClient;
+        _ownsHttp = false;
         _mountPath = mountPath.Trim('/');
         _basePath = $"/v1/{_mountPath}";
     }
@@ -47,7 +50,7 @@ internal sealed class VaultApiClient : IVaultApiClient
         if (version.HasValue)
             url += $"?version={version.Value}";
 
-        var response = await _http.GetAsync(url, cancellationToken);
+        using var response = await _http.GetAsync(url, cancellationToken);
 
         if (response.StatusCode == HttpStatusCode.NotFound)
             return null;
@@ -76,7 +79,7 @@ internal sealed class VaultApiClient : IVaultApiClient
             Data = new Dictionary<string, string> { ["value"] = value }
         };
 
-        var response = await _http.PutAsJsonAsync(url, payload, JsonOptions, cancellationToken);
+        using var response = await _http.PutAsJsonAsync(url, payload, JsonOptions, cancellationToken);
         await EnsureSuccess(response, $"writing secret '{key}'", cancellationToken);
 
         var envelope = await response.Content.ReadFromJsonAsync<PutResponseEnvelope>(JsonOptions, cancellationToken)
@@ -90,7 +93,7 @@ internal sealed class VaultApiClient : IVaultApiClient
     public async Task DeleteSecretAsync(string key, CancellationToken cancellationToken)
     {
         var url = $"{_basePath}/metadata/{Uri.EscapeDataString(key)}";
-        var response = await _http.DeleteAsync(url, cancellationToken);
+        using var response = await _http.DeleteAsync(url, cancellationToken);
 
         if (response.StatusCode == HttpStatusCode.NotFound)
             return;
@@ -102,7 +105,7 @@ internal sealed class VaultApiClient : IVaultApiClient
         string key, CancellationToken cancellationToken)
     {
         var url = $"{_basePath}/metadata/{Uri.EscapeDataString(key)}";
-        var response = await _http.GetAsync(url, cancellationToken);
+        using var response = await _http.GetAsync(url, cancellationToken);
 
         if (response.StatusCode == HttpStatusCode.NotFound)
             return [];
@@ -127,13 +130,15 @@ internal sealed class VaultApiClient : IVaultApiClient
     public async Task<bool> SecretExistsAsync(string key, CancellationToken cancellationToken)
     {
         var url = $"{_basePath}/metadata/{Uri.EscapeDataString(key)}";
-        var response = await _http.GetAsync(url, cancellationToken);
+        using var response = await _http.GetAsync(url, cancellationToken);
         return response.StatusCode != HttpStatusCode.NotFound && response.IsSuccessStatusCode;
     }
 
     public ValueTask DisposeAsync()
     {
-        _http.Dispose();
+        if (_ownsHttp)
+            _http.Dispose();
+
         return ValueTask.CompletedTask;
     }
 

@@ -16,7 +16,7 @@ public sealed class RetryLayerTests
             {
                 attempts++;
                 if (attempts < 3)
-                    throw new InvalidOperationException("temporary");
+                    throw new TimeoutException("temporary");
 
                 return Task.FromResult(new SecretValue { Key = "key", Value = "ok" });
             }
@@ -34,6 +34,59 @@ public sealed class RetryLayerTests
 
         Assert.Equal("ok", value.Value);
         Assert.Equal(3, attempts);
+    }
+
+    [Fact]
+    public async Task RetryLayer_DoesNotRetryNonTransientFailures()
+    {
+        var attempts = 0;
+
+        var baseProvider = new DelegatingSecretProvider
+        {
+            GetSecretAsyncImpl = (_, _, _) =>
+            {
+                attempts++;
+                throw new ArgumentException("invalid key");
+            }
+        };
+
+        await using var provider = new RetryLayer(new RetryLayerOptions
+        {
+            MaxAttempts = 5,
+            BaseDelay = TimeSpan.FromMilliseconds(1),
+            MaxDelay = TimeSpan.FromMilliseconds(1)
+        }).Wrap(baseProvider);
+
+        await Assert.ThrowsAsync<ArgumentException>(() => provider.GetSecretAsync("key"));
+
+        Assert.Equal(1, attempts);
+    }
+
+    [Fact]
+    public async Task RetryLayer_DoesNotRetryPuts()
+    {
+        var attempts = 0;
+
+        var baseProvider = new DelegatingSecretProvider
+        {
+            PutSecretAsyncImpl = (_, _, _, _) =>
+            {
+                attempts++;
+                throw new TimeoutException("temporary");
+            }
+        };
+
+        await using var provider = new RetryLayer(new RetryLayerOptions
+        {
+            MaxAttempts = 5,
+            BaseDelay = TimeSpan.FromMilliseconds(1),
+            MaxDelay = TimeSpan.FromMilliseconds(1)
+        }).Wrap(baseProvider);
+
+        await Assert.ThrowsAsync<TimeoutException>(
+            () => provider.PutSecretAsync("key", "value"));
+
+        Assert.Equal(1, attempts);
     }
 
     [Fact]

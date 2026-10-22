@@ -1,4 +1,5 @@
-using System.Net.Http.Headers;
+using System.Globalization;
+using System.Net;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text;
@@ -10,7 +11,8 @@ namespace SecretsManager.OVH.Internal;
 internal record OVHSecretResult(
     string Path,
     DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt,
+    int CurrentVersion = 0);
 
 internal record OVHVersionResult(
     int Id,
@@ -45,6 +47,8 @@ internal interface IOVHApiClient : IAsyncDisposable
 internal sealed class OVHOAuthHttpClient : IOVHApiClient
 {
     private readonly HttpClient _http;
+    private readonly bool _ownsHttp;
+    private readonly string _endpoint;
     private readonly string _applicationKey;
     private readonly string _applicationSecret;
     private readonly string _consumerKey;
@@ -65,11 +69,12 @@ internal sealed class OVHOAuthHttpClient : IOVHApiClient
         _consumerKey = options.ConsumerKey;
         _okmsId = options.OkmsId;
 
-        var endpoint = MapEndpoint(options.Endpoint);
+        _endpoint = MapEndpoint(options.Endpoint);
         _http = new HttpClient
         {
-            BaseAddress = new Uri(endpoint)
+            BaseAddress = new Uri(_endpoint + "/")
         };
+        _ownsHttp = true;
     }
 
     internal OVHOAuthHttpClient(HttpClient httpClient, string okmsId, string applicationKey, string applicationSecret, string consumerKey)
@@ -79,15 +84,17 @@ internal sealed class OVHOAuthHttpClient : IOVHApiClient
         _applicationKey = applicationKey;
         _applicationSecret = applicationSecret;
         _consumerKey = consumerKey;
+        _endpoint = httpClient.BaseAddress?.GetLeftPart(UriPartial.Authority).TrimEnd('/') ?? "";
+        _ownsHttp = false;
     }
 
     public async Task<OVHSecretResult?> FindSecretByNameAsync(
         string name, CancellationToken cancellationToken)
     {
         var url = $"{BasePath}/secret/{Uri.EscapeDataString(name)}";
-        var response = await _http.GetAsync(url, cancellationToken);
+        using var response = await SendAsync(HttpMethod.Get, url, content: null, cancellationToken);
 
-        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        if (response.StatusCode == HttpStatusCode.NotFound)
             return null;
 
         await EnsureSuccess(response, "getting secret", cancellationToken);
@@ -99,7 +106,8 @@ internal sealed class OVHOAuthHttpClient : IOVHApiClient
         return new OVHSecretResult(
             body.Path,
             body.Metadata?.CreatedAt ?? DateTimeOffset.UtcNow,
-            body.Metadata?.UpdatedAt ?? DateTimeOffset.UtcNow);
+            body.Metadata?.UpdatedAt ?? DateTimeOffset.UtcNow,
+            body.Metadata?.CurrentVersion ?? 0);
     }
 
     public async Task<OVHSecretResult> CreateSecretAsync(
@@ -112,7 +120,8 @@ internal sealed class OVHOAuthHttpClient : IOVHApiClient
             Version = new VersionCreationRequest { Data = data }
         };
 
-        var response = await _http.PostAsJsonAsync(url, payload, JsonOptions, cancellationToken);
+        using var response = await SendAsync(
+            HttpMethod.Post, url, JsonContent.Create(payload, options: JsonOptions), cancellationToken);
         await EnsureSuccess(response, $"creating secret '{path}'", cancellationToken);
 
         var body = await response.Content.ReadFromJsonAsync<SecretResponse>(JsonOptions, cancellationToken)
@@ -121,13 +130,14 @@ internal sealed class OVHOAuthHttpClient : IOVHApiClient
         return new OVHSecretResult(
             body.Path,
             body.Metadata?.CreatedAt ?? DateTimeOffset.UtcNow,
-            body.Metadata?.UpdatedAt ?? DateTimeOffset.UtcNow);
+            body.Metadata?.UpdatedAt ?? DateTimeOffset.UtcNow,
+            body.Metadata?.CurrentVersion ?? 0);
     }
 
     public async Task DeleteSecretAsync(string path, CancellationToken cancellationToken)
     {
         var url = $"{BasePath}/secret/{Uri.EscapeDataString(path)}";
-        var response = await _http.DeleteAsync(url, cancellationToken);
+        using var response = await SendAsync(HttpMethod.Delete, url, content: null, cancellationToken);
         await EnsureSuccess(response, $"deleting secret '{path}'", cancellationToken);
     }
 
@@ -137,7 +147,8 @@ internal sealed class OVHOAuthHttpClient : IOVHApiClient
         var url = $"{BasePath}/secret/{Uri.EscapeDataString(path)}/version";
         var payload = new VersionCreationRequest { Data = data };
 
-        var response = await _http.PostAsJsonAsync(url, payload, JsonOptions, cancellationToken);
+        using var response = await SendAsync(
+            HttpMethod.Post, url, JsonContent.Create(payload, options: JsonOptions), cancellationToken);
         await EnsureSuccess(response, $"creating version for secret '{path}'", cancellationToken);
 
         var body = await response.Content.ReadFromJsonAsync<VersionResponse>(JsonOptions, cancellationToken)
@@ -150,7 +161,7 @@ internal sealed class OVHOAuthHttpClient : IOVHApiClient
         string path, int version, CancellationToken cancellationToken)
     {
         var url = $"{BasePath}/secret/{Uri.EscapeDataString(path)}/version/{version}?includeData=true";
-        var response = await _http.GetAsync(url, cancellationToken);
+        using var response = await SendAsync(HttpMethod.Get, url, content: null, cancellationToken);
         await EnsureSuccess(response, $"accessing version '{version}' of secret '{path}'", cancellationToken);
 
         var body = await response.Content.ReadFromJsonAsync<VersionResponse>(JsonOptions, cancellationToken)
@@ -163,7 +174,7 @@ internal sealed class OVHOAuthHttpClient : IOVHApiClient
         string path, CancellationToken cancellationToken)
     {
         var url = $"{BasePath}/secret/{Uri.EscapeDataString(path)}/version";
-        var response = await _http.GetAsync(url, cancellationToken);
+        using var response = await SendAsync(HttpMethod.Get, url, content: null, cancellationToken);
         await EnsureSuccess(response, $"listing versions for secret '{path}'", cancellationToken);
 
         var versions = await response.Content.ReadFromJsonAsync<List<VersionResponse>>(JsonOptions, cancellationToken);
@@ -177,8 +188,21 @@ internal sealed class OVHOAuthHttpClient : IOVHApiClient
 
     public ValueTask DisposeAsync()
     {
-        _http.Dispose();
+        if (_ownsHttp)
+            _http.Dispose();
+
         return ValueTask.CompletedTask;
+    }
+
+    private async Task<HttpResponseMessage> SendAsync(
+        HttpMethod method,
+        string path,
+        HttpContent? content,
+        CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(method, path) { Content = content };
+        ApplyOAuthHeaders(request, method.Method, path);
+        return await _http.SendAsync(request, cancellationToken);
     }
 
     private void ApplyOAuthHeaders(HttpRequestMessage request, string method, string path)
@@ -186,15 +210,18 @@ internal sealed class OVHOAuthHttpClient : IOVHApiClient
         var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var signature = GenerateSignature(method, path, timestamp);
 
-        request.Headers.Add("X-Ovh-Application", _applicationKey);
-        request.Headers.Add("X-Ovh-Timestamp", timestamp.ToString());
-        request.Headers.Add("X-Ovh-Signature", signature);
-        request.Headers.Add("X-Ovh-Consumer", _consumerKey);
+        request.Headers.TryAddWithoutValidation("X-Ovh-Application", _applicationKey);
+        request.Headers.TryAddWithoutValidation(
+            "X-Ovh-Timestamp", timestamp.ToString(CultureInfo.InvariantCulture));
+        request.Headers.TryAddWithoutValidation("X-Ovh-Signature", signature);
+        request.Headers.TryAddWithoutValidation("X-Ovh-Consumer", _consumerKey);
     }
 
     private string GenerateSignature(string method, string path, long timestamp)
     {
-        var signature = $"{_applicationSecret}&{_consumerKey}&{method}&https://eu.api.ovh.com{path}&{timestamp}";
+        var signature =
+            $"{_applicationSecret}&{_consumerKey}&{method}&{_endpoint}{path}&" +
+            timestamp.ToString(CultureInfo.InvariantCulture);
 
         using var sha1 = SHA1.Create();
         var hash = sha1.ComputeHash(Encoding.UTF8.GetBytes(signature));
@@ -221,13 +248,19 @@ internal sealed class OVHOAuthHttpClient : IOVHApiClient
             $"OVH API error {operation}: HTTP {(int)response.StatusCode} — {detail}");
     }
 
-    private static string MapEndpoint(string endpoint) => endpoint.ToLowerInvariant() switch
+    private static string MapEndpoint(string endpoint)
     {
-        "ovh-eu" or "eu" => "https://eu.api.ovh.com/",
-        "ovh-us" or "us" => "https://api.ovh.us/",
-        "ovh-ca" or "ca" => "https://ca.api.ovh.com/",
-        _ => endpoint.StartsWith("http") ? endpoint : $"https://{endpoint}.api.ovh.com/"
-    };
+        var normalized = endpoint.Trim().TrimEnd('/');
+        return normalized.ToLowerInvariant() switch
+        {
+            "ovh-eu" or "eu" => "https://eu.api.ovh.com",
+            "ovh-us" or "us" => "https://api.ovh.us",
+            "ovh-ca" or "ca" => "https://ca.api.ovh.com",
+            _ => normalized.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+                ? normalized
+                : $"https://{normalized}.api.ovh.com"
+        };
+    }
 
     // --- DTOs for JSON serialization ---
 

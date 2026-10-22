@@ -92,8 +92,9 @@ var provider = new SecretProviderBuilder()
 
 Defaults:
 
-- Does not retry `SecretNotFoundException`.
-- Does not retry canceled operations.
+- Retries only transient failures by default (timeouts, I/O and transport errors).
+- Does not retry `SecretNotFoundException`, `ArgumentException`, or cancelled operations.
+- Never retries `PutSecretAsync`, because writes are not idempotent.
 - `MaxAttempts` includes the first attempt.
 - `RetryPredicate` can override retry behavior.
 

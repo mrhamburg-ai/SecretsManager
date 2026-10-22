@@ -9,6 +9,7 @@ namespace SecretsManager.IBMCloudSecretsManager.Internal;
 internal sealed class IBMCloudSecretsManagerApiClient : IIBMCloudSecretsManagerApiClient
 {
     private readonly HttpClient _http;
+    private readonly bool _ownsHttp;
     private readonly string _region;
     private readonly string _instanceId;
 
@@ -30,11 +31,13 @@ internal sealed class IBMCloudSecretsManagerApiClient : IIBMCloudSecretsManagerA
             BaseAddress = new Uri(options.ServiceUrl ?? $"https://{_instanceId}.{_region}.secrets-manager.appdomain.cloud")
         };
         _http.DefaultRequestHeaders.Add("Authorization", $"Bearer {options.ApiKey}");
+        _ownsHttp = true;
     }
 
     internal IBMCloudSecretsManagerApiClient(HttpClient httpClient, string region, string instanceId)
     {
         _http = httpClient;
+        _ownsHttp = false;
         _region = region;
         _instanceId = instanceId;
     }
@@ -43,7 +46,7 @@ internal sealed class IBMCloudSecretsManagerApiClient : IIBMCloudSecretsManagerA
         string name, CancellationToken cancellationToken)
     {
         var url = $"{BasePath}/secrets?search={Uri.EscapeDataString(name)}";
-        var response = await _http.GetAsync(url, cancellationToken);
+        using var response = await _http.GetAsync(url, cancellationToken);
 
         if (response.StatusCode == HttpStatusCode.NotFound)
             return null;
@@ -70,7 +73,7 @@ internal sealed class IBMCloudSecretsManagerApiClient : IIBMCloudSecretsManagerA
             Tags = tags
         };
 
-        var response = await _http.PostAsJsonAsync(url, payload, JsonOptions, cancellationToken);
+        using var response = await _http.PostAsJsonAsync(url, payload, JsonOptions, cancellationToken);
         await EnsureSuccess(response, $"creating secret '{name}'", cancellationToken);
 
         var s = await response.Content.ReadFromJsonAsync<SecretDto>(JsonOptions, cancellationToken)
@@ -82,7 +85,7 @@ internal sealed class IBMCloudSecretsManagerApiClient : IIBMCloudSecretsManagerA
     public async Task DeleteSecretAsync(string secretId, CancellationToken cancellationToken)
     {
         var url = $"{BasePath}/secrets/{Uri.EscapeDataString(secretId)}";
-        var response = await _http.DeleteAsync(url, cancellationToken);
+        using var response = await _http.DeleteAsync(url, cancellationToken);
         await EnsureSuccess(response, $"deleting secret '{secretId}'", cancellationToken);
     }
 
@@ -95,7 +98,7 @@ internal sealed class IBMCloudSecretsManagerApiClient : IIBMCloudSecretsManagerA
             Payload = data
         };
 
-        var response = await _http.PostAsJsonAsync(url, payload, JsonOptions, cancellationToken);
+        using var response = await _http.PostAsJsonAsync(url, payload, JsonOptions, cancellationToken);
         await EnsureSuccess(response, $"creating version for secret '{secretId}'", cancellationToken);
 
         var v = await response.Content.ReadFromJsonAsync<VersionDto>(JsonOptions, cancellationToken)
@@ -108,7 +111,7 @@ internal sealed class IBMCloudSecretsManagerApiClient : IIBMCloudSecretsManagerA
         string secretId, string revision, CancellationToken cancellationToken)
     {
         var url = $"{BasePath}/secrets/{Uri.EscapeDataString(secretId)}/versions/{Uri.EscapeDataString(revision)}";
-        var response = await _http.GetAsync(url, cancellationToken);
+        using var response = await _http.GetAsync(url, cancellationToken);
         await EnsureSuccess(response, $"accessing version '{revision}' of secret '{secretId}'", cancellationToken);
 
         var body = await response.Content.ReadFromJsonAsync<AccessVersionResponse>(JsonOptions, cancellationToken)
@@ -126,7 +129,7 @@ internal sealed class IBMCloudSecretsManagerApiClient : IIBMCloudSecretsManagerA
         while (true)
         {
             var url = $"{BasePath}/secrets/{Uri.EscapeDataString(secretId)}/versions?page={page}&page_size=100";
-            var response = await _http.GetAsync(url, cancellationToken);
+            using var response = await _http.GetAsync(url, cancellationToken);
             await EnsureSuccess(response, $"listing versions for secret '{secretId}'", cancellationToken);
 
             var body = await response.Content.ReadFromJsonAsync<ListVersionsResponse>(JsonOptions, cancellationToken);
@@ -147,7 +150,9 @@ internal sealed class IBMCloudSecretsManagerApiClient : IIBMCloudSecretsManagerA
 
     public ValueTask DisposeAsync()
     {
-        _http.Dispose();
+        if (_ownsHttp)
+            _http.Dispose();
+
         return ValueTask.CompletedTask;
     }
 

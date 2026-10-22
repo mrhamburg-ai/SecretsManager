@@ -9,6 +9,7 @@ namespace SecretsManager.Scaleway.Internal;
 internal sealed class ScalewayApiClient : IScalewayApiClient
 {
     private readonly HttpClient _http;
+    private readonly bool _ownsHttp;
     private readonly string _region;
     private readonly string _projectId;
 
@@ -30,11 +31,13 @@ internal sealed class ScalewayApiClient : IScalewayApiClient
             BaseAddress = new Uri("https://api.scaleway.com")
         };
         _http.DefaultRequestHeaders.Add("X-Auth-Token", options.SecretKey);
+        _ownsHttp = true;
     }
 
     internal ScalewayApiClient(HttpClient httpClient, string region, string projectId)
     {
         _http = httpClient;
+        _ownsHttp = false;
         _region = region;
         _projectId = projectId;
     }
@@ -43,7 +46,7 @@ internal sealed class ScalewayApiClient : IScalewayApiClient
         string name, CancellationToken cancellationToken)
     {
         var url = $"{BasePath}/secrets?project_id={Uri.EscapeDataString(_projectId)}&name={Uri.EscapeDataString(name)}";
-        var response = await _http.GetAsync(url, cancellationToken);
+        using var response = await _http.GetAsync(url, cancellationToken);
 
         if (response.StatusCode == HttpStatusCode.NotFound)
             return null;
@@ -70,7 +73,7 @@ internal sealed class ScalewayApiClient : IScalewayApiClient
             Tags = tags
         };
 
-        var response = await _http.PostAsJsonAsync(url, payload, JsonOptions, cancellationToken);
+        using var response = await _http.PostAsJsonAsync(url, payload, JsonOptions, cancellationToken);
         await EnsureSuccess(response, $"creating secret '{name}'", cancellationToken);
 
         var s = await response.Content.ReadFromJsonAsync<SecretDto>(JsonOptions, cancellationToken)
@@ -82,7 +85,7 @@ internal sealed class ScalewayApiClient : IScalewayApiClient
     public async Task DeleteSecretAsync(string secretId, CancellationToken cancellationToken)
     {
         var url = $"{BasePath}/secrets/{Uri.EscapeDataString(secretId)}";
-        var response = await _http.DeleteAsync(url, cancellationToken);
+        using var response = await _http.DeleteAsync(url, cancellationToken);
         await EnsureSuccess(response, $"deleting secret '{secretId}'", cancellationToken);
     }
 
@@ -95,7 +98,7 @@ internal sealed class ScalewayApiClient : IScalewayApiClient
             Data = Convert.ToBase64String(Encoding.UTF8.GetBytes(data))
         };
 
-        var response = await _http.PostAsJsonAsync(url, payload, JsonOptions, cancellationToken);
+        using var response = await _http.PostAsJsonAsync(url, payload, JsonOptions, cancellationToken);
         await EnsureSuccess(response, $"creating version for secret '{secretId}'", cancellationToken);
 
         var v = await response.Content.ReadFromJsonAsync<VersionDto>(JsonOptions, cancellationToken)
@@ -108,7 +111,7 @@ internal sealed class ScalewayApiClient : IScalewayApiClient
         string secretId, string revision, CancellationToken cancellationToken)
     {
         var url = $"{BasePath}/secrets/{Uri.EscapeDataString(secretId)}/versions/{Uri.EscapeDataString(revision)}/access";
-        var response = await _http.GetAsync(url, cancellationToken);
+        using var response = await _http.GetAsync(url, cancellationToken);
         await EnsureSuccess(response, $"accessing version '{revision}' of secret '{secretId}'", cancellationToken);
 
         var body = await response.Content.ReadFromJsonAsync<AccessVersionResponse>(JsonOptions, cancellationToken)
@@ -127,7 +130,7 @@ internal sealed class ScalewayApiClient : IScalewayApiClient
         while (true)
         {
             var url = $"{BasePath}/secrets/{Uri.EscapeDataString(secretId)}/versions?page={page}&page_size=100";
-            var response = await _http.GetAsync(url, cancellationToken);
+            using var response = await _http.GetAsync(url, cancellationToken);
             await EnsureSuccess(response, $"listing versions for secret '{secretId}'", cancellationToken);
 
             var body = await response.Content.ReadFromJsonAsync<ListVersionsResponse>(JsonOptions, cancellationToken);
@@ -148,7 +151,9 @@ internal sealed class ScalewayApiClient : IScalewayApiClient
 
     public ValueTask DisposeAsync()
     {
-        _http.Dispose();
+        if (_ownsHttp)
+            _http.Dispose();
+
         return ValueTask.CompletedTask;
     }
 
