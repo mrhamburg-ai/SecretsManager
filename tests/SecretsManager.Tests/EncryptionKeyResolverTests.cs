@@ -286,10 +286,11 @@ public sealed class EncryptionKeyResolverTests
     public async Task Dispose_DoesNotThrow_WhenAFetchIsInFlight()
     {
         var gate = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        await using var resolver = new EncryptionKeyResolver(null, null, new GatedSource(gate.Task));
+        var started = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        await using var resolver = new EncryptionKeyResolver(null, null, new GatedSource(gate.Task, started));
 
         var fetch = resolver.GetCurrentAsync();
-        await Task.Delay(100);
+        await started.Task;
 
         resolver.Dispose();
         gate.SetResult(true);
@@ -337,10 +338,12 @@ public sealed class EncryptionKeyResolverTests
         }
     }
 
-    private sealed class GatedSource(Task gate) : IEncryptionKeyProvider
+    private sealed class GatedSource(
+        Task gate, TaskCompletionSource<bool>? started = null) : IEncryptionKeyProvider
     {
         public async ValueTask<EncryptionKeyMaterial> GetCurrentKeyAsync(CancellationToken cancellationToken = default)
         {
+            started?.TrySetResult(true);
             await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
             return new EncryptionKeyMaterial(new byte[32], "g@1");
         }

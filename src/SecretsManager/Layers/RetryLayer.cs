@@ -3,6 +3,11 @@ namespace SecretsManager;
 /// <summary>
 /// Retries failed operations with exponential backoff.
 /// </summary>
+/// <remarks>
+/// Only transient failures are retried by default. <see cref="ISecretProvider.PutSecretAsync"/>
+/// is never retried because writes are not idempotent. Configure <see cref="RetryLayerOptions.RetryPredicate"/>
+/// to override the default classification.
+/// </remarks>
 public sealed class RetryLayer : ISecretProviderLayer
 {
     private readonly RetryLayerOptions _options;
@@ -56,15 +61,15 @@ public sealed class RetryLayer : ISecretProviderLayer
                 cancellationToken);
         }
 
-        public async Task<SecretValue> PutSecretAsync(
+        public Task<SecretValue> PutSecretAsync(
             string key,
             string value,
             SecretMetadata? metadata = null,
             CancellationToken cancellationToken = default)
         {
-            return await ExecuteAsync(
-                token => inner.PutSecretAsync(key, value, metadata, token),
-                cancellationToken);
+            // Writes are not idempotent: retrying may create duplicate versions or
+            // overwrite a value that was already stored by a partially successful attempt.
+            return inner.PutSecretAsync(key, value, metadata, cancellationToken);
         }
 
         public async Task DeleteSecretAsync(string key, CancellationToken cancellationToken = default)
@@ -135,8 +140,25 @@ public sealed class RetryLayer : ISecretProviderLayer
             if (options.RetryPredicate is not null)
                 return options.RetryPredicate(ex);
 
-            return ex is not OperationCanceledException && ex is not SecretNotFoundException;
+            return IsTransient(ex);
         }
+
+        private static bool IsTransient(Exception ex) => ex switch
+        {
+            OperationCanceledException => false,
+            SecretNotFoundException => false,
+            ArgumentException => false,
+            UnauthorizedAccessException => false,
+            NotSupportedException => false,
+            TimeoutException => true,
+            HttpRequestException => true,
+            IOException => true,
+            System.Net.Sockets.SocketException => true,
+            SecretProviderException { InnerException: { } inner } => IsTransient(inner),
+            SecretProviderException => true,
+            AggregateException aggregate => aggregate.InnerExceptions.Any(IsTransient),
+            _ => false,
+        };
 
         private TimeSpan CalculateDelay(int attempt)
         {

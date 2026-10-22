@@ -48,7 +48,8 @@ public sealed class AesGcmEncryptor : ISecretEncryptor
         var ciphertext = new byte[plaintext.Length];
         var tag = new byte[TagSize];
 
-        _aesGcm.Encrypt(nonce, plaintext, ciphertext, tag, associatedData ?? []);
+        ReadOnlySpan<byte> associated = associatedData;
+        _aesGcm.Encrypt(nonce, plaintext, ciphertext, tag, associated);
 
         return new EncryptedPayload(nonce, ciphertext, tag, associatedData);
     }
@@ -65,8 +66,9 @@ public sealed class AesGcmEncryptor : ISecretEncryptor
     public byte[] Decrypt(EncryptedPayload payload)
     {
         var plaintext = new byte[payload.Ciphertext.Length];
+        ReadOnlySpan<byte> associated = payload.AssociatedData;
         _aesGcm.Decrypt(
-            payload.Nonce, payload.Ciphertext, payload.Tag, plaintext, payload.AssociatedData ?? []);
+            payload.Nonce, payload.Ciphertext, payload.Tag, plaintext, associated);
         return plaintext;
     }
 

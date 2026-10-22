@@ -132,17 +132,8 @@ public sealed class ConcurrentLimiterLayer : ISecretProviderLayer
                 return;
             }
 
-            using var timeout = new CancellationTokenSource(_acquireTimeout.Value);
-            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeout.Token);
-
-            try
-            {
-                await _semaphore.WaitAsync(linkedCts.Token);
-            }
-            catch (OperationCanceledException) when (timeout.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
-            {
+            if (!await _semaphore.WaitAsync(_acquireTimeout.Value, cancellationToken))
                 throw new TimeoutException("Timed out while waiting for concurrency slot.");
-            }
         }
     }
 }

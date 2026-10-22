@@ -14,6 +14,7 @@ public sealed class ConcurrentLimiterLayerTests
         var maxActive = 0;
 
         var gate = new SemaphoreSlim(0);
+        var started = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
         var baseProvider = new DelegatingSecretProvider
         {
@@ -21,6 +22,7 @@ public sealed class ConcurrentLimiterLayerTests
             {
                 var current = Interlocked.Increment(ref active);
                 LayerTestHelpers.RecordMax(ref maxActive, current);
+                started.TrySetResult(true);
                 await gate.WaitAsync(token);
                 Interlocked.Decrement(ref active);
                 return new SecretValue { Key = "key", Value = "ok" };
@@ -36,7 +38,7 @@ public sealed class ConcurrentLimiterLayerTests
         for (var i = 0; i < 5; i++)
             tasks.Add(provider.GetSecretAsync($"key-{i}"));
 
-        await Task.Delay(50);
+        await started.Task;
 
         Assert.True(maxActive <= 1, "Limiter should limit to one request at a time.");
 
