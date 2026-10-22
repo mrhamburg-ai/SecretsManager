@@ -157,6 +157,6 @@ await provider.PutSecretAsync("my-secret", "new-value");
 // List all versions
 var versions = await provider.GetSecretVersionsAsync("my-secret");
 
-// Delete (immediate, no recovery window)
+// Delete (scheduled with the service default recovery window)
 await provider.DeleteSecretAsync("old-secret");
 ```

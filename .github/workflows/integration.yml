@@ -111,7 +111,6 @@ jobs:
               endpoint: "${{ secrets.OVH_ENDPOINT }}"
               application:
                 key: "${{ secrets.OVH_APPLICATION_KEY }}"
-              application:
                 secret: "${{ secrets.OVH_APPLICATION_SECRET }}"
               consumer:
                 key: "${{ secrets.OVH_CONSUMER_KEY }}"

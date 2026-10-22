@@ -42,7 +42,6 @@ jobs:
         # Publish rather than build. A library build copies only the project's own assemblies, so
         # the checker would not find the NuGet dependencies it needs to resolve the API surface.
         dotnet publish tools/ApiCompatChecker/ApiCompatChecker.csproj -c Release -o "$RUNNER_TEMP/api-checker"
-        dotnet publish src/SecretsManager.Vault/SecretsManager.Vault.csproj -c Release -o "$RUNNER_TEMP/api-current"
 
         # The base has to be origin/main, built in an isolated worktree. Comparing the branch
         # against its own output passes unconditionally, which is exactly what this check exists to
@@ -50,14 +49,27 @@ jobs:
         # merge ref.
         git fetch origin main
         git worktree add --detach "$RUNNER_TEMP/api-base-wt" origin/main
-        dotnet publish "$RUNNER_TEMP/api-base-wt/src/SecretsManager.Vault/SecretsManager.Vault.csproj" \
-          -c Release -o "$RUNNER_TEMP/api-base"
+        trap 'git worktree remove --force "$RUNNER_TEMP/api-base-wt" || true' EXIT
 
-        dotnet "$RUNNER_TEMP/api-checker/ApiCompatChecker.dll" \
-          "$RUNNER_TEMP/api-base" \
-          "$RUNNER_TEMP/api-current"
+        for project in src/*/*.csproj; do
+          name="$(basename "$project" .csproj)"
+          relative="${project#src/}"
+          base_project="$RUNNER_TEMP/api-base-wt/src/$relative"
 
-        git worktree remove --force "$RUNNER_TEMP/api-base-wt" || true
+          # A provider added on this branch has no base API to compare against.
+          if [ ! -f "$base_project" ]; then
+            echo "Skipping $name: not present on origin/main."
+            continue
+          fi
+
+          dotnet publish "$project" -c Release -o "$RUNNER_TEMP/api-current/$name"
+          dotnet publish "$base_project" -c Release -o "$RUNNER_TEMP/api-base/$name"
+
+          echo "Checking API compatibility for $name."
+          dotnet "$RUNNER_TEMP/api-checker/ApiCompatChecker.dll" \
+            "$RUNNER_TEMP/api-base/$name" \
+            "$RUNNER_TEMP/api-current/$name"
+        done
 
     - name: Check formatting
       run: dotnet format --verify-no-changes --no-restore
