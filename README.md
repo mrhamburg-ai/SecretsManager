@@ -5,7 +5,6 @@
 [![.NET 10.0](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com/)
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue.svg)](LICENSE-MIT)
 [![CI](https://github.com/mrhamburg/SecretsManager/actions/workflows/ci.yml/badge.svg)](https://github.com/mrhamburg/SecretsManager/actions/workflows/ci.yml)
-[![Integration Tests](https://github.com/mrhamburg/SecretsManager/actions/workflows/integration.yml/badge.svg)](https://github.com/mrhamburg/SecretsManager/actions/workflows/integration.yml)
 
 A unified .NET abstraction layer over secret management backends, inspired by the [External Secrets Operator](https://external-secrets.io/) for Kubernetes. Program against a single `ISecretProvider` interface regardless of where your secrets live.
 

@@ -4,10 +4,11 @@ on:
   push:
     branches: [ main ]
   pull_request:
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -134,36 +135,460 @@ jobs:
       env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
-  integration-tests:
+  # Integration tests run the console harness (tests/SecretsManager.IntegrationTests) against a
+  # real backend. The harness is not an xUnit project, so it is published and invoked directly with
+  # a per-provider config.yaml via the .github/actions/integration-test composite action.
+  filesystem:
+    name: Filesystem
     runs-on: ubuntu-26.04
     needs: build
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name != 'pull_request'
+    steps:
+    - uses: actions/checkout@v7
+    - uses: ./.github/actions/integration-test
+      with:
+        config: |
+          provider:
+            filesystem:
+              path: ./secrets-integration-test
+
+  azure-keyvault:
+    name: Azure Key Vault
+    runs-on: ubuntu-26.04
+    needs: build
+    if: github.event_name != 'pull_request' && vars.HAS_AZURE_SECRETS == 'true'
+    steps:
+    - uses: actions/checkout@v7
+    - uses: ./.github/actions/integration-test
+      with:
+        config: |
+          provider:
+            azureKeyVault:
+              vaultUrl: "${{ secrets.AZURE_VAULT_URL }}"
+              authentication:
+                type: serviceprincipal
+                tenantId: "${{ secrets.AZURE_TENANT_ID }}"
+                clientId: "${{ secrets.AZURE_CLIENT_ID }}"
+                clientSecret: "${{ secrets.AZURE_CLIENT_SECRET }}"
+
+  scaleway:
+    name: Scaleway
+    runs-on: ubuntu-26.04
+    needs: build
+    if: github.event_name != 'pull_request' && vars.HAS_SCALEWAY_SECRETS == 'true'
+    steps:
+    - uses: actions/checkout@v7
+    - uses: ./.github/actions/integration-test
+      with:
+        config: |
+          provider:
+            scaleway:
+              region: "${{ secrets.SCALEWAY_REGION }}"
+              project:
+                id: "${{ secrets.SCALEWAY_PROJECT_ID }}"
+              access:
+                key: "${{ secrets.SCALEWAY_ACCESS_KEY }}"
+              secret:
+                key: "${{ secrets.SCALEWAY_SECRET_KEY }}"
+
+  postgresql:
+    name: PostgreSQL
+    runs-on: ubuntu-26.04
+    needs: build
+    if: github.event_name != 'pull_request'
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: secrets
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+    - uses: actions/checkout@v7
+    - uses: ./.github/actions/integration-test
+      with:
+        config: |
+          provider:
+            postgresql:
+              connection:
+                string: "Host=localhost;Port=5432;Database=secrets;Username=postgres;Password=postgres"
+              schema: public
+              table:
+                prefix: sm_
+              auto:
+                create:
+                  schema: true
+              encryption:
+                key: "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY="
+
+  ovh:
+    name: OVH
+    runs-on: ubuntu-26.04
+    needs: build
+    if: github.event_name != 'pull_request' && vars.HAS_OVH_SECRETS == 'true'
+    steps:
+    - uses: actions/checkout@v7
+    - uses: ./.github/actions/integration-test
+      with:
+        config: |
+          provider:
+            ovh:
+              endpoint: "${{ secrets.OVH_ENDPOINT }}"
+              application:
+                key: "${{ secrets.OVH_APPLICATION_KEY }}"
+                secret: "${{ secrets.OVH_APPLICATION_SECRET }}"
+              consumer:
+                key: "${{ secrets.OVH_CONSUMER_KEY }}"
+              okms:
+                id: "${{ secrets.OVH_OKMS_ID }}"
+
+  aws:
+    name: AWS
+    runs-on: ubuntu-26.04
+    needs: build
+    if: github.event_name != 'pull_request' && vars.HAS_AWS_SECRETS == 'true'
+    steps:
+    - uses: actions/checkout@v7
+    - uses: ./.github/actions/integration-test
+      with:
+        config: |
+          provider:
+            awsSecretsManager:
+              region: "${{ secrets.AWS_REGION }}"
+              access:
+                key: "${{ secrets.AWS_ACCESS_KEY }}"
+              secret:
+                key: "${{ secrets.AWS_SECRET_KEY }}"
+
+  oracle-vault:
+    name: Oracle Vault
+    runs-on: ubuntu-26.04
+    needs: build
+    if: github.event_name != 'pull_request' && vars.HAS_ORACLE_VAULT_SECRETS == 'true'
+    steps:
+    - uses: actions/checkout@v7
+    - uses: ./.github/actions/integration-test
+      with:
+        config: |
+          provider:
+            oracleVault:
+              region: "${{ secrets.ORACLE_VAULT_REGION }}"
+              authentication:
+                type: configfile
+                profileName: DEFAULT
+              vault:
+                id: "${{ secrets.ORACLE_VAULT_ID }}"
+              compartment:
+                id: "${{ secrets.ORACLE_COMPARTMENT_ID }}"
+
+  google-secret-manager:
+    name: Google Secret Manager
+    runs-on: ubuntu-26.04
+    needs: build
+    if: github.event_name != 'pull_request' && vars.HAS_GCP_SECRETS == 'true'
+    steps:
+    - uses: actions/checkout@v7
+    - uses: ./.github/actions/integration-test
+      with:
+        config: |
+          provider:
+            googleSecretManager:
+              project:
+                id: "${{ secrets.GCP_PROJECT_ID }}"
+              credentials:
+                json: "${{ secrets.GCP_SA_KEY }}"
+
+  passbolt:
+    name: Passbolt
+    runs-on: ubuntu-26.04
+    needs: build
+    if: false
+    services:
+      passbolt-db:
+        image: mariadb:10.11
+        env:
+          MYSQL_RANDOM_ROOT_PASSWORD: "true"
+          MYSQL_DATABASE: passbolt
+          MYSQL_USER: passbolt
+          MYSQL_PASSWORD: P4ssb0lt
+        options: >-
+          --health-cmd "mariadb-admin ping -h localhost -u passbolt -pP4ssb0lt"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+      passbolt:
+        image: passbolt/passbolt:latest-ce
+        env:
+          APP_FULL_BASE_URL: http://localhost:8080
+          DATASOURCES_DEFAULT_HOST: passbolt-db
+          DATASOURCES_DEFAULT_PORT: 3306
+          DATASOURCES_DEFAULT_USERNAME: passbolt
+          DATASOURCES_DEFAULT_PASSWORD: P4ssb0lt
+          DATASOURCES_DEFAULT_DATABASE: passbolt
+          PASSBOLT_SSL_FORCE: "false"
+        ports:
+          - 8080:80
+    steps:
+    - uses: actions/checkout@v7
+    - name: Bootstrap Passbolt test user
+      id: passbolt-bootstrap
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        passphrase="passbolt-integration"
+        gpg_home="$(mktemp -d)"
+        chmod 700 "$gpg_home"
+
+        printf '%s\n' \
+          'Key-Type: RSA' \
+          'Key-Length: 3072' \
+          'Subkey-Type: RSA' \
+          'Subkey-Length: 3072' \
+          'Name-Real: Passbolt Integration' \
+          'Name-Email: integration@passbolt.local' \
+          'Expire-Date: 0' \
+          'Passphrase: passbolt-integration' \
+          '%commit' > "$gpg_home/gen-key.conf"
+
+        gpg --batch --pinentry-mode loopback --homedir "$gpg_home" --generate-key "$gpg_home/gen-key.conf"
+
+        fingerprint="$(gpg --homedir "$gpg_home" --list-secret-keys --with-colons integration@passbolt.local | rg '^fpr:' -m1 | cut -d: -f10)"
+        gpg --batch --pinentry-mode loopback --passphrase "$passphrase" --homedir "$gpg_home" --armor --export-secret-keys "$fingerprint" > "$gpg_home/private.asc"
+        gpg --batch --homedir "$gpg_home" --armor --export "$fingerprint" > "$gpg_home/public.asc"
+
+        ready=false
+        for _ in {1..60}; do
+          if curl -fsS "http://localhost:8080/healthcheck/status.json" >/dev/null; then
+            ready=true
+            break
+          fi
+          sleep 2
+        done
+        if [ "$ready" = false ]; then
+          echo "Passbolt service did not become ready in time" >&2
+          exit 1
+        fi
+
+        passbolt_container="${{ job.services.passbolt.id }}"
+        register_output="$(docker exec "$passbolt_container" su -m -c '/usr/share/php/passbolt/bin/cake passbolt register_user -u integration@passbolt.local -f Integration -l Test -r admin' -s /bin/sh www-data)"
+        setup_url="$(printf '%s' "$register_output" | rg -o 'http://[^ ]+/setup/start/[^ ]+' -m1)"
+        setup_parts="${setup_url#*/setup/start/}"
+        user_id="${setup_parts%%/*}"
+        token="${setup_parts##*/}"
+
+        payload="$(jq -n --arg token "$token" --arg key "$(cat "$gpg_home/public.asc")" '{authentication_token: {token: $token}, gpgkey: {armored_key: $key}}')"
+        setup_response="$(curl -fsS -X POST "http://localhost:8080/setup/complete/$user_id.json" -H 'Content-Type: application/json' --data "$payload")"
+        printf '%s' "$setup_response" | jq -e '.header.status == "success"' >/dev/null
+
+        private_key="$(jq -Rs '.' < "$gpg_home/private.asc")"
+        private_key="${private_key#\"}"
+        private_key="${private_key%\"}"
+
+        {
+          echo "base_url=http://localhost:8080"
+          echo "private_key_passphrase=$passphrase"
+          echo "user_key_fingerprint=$fingerprint"
+          echo "private_key=$private_key"
+        } >> "$GITHUB_OUTPUT"
+
+    - uses: ./.github/actions/integration-test
+      with:
+        config: |
+          provider:
+            passbolt:
+              base:
+                url: "${{ steps.passbolt-bootstrap.outputs.base_url }}"
+              user:
+                private:
+                  key: "${{ steps.passbolt-bootstrap.outputs.private_key }}"
+                  passphrase: "${{ steps.passbolt-bootstrap.outputs.private_key_passphrase }}"
+                key:
+                  fingerprint: "${{ steps.passbolt-bootstrap.outputs.user_key_fingerprint }}"
+    - name: Dump Passbolt logs on failure
+      if: failure()
+      shell: bash
+      run: |
+        passbolt_container="${{ job.services.passbolt.id }}"
+        passbolt_db_container="${{ job.services['passbolt-db'].id }}"
+
+        echo "::group::passbolt logs"
+        docker logs "$passbolt_container" || true
+        echo "::endgroup::"
+
+        echo "::group::passbolt-db logs"
+        docker logs "$passbolt_db_container" || true
+        echo "::endgroup::"
+
+  aliyun-kms:
+    name: Aliyun KMS
+    runs-on: ubuntu-26.04
+    needs: build
+    if: github.event_name != 'pull_request' && vars.HAS_ALIYUN_SECRETS == 'true'
+    steps:
+    - uses: actions/checkout@v7
+    - uses: ./.github/actions/integration-test
+      with:
+        config: |
+          provider:
+            aliyunKms:
+              region: "${{ secrets.ALIYUN_REGION }}"
+              access:
+                key: "${{ secrets.ALIYUN_ACCESS_KEY_ID }}"
+              secret:
+                key: "${{ secrets.ALIYUN_ACCESS_KEY_SECRET }}"
+
+  ibm-cloud-secrets-manager:
+    name: IBM Cloud Secrets Manager
+    runs-on: ubuntu-26.04
+    needs: build
+    if: github.event_name != 'pull_request' && vars.HAS_IBM_CLOUD_SECRETS == 'true'
+    steps:
+    - uses: actions/checkout@v7
+    - uses: ./.github/actions/integration-test
+      with:
+        config: |
+          provider:
+            ibmcloud-secrets-manager:
+              region: "${{ secrets.IBM_CLOUD_REGION }}"
+              instance.id: "${{ secrets.IBM_CLOUD_INSTANCE_ID }}"
+              api.key: "${{ secrets.IBM_CLOUD_API_KEY }}"
+
+  tencent-cloud:
+    name: Tencent Cloud
+    runs-on: ubuntu-26.04
+    needs: build
+    if: github.event_name != 'pull_request' && vars.HAS_TENCENT_CLOUD_SECRETS == 'true'
+    steps:
+    - uses: actions/checkout@v7
+    - uses: ./.github/actions/integration-test
+      with:
+        config: |
+          provider:
+            tencentCloud:
+              region: "${{ secrets.TENCENT_CLOUD_REGION }}"
+              secret:
+                id: "${{ secrets.TENCENT_CLOUD_SECRET_ID }}"
+                key: "${{ secrets.TENCENT_CLOUD_SECRET_KEY }}"
+
+  vault:
+    name: HashiCorp Vault
+    runs-on: ubuntu-26.04
+    needs: build
+    if: github.event_name != 'pull_request'
+    services:
+      vault:
+        image: hashicorp/vault:latest
+        env:
+          VAULT_DEV_ROOT_TOKEN_ID: root-token
+          VAULT_ADDR: http://127.0.0.1:8200
+          VAULT_TOKEN: root-token
+        ports:
+          - 8200:8200
+        options: >-
+          --cap-add IPC_LOCK
+          --health-cmd "vault status"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
     - uses: actions/checkout@v7
-
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v6
+    - uses: ./.github/actions/integration-test
       with:
-        dotnet-version: '10.0.x'
+        config: |
+          provider:
+            vault:
+              url: http://localhost:8200
+              token: root-token
+              mount:
+                path: secret
+              skip:
+                tls:
+                  verify: true
 
-    - name: Cache NuGet packages
-      uses: actions/cache@v6
-      with:
-        path: ~/.nuget/packages
-        key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Build.props') }}
-        restore-keys: |
-          nuget-${{ runner.os }}-
+  conjur:
+    name: CyberArk Conjur
+    runs-on: ubuntu-26.04
+    needs: build
+    if: github.event_name != 'pull_request'
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: conjur
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+    - uses: actions/checkout@v7
 
-    - name: Restore dependencies
-      run: dotnet restore
-
-    - name: Build
-      run: dotnet build --no-restore -c Release
-
-    - name: Run integration tests
+    - name: Start Conjur server
+      shell: bash
       run: >-
-        dotnet test
-        --no-build
-        -c Release
-        --filter "FullyQualifiedName~SecretsManager.IntegrationTests"
+        docker run -d --name conjur --network host
+        -e DATABASE_URL=postgres://postgres:postgres@localhost:5433/conjur
+        -e CONJUR_DATA_KEY=uOTz5ehLfkuSWtdzfWSiEY0V6ngaNrFQdQ4vse9+ywM=
+        cyberark/conjur:1.24.0
+        server -a myorg
+
+    - name: Wait for Conjur and obtain admin API key
+      id: conjur-bootstrap
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        ready=false
+        for _ in {1..90}; do
+          if docker logs conjur 2>&1 | grep -q 'API key for admin'; then
+            ready=true
+            break
+          fi
+          sleep 2
+        done
+        if [ "$ready" = false ]; then
+          echo "Conjur server did not produce an API key in time" >&2
+          docker logs conjur || true
+          exit 1
+        fi
+
+        api_key="$(docker logs conjur 2>&1 | grep -o 'API key for admin: [a-z0-9]*' | head -1 | awk '{print $NF}')"
+
+        http_ready=false
+        for _ in {1..60}; do
+          if curl -s -o /dev/null "http://localhost:80/health"; then
+            http_ready=true
+            break
+          fi
+          sleep 2
+        done
+        if [ "$http_ready" = false ]; then
+          echo "Conjur server did not become reachable in time" >&2
+          docker logs conjur || true
+          exit 1
+        fi
+
+        echo "api_key=$api_key" >> "$GITHUB_OUTPUT"
+
+    - uses: ./.github/actions/integration-test
+      with:
+        config: |
+          provider:
+            conjur:
+              url: http://localhost:80
+              account: myorg
+              login: admin
+              apiKey: "${{ steps.conjur-bootstrap.outputs.api_key }}"
