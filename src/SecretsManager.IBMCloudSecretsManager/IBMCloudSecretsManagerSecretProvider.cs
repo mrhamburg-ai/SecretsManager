@@ -64,8 +64,7 @@ public sealed class IBMCloudSecretsManagerSecretProvider : ISecretProvider
                 UpdatedAt = secret.UpdatedAt
             };
         }
-        catch (OperationCanceledException) { throw; }
-        catch (Exception ex) when (ex is not SecretProviderException)
+        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
         {
             throw new SecretProviderException(
                 $"IBM Cloud Secrets Manager error for secret '{key}': {ex.Message}", ex);
@@ -106,8 +105,7 @@ public sealed class IBMCloudSecretsManagerSecretProvider : ISecretProvider
                 UpdatedAt = version.UpdatedAt
             };
         }
-        catch (OperationCanceledException) { throw; }
-        catch (Exception ex) when (ex is not SecretProviderException)
+        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
         {
             throw new SecretProviderException(
                 $"IBM Cloud Secrets Manager error putting secret '{key}': {ex.Message}", ex);
@@ -130,8 +128,7 @@ public sealed class IBMCloudSecretsManagerSecretProvider : ISecretProvider
 
             await _client.DeleteSecretAsync(secret.Id, cancellationToken);
         }
-        catch (OperationCanceledException) { throw; }
-        catch (Exception ex) when (ex is not SecretProviderException)
+        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
         {
             throw new SecretProviderException(
                 $"IBM Cloud Secrets Manager error deleting secret '{key}': {ex.Message}", ex);
@@ -166,8 +163,7 @@ public sealed class IBMCloudSecretsManagerSecretProvider : ISecretProvider
                 .ToList()
                 .AsReadOnly();
         }
-        catch (OperationCanceledException) { throw; }
-        catch (Exception ex) when (ex is not SecretProviderException)
+        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
         {
             throw new SecretProviderException(
                 $"IBM Cloud Secrets Manager error listing versions for '{key}': {ex.Message}", ex);
@@ -188,8 +184,7 @@ public sealed class IBMCloudSecretsManagerSecretProvider : ISecretProvider
             var secret = await _client.FindSecretByNameAsync(key, cancellationToken);
             return secret is not null;
         }
-        catch (OperationCanceledException) { throw; }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             throw new SecretProviderException(
                 $"IBM Cloud Secrets Manager error checking existence of '{key}': {ex.Message}", ex);

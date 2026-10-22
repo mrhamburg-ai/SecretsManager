@@ -70,8 +70,7 @@ public sealed class OVHSecretProvider : ISecretProvider
                 UpdatedAt = secret.UpdatedAt
             };
         }
-        catch (OperationCanceledException) { throw; }
-        catch (Exception ex) when (ex is not SecretProviderException)
+        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
         {
             throw new SecretProviderException(
                 $"OVH error for secret '{key}': {ex.Message}", ex);
@@ -122,8 +121,7 @@ public sealed class OVHSecretProvider : ISecretProvider
                 };
             }
         }
-        catch (OperationCanceledException) { throw; }
-        catch (Exception ex) when (ex is not SecretProviderException)
+        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
         {
             throw new SecretProviderException(
                 $"OVH error putting secret '{key}': {ex.Message}", ex);
@@ -142,8 +140,7 @@ public sealed class OVHSecretProvider : ISecretProvider
         {
             await _client.DeleteSecretAsync(key, cancellationToken);
         }
-        catch (OperationCanceledException) { throw; }
-        catch (Exception ex) when (ex is not SecretProviderException)
+        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
         {
             throw new SecretProviderException(
                 $"OVH error deleting secret '{key}': {ex.Message}", ex);
@@ -176,8 +173,7 @@ public sealed class OVHSecretProvider : ISecretProvider
                 .ToList()
                 .AsReadOnly();
         }
-        catch (OperationCanceledException) { throw; }
-        catch (Exception ex) when (ex is not SecretProviderException)
+        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
         {
             throw new SecretProviderException(
                 $"OVH error listing versions for '{key}': {ex.Message}", ex);
@@ -198,8 +194,7 @@ public sealed class OVHSecretProvider : ISecretProvider
             var secret = await _client.FindSecretByNameAsync(key, cancellationToken);
             return secret is not null;
         }
-        catch (OperationCanceledException) { throw; }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             throw new SecretProviderException(
                 $"OVH error checking existence of '{key}': {ex.Message}", ex);
