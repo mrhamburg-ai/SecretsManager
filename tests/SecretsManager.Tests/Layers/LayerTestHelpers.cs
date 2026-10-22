@@ -139,13 +139,20 @@ internal sealed class TestTrackingLayer : ISecretProviderLayer
 
 internal sealed class ThrowingSecretProviderLogger : ISecretProviderLogger
 {
+    public bool ThrowOnIsEnabled { get; init; }
     public bool ThrowOnStart { get; init; }
     public bool ThrowOnSuccess { get; init; }
     public bool ThrowOnFailure { get; init; }
     public bool ThrowOnRetry { get; init; }
     public List<string> Calls { get; } = new();
 
-    public bool IsEnabled(SecretProviderLogLevel level) => true;
+    public bool IsEnabled(SecretProviderLogLevel level)
+    {
+        if (ThrowOnIsEnabled)
+            throw new IOException("sink down");
+
+        return true;
+    }
 
     public void LogStart(SecretProviderLogContext context)
     {

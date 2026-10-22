@@ -107,7 +107,7 @@ public sealed class LoggingLayer : ISecretProviderLayer
             var started = Stopwatch.GetTimestamp();
             var timestamp = DateTimeOffset.UtcNow;
 
-            if (_logger.IsEnabled(SecretProviderLogLevel.Debug))
+            if (IsEnabled(SecretProviderLogLevel.Debug))
                 SecretProviderLogging.TryLog(() => _logger.LogStart(createContext(timestamp, null)));
 
             T result;
@@ -117,13 +117,13 @@ public sealed class LoggingLayer : ISecretProviderLayer
             }
             catch (Exception ex)
             {
-                if (_logger.IsEnabled(SecretProviderLogLevel.Error))
+                if (IsEnabled(SecretProviderLogLevel.Error))
                     SecretProviderLogging.TryLog(() => _logger.LogFailure(
                         createContext(timestamp, SecretProviderLogOutcome.Failure), ex, GetElapsed(started)));
                 throw;
             }
 
-            if (_logger.IsEnabled(SecretProviderLogLevel.Debug))
+            if (IsEnabled(SecretProviderLogLevel.Debug))
                 SecretProviderLogging.TryLog(() => _logger.LogSuccess(
                     createContext(timestamp, SecretProviderLogOutcome.Success), GetElapsed(started)));
             return result;
@@ -136,7 +136,7 @@ public sealed class LoggingLayer : ISecretProviderLayer
             var started = Stopwatch.GetTimestamp();
             var timestamp = DateTimeOffset.UtcNow;
 
-            if (_logger.IsEnabled(SecretProviderLogLevel.Debug))
+            if (IsEnabled(SecretProviderLogLevel.Debug))
                 SecretProviderLogging.TryLog(() => _logger.LogStart(createContext(timestamp, null)));
 
             try
@@ -145,15 +145,22 @@ public sealed class LoggingLayer : ISecretProviderLayer
             }
             catch (Exception ex)
             {
-                if (_logger.IsEnabled(SecretProviderLogLevel.Error))
+                if (IsEnabled(SecretProviderLogLevel.Error))
                     SecretProviderLogging.TryLog(() => _logger.LogFailure(
                         createContext(timestamp, SecretProviderLogOutcome.Failure), ex, GetElapsed(started)));
                 throw;
             }
 
-            if (_logger.IsEnabled(SecretProviderLogLevel.Debug))
+            if (IsEnabled(SecretProviderLogLevel.Debug))
                 SecretProviderLogging.TryLog(() => _logger.LogSuccess(
                     createContext(timestamp, SecretProviderLogOutcome.Success), GetElapsed(started)));
+        }
+
+        private bool IsEnabled(SecretProviderLogLevel level)
+        {
+            var enabled = false;
+            SecretProviderLogging.TryLog(() => enabled = _logger.IsEnabled(level));
+            return enabled;
         }
 
         private SecretProviderLogContext CreateContext(

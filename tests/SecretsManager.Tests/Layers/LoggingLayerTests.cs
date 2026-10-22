@@ -90,6 +90,41 @@ public sealed class LoggingLayerTests
     }
 
     [Fact]
+    public async Task LoggingLayer_ThrowingIsEnabled_StillReturnsSecret()
+    {
+        var provider = new LoggingLayer(new LoggingLayerOptions
+        {
+            Logger = new ThrowingSecretProviderLogger { ThrowOnIsEnabled = true }
+        }).Wrap(new DelegatingSecretProvider
+        {
+            GetSecretAsyncImpl = (key, _, _) =>
+                Task.FromResult(new SecretValue { Key = key, Value = "ok" })
+        });
+
+        var result = await provider.GetSecretAsync("key");
+
+        Assert.Equal("ok", result.Value);
+    }
+
+    [Fact]
+    public async Task LoggingLayer_ThrowingIsEnabled_PreservesOriginalException()
+    {
+        var provider = new LoggingLayer(new LoggingLayerOptions
+        {
+            Logger = new ThrowingSecretProviderLogger { ThrowOnIsEnabled = true }
+        }).Wrap(new DelegatingSecretProvider
+        {
+            GetSecretAsyncImpl = (_, _, _) =>
+                Task.FromException<SecretValue>(new InvalidOperationException("backend failed"))
+        });
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => provider.GetSecretAsync("key"));
+
+        Assert.Equal("backend failed", ex.Message);
+    }
+
+    [Fact]
     public async Task LoggingLayer_WhenLoggingDisabled_EmitsNothing()
     {
         var logger = new RecordingLogger();
