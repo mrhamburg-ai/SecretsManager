@@ -18,7 +18,8 @@ public sealed class LoggingLayerOptions
     public string OperationPrefix { get; set; } = string.Empty;
 
     /// <summary>
-    /// Name of the provider that produced the logged operations, when known.
+    /// Name of the provider that produced the logged operations. When it is <see langword="null"/>,
+    /// the builder supplies the name of the provider it builds.
     /// </summary>
     public string? ProviderName { get; set; }
 }
@@ -75,7 +76,11 @@ public interface ISecretProviderLogger
     /// </summary>
     /// <param name="level">The level to check.</param>
     /// <returns><see langword="true"/> when events at the level are enabled.</returns>
-    bool IsEnabled(SecretProviderLogLevel level);
+    /// <remarks>
+    /// The default implementation returns <see langword="true"/>, so loggers written before this member
+    /// existed keep receiving every event.
+    /// </remarks>
+    bool IsEnabled(SecretProviderLogLevel level) => true;
 
     /// <summary>
     /// Called immediately before a provider operation runs.
@@ -98,7 +103,10 @@ public interface ISecretProviderLogger
     /// <param name="context">Context of the operation being retried.</param>
     /// <param name="attempt">The upcoming attempt number.</param>
     /// <param name="delay">How long to wait before the retry.</param>
-    void LogRetry(SecretProviderLogContext context, int attempt, TimeSpan delay);
+    /// <remarks>The default implementation does nothing.</remarks>
+    void LogRetry(SecretProviderLogContext context, int attempt, TimeSpan delay)
+    {
+    }
 }
 
 /// <summary>

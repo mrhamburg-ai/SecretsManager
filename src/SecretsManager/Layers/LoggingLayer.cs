@@ -13,6 +13,7 @@ namespace SecretsManager;
 public sealed class LoggingLayer : ISecretProviderLayer, IProviderNameAwareLayer
 {
     private readonly LoggingLayerOptions _options;
+    private string? _providerName;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="LoggingLayer"/> class.
@@ -37,21 +38,25 @@ public sealed class LoggingLayer : ISecretProviderLayer, IProviderNameAwareLayer
     public ISecretProvider Wrap(ISecretProvider inner)
     {
         ArgumentNullException.ThrowIfNull(inner);
-        return new LoggingSecretProvider(inner, _options);
+        return new LoggingSecretProvider(inner, _options, _options.ProviderName ?? _providerName ?? string.Empty);
     }
 
     void IProviderNameAwareLayer.SetProviderName(string providerName)
     {
-        _options.ProviderName = providerName;
+        // Kept off the shared options so that building the same layer for several providers cannot
+        // change the name that an earlier provider reports.
+        _providerName = providerName;
     }
 
     internal LoggingLayerOptions Options => _options;
 
-    private sealed class LoggingSecretProvider(ISecretProvider inner, LoggingLayerOptions options) : ISecretProvider
+    private sealed class LoggingSecretProvider(
+        ISecretProvider inner,
+        LoggingLayerOptions options,
+        string providerName) : ISecretProvider
     {
         private readonly ISecretProvider _inner = inner;
         private readonly ISecretProviderLogger _logger = options.Logger;
-        private readonly LoggingLayerOptions _options = options;
         private readonly string _operationPrefix = string.IsNullOrWhiteSpace(options.OperationPrefix)
             ? string.Empty
             : options.OperationPrefix + ".";
@@ -64,7 +69,8 @@ public sealed class LoggingLayer : ISecretProviderLayer, IProviderNameAwareLayer
             return await ExecuteAsync(
                 () => _inner.GetSecretAsync(key, query, cancellationToken),
                 (timestamp, outcome) => CreateContext(
-                    "GetSecretAsync", key, isMetadataWrite: false, timestamp, outcome));
+                    "GetSecretAsync", key, isMetadataWrite: false, timestamp, outcome),
+                cancellationToken);
         }
 
         public async Task<SecretValue> PutSecretAsync(
@@ -77,6 +83,7 @@ public sealed class LoggingLayer : ISecretProviderLayer, IProviderNameAwareLayer
                 () => _inner.PutSecretAsync(key, value, metadata, cancellationToken),
                 (timestamp, outcome) => CreateContext(
                     "PutSecretAsync", key, metadata is not null, timestamp, outcome),
+                cancellationToken,
                 secretValue: value);
         }
 
@@ -85,7 +92,8 @@ public sealed class LoggingLayer : ISecretProviderLayer, IProviderNameAwareLayer
             await ExecuteAsync(
                 () => _inner.DeleteSecretAsync(key, cancellationToken),
                 (timestamp, outcome) => CreateContext(
-                    "DeleteSecretAsync", key, isMetadataWrite: false, timestamp, outcome));
+                    "DeleteSecretAsync", key, isMetadataWrite: false, timestamp, outcome),
+                cancellationToken);
         }
 
         public async Task<IReadOnlyList<SecretVersionInfo>> GetSecretVersionsAsync(
@@ -95,7 +103,8 @@ public sealed class LoggingLayer : ISecretProviderLayer, IProviderNameAwareLayer
             return await ExecuteAsync(
                 () => _inner.GetSecretVersionsAsync(key, cancellationToken),
                 (timestamp, outcome) => CreateContext(
-                    "GetSecretVersionsAsync", key, isMetadataWrite: false, timestamp, outcome));
+                    "GetSecretVersionsAsync", key, isMetadataWrite: false, timestamp, outcome),
+                cancellationToken);
         }
 
         public async Task<bool> SecretExistsAsync(string key, CancellationToken cancellationToken = default)
@@ -103,7 +112,8 @@ public sealed class LoggingLayer : ISecretProviderLayer, IProviderNameAwareLayer
             return await ExecuteAsync(
                 () => _inner.SecretExistsAsync(key, cancellationToken),
                 (timestamp, outcome) => CreateContext(
-                    "SecretExistsAsync", key, isMetadataWrite: false, timestamp, outcome));
+                    "SecretExistsAsync", key, isMetadataWrite: false, timestamp, outcome),
+                cancellationToken);
         }
 
         public ValueTask DisposeAsync() => _inner.DisposeAsync();
@@ -111,6 +121,7 @@ public sealed class LoggingLayer : ISecretProviderLayer, IProviderNameAwareLayer
         private async Task<T> ExecuteAsync<T>(
             Func<Task<T>> operation,
             Func<DateTimeOffset, SecretProviderLogOutcome?, SecretProviderLogContext> createContext,
+            CancellationToken cancellationToken,
             string? secretValue = null)
         {
             var started = Stopwatch.GetTimestamp();
@@ -126,6 +137,10 @@ public sealed class LoggingLayer : ISecretProviderLayer, IProviderNameAwareLayer
             }
             catch (Exception ex)
             {
+                // A caller who cancels is not a backend failure; do not report it as an error.
+                if (ex is OperationCanceledException && cancellationToken.IsCancellationRequested)
+                    throw;
+
                 if (IsEnabled(SecretProviderLogLevel.Error))
                     SecretProviderLogging.TryLog(() => _logger.LogFailure(
                         createContext(timestamp, SecretProviderLogOutcome.Failure),
@@ -143,6 +158,7 @@ public sealed class LoggingLayer : ISecretProviderLayer, IProviderNameAwareLayer
         private async Task ExecuteAsync(
             Func<Task> operation,
             Func<DateTimeOffset, SecretProviderLogOutcome?, SecretProviderLogContext> createContext,
+            CancellationToken cancellationToken,
             string? secretValue = null)
         {
             var started = Stopwatch.GetTimestamp();
@@ -157,6 +173,10 @@ public sealed class LoggingLayer : ISecretProviderLayer, IProviderNameAwareLayer
             }
             catch (Exception ex)
             {
+                // A caller who cancels is not a backend failure; do not report it as an error.
+                if (ex is OperationCanceledException && cancellationToken.IsCancellationRequested)
+                    throw;
+
                 if (IsEnabled(SecretProviderLogLevel.Error))
                     SecretProviderLogging.TryLog(() => _logger.LogFailure(
                         createContext(timestamp, SecretProviderLogOutcome.Failure),
@@ -200,7 +220,7 @@ public sealed class LoggingLayer : ISecretProviderLayer, IProviderNameAwareLayer
                 Operation = ComposeOperation(operation),
                 Key = key,
                 IsMetadataWrite = isMetadataWrite,
-                Provider = _options.ProviderName ?? string.Empty,
+                Provider = providerName,
                 Outcome = outcome,
                 Timestamp = timestamp
             };

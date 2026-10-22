@@ -103,15 +103,23 @@ The layer swallows logger exceptions.
 
 ## Secrets and redaction
 
-- `SecretProviderLogContext` has no value field, and secret values are never logged.
-- HTTP-based providers do not copy the response body into exception messages. Error messages
-  contain only the operation, HTTP status code and reason phrase, because backends can echo
-  submitted values in error payloads.
+- `SecretProviderLogContext` has no value field, and secret values are never logged. Secret keys
+  are logged.
+- The providers with a REST client (Aliyun KMS, Conjur, IBM Cloud Secrets Manager, OVH, Passbolt,
+  Scaleway, Tencent Cloud and Vault) do not copy the response body into exception messages. Their
+  error messages contain only the operation, HTTP status code and reason phrase, because backends
+  can echo submitted values in error payloads.
 - If an exception from `PutSecretAsync` still contains the submitted value, the layer replaces it
   with `[REDACTED]` before it is logged. The caller still receives the original exception.
 
-Exception messages that come from other sources are logged as they are. Treat your log sink as
+Exception messages that come from other sources, such as provider SDKs, are logged as they are.
+`OtelTraceLayer` also records exception messages in its spans. Treat your log and trace sinks as
 sensitive.
+
+## Cancellation
+
+When the caller cancels an operation through its `CancellationToken`, the layer does not log it as
+a failure. Other exceptions, including `SecretNotFoundException`, are logged at `Error`.
 
 ## Custom loggers
 
@@ -128,4 +136,6 @@ public interface ISecretProviderLogger
 }
 ```
 
-`NullSecretProviderLogger` is the default and emits nothing.
+`IsEnabled` and `LogRetry` have default implementations (`true` and no-op), so a logger that
+implements only `LogStart`, `LogSuccess` and `LogFailure` keeps working. `NullSecretProviderLogger`
+is the default and emits nothing.

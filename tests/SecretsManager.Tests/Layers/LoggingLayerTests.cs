@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using SecretsManager.Builder;
@@ -256,5 +257,85 @@ public sealed class LoggingLayerTests
         Assert.DoesNotContain(secret, logged);
         Assert.Contains("[REDACTED]", logged);
         Assert.Contains(secret, thrown.Message);
+    }
+
+    [Fact]
+    public async Task Builder_BuiltTwice_KeepsEachProvidersName()
+    {
+        var logger = new RecordingLogger();
+        var secrets = new DelegatingSecretProvider
+        {
+            GetSecretAsyncImpl = (key, _, _) =>
+                Task.FromResult(new SecretValue { Key = key, Value = "ok" })
+        };
+
+        var builder = new SecretProviderBuilder()
+            .RegisterProvider(new NamedFactory("first", secrets))
+            .RegisterProvider(new NamedFactory("second", secrets))
+            .WithLogging(options => options.Logger = logger);
+
+        await using var first = builder.UseProvider("first").Build();
+        await using var second = builder.UseProvider("second").Build();
+        await first.GetSecretAsync("key");
+
+        Assert.NotEmpty(logger.Entries);
+        Assert.All(logger.Entries, entry => Assert.Equal("first", entry.Context.Provider));
+    }
+
+    [Fact]
+    public async Task LoggingLayer_CallerCancellation_IsNotLoggedAsFailure()
+    {
+        var logger = new RecordingLogger();
+        using var cts = new System.Threading.CancellationTokenSource();
+        await using var provider = new LoggingLayer(new LoggingLayerOptions { Logger = logger })
+            .Wrap(new DelegatingSecretProvider
+            {
+                GetSecretAsyncImpl = (_, _, token) =>
+                {
+                    cts.Cancel();
+                    return Task.FromCanceled<SecretValue>(token);
+                }
+            });
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => provider.GetSecretAsync("key", cancellationToken: cts.Token));
+
+        Assert.DoesNotContain(logger.Entries, entry => entry.Type == "failure");
+    }
+
+    [Fact]
+    public async Task LoggingLayer_LegacyLoggerWithoutNewMembers_StillWorks()
+    {
+        var logger = new LegacyLogger();
+        await using var provider = new LoggingLayer(new LoggingLayerOptions { Logger = logger })
+            .Wrap(new DelegatingSecretProvider
+            {
+                GetSecretAsyncImpl = (key, _, _) =>
+                    Task.FromResult(new SecretValue { Key = key, Value = "ok" })
+            });
+
+        await provider.GetSecretAsync("key");
+
+        Assert.Equal(new[] { "start", "success" }, logger.Calls);
+    }
+
+    private sealed class NamedFactory(string name, DelegatingSecretProvider provider) : ISecretProviderFactory
+    {
+        public string ProviderName => name;
+
+        public ISecretProvider Create(IReadOnlyDictionary<string, string> configuration) => provider;
+    }
+
+    // Implements only the members that existed before IsEnabled and LogRetry were added.
+    private sealed class LegacyLogger : ISecretProviderLogger
+    {
+        public System.Collections.Generic.List<string> Calls { get; } = new();
+
+        public void LogStart(SecretProviderLogContext context) => Calls.Add("start");
+
+        public void LogSuccess(SecretProviderLogContext context, TimeSpan duration) => Calls.Add("success");
+
+        public void LogFailure(SecretProviderLogContext context, Exception exception, TimeSpan duration) =>
+            Calls.Add("failure");
     }
 }
