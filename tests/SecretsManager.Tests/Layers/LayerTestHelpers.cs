@@ -137,6 +137,36 @@ internal sealed class TestTrackingLayer : ISecretProviderLayer
     }
 }
 
+internal sealed class ThrowingSecretProviderLogger : ISecretProviderLogger
+{
+    public bool ThrowOnStart { get; init; }
+    public bool ThrowOnSuccess { get; init; }
+    public bool ThrowOnFailure { get; init; }
+    public bool ThrowOnRetry { get; init; }
+    public List<string> Calls { get; } = new();
+
+    public void LogStart(SecretProviderLogContext context)
+    {
+        Calls.Add("start");
+        if (ThrowOnStart)
+            throw new IOException("sink down");
+    }
+
+    public void LogSuccess(SecretProviderLogContext context, TimeSpan duration)
+    {
+        Calls.Add("success");
+        if (ThrowOnSuccess)
+            throw new IOException("sink down");
+    }
+
+    public void LogFailure(SecretProviderLogContext context, Exception exception, TimeSpan duration)
+    {
+        Calls.Add("failure");
+        if (ThrowOnFailure)
+            throw new IOException("sink down");
+    }
+}
+
 internal sealed class RecordingLogger : ISecretProviderLogger
 {
     public record Entry(string Type, string Operation, Exception? Exception, TimeSpan? Duration = null);

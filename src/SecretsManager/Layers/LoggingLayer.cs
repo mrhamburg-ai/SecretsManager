@@ -39,6 +39,18 @@ public sealed class LoggingLayer : ISecretProviderLayer
         return new LoggingSecretProvider(inner, _options);
     }
 
+    private static void TryLog(Action log)
+    {
+        try
+        {
+            log();
+        }
+        catch
+        {
+            // Logging must never change the outcome of a secret operation.
+        }
+    }
+
     private sealed class LoggingSecretProvider(ISecretProvider inner, LoggingLayerOptions options) : ISecretProvider
     {
         private readonly ISecretProvider _inner = inner;
@@ -130,37 +142,42 @@ public sealed class LoggingLayer : ISecretProviderLayer
 
         private async Task<T> ExecuteAsync<T>(Func<Task<T>> operation, SecretProviderLogContext context)
         {
-            _logger.LogStart(context);
-
             var started = Stopwatch.GetTimestamp();
+
+            TryLog(() => _logger.LogStart(context));
+
+            T result;
             try
             {
-                var result = await operation().ConfigureAwait(false);
-                _logger.LogSuccess(context, GetElapsed(started));
-                return result;
+                result = await operation().ConfigureAwait(false);
             }
             catch (Exception ex)
             {
-                _logger.LogFailure(context, ex, GetElapsed(started));
+                TryLog(() => _logger.LogFailure(context, ex, GetElapsed(started)));
                 throw;
             }
+
+            TryLog(() => _logger.LogSuccess(context, GetElapsed(started)));
+            return result;
         }
 
         private async Task ExecuteAsync(Func<Task> operation, SecretProviderLogContext context)
         {
-            _logger.LogStart(context);
-
             var started = Stopwatch.GetTimestamp();
+
+            TryLog(() => _logger.LogStart(context));
+
             try
             {
                 await operation().ConfigureAwait(false);
-                _logger.LogSuccess(context, GetElapsed(started));
             }
             catch (Exception ex)
             {
-                _logger.LogFailure(context, ex, GetElapsed(started));
+                TryLog(() => _logger.LogFailure(context, ex, GetElapsed(started)));
                 throw;
             }
+
+            TryLog(() => _logger.LogSuccess(context, GetElapsed(started)));
         }
 
         private TimeSpan GetElapsed(long startTimestamp)
