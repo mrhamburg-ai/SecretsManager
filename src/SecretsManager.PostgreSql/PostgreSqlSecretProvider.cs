@@ -91,6 +91,7 @@ public sealed class PostgreSqlSecretProvider : ISecretProvider
                 Tags = secret.Tags
             };
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
@@ -132,6 +133,7 @@ public sealed class PostgreSqlSecretProvider : ISecretProvider
                 Tags = secret.Tags
             };
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
@@ -154,6 +156,7 @@ public sealed class PostgreSqlSecretProvider : ISecretProvider
             if (!deleted)
                 throw new SecretNotFoundException(key);
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
@@ -189,6 +192,7 @@ public sealed class PostgreSqlSecretProvider : ISecretProvider
                 .ToList()
                 .AsReadOnly();
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
@@ -209,6 +213,7 @@ public sealed class PostgreSqlSecretProvider : ISecretProvider
         {
             return await _store.SecretExistsAsync(key, cancellationToken);
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex)
         {
             throw new SecretProviderException(

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
@@ -10,6 +11,7 @@ namespace SecretsManager.AliyunKms.Internal;
 internal sealed class AliyunKmsApiClient : IAliyunKmsApiClient
 {
     private readonly HttpClient _http;
+    private readonly bool _ownsHttp;
     private readonly string _accessKeyId;
     private readonly string _accessKeySecret;
 
@@ -31,11 +33,13 @@ internal sealed class AliyunKmsApiClient : IAliyunKmsApiClient
         {
             BaseAddress = new Uri($"https://{endpoint}")
         };
+        _ownsHttp = true;
     }
 
     internal AliyunKmsApiClient(HttpClient httpClient, string accessKeyId, string accessKeySecret)
     {
         _http = httpClient;
+        _ownsHttp = false;
         _accessKeyId = accessKeyId;
         _accessKeySecret = accessKeySecret;
     }
@@ -56,7 +60,7 @@ internal sealed class AliyunKmsApiClient : IAliyunKmsApiClient
         if (!string.IsNullOrEmpty(versionId))
             parameters["VersionId"] = versionId;
 
-        var response = await PostAsync(parameters, cancellationToken);
+        using var response = await PostAsync(parameters, cancellationToken);
 
         if (response.StatusCode == HttpStatusCode.NotFound)
             return null;
@@ -92,7 +96,7 @@ internal sealed class AliyunKmsApiClient : IAliyunKmsApiClient
             ["SecretType"] = "Generic"
         };
 
-        var response = await PostAsync(parameters, cancellationToken);
+        using var response = await PostAsync(parameters, cancellationToken);
 
         var error = await TryParseErrorAsync(response, cancellationToken);
         if (error?.Code == "Rejected.ResourceExist")
@@ -120,7 +124,7 @@ internal sealed class AliyunKmsApiClient : IAliyunKmsApiClient
             ["VersionId"] = versionId
         };
 
-        var response = await PostAsync(parameters, cancellationToken);
+        using var response = await PostAsync(parameters, cancellationToken);
         await EnsureSuccess(response, $"putting secret value for '{secretName}'", cancellationToken);
 
         var body = await response.Content.ReadFromJsonAsync<PutSecretValueResponse>(JsonOptions, cancellationToken)
@@ -135,11 +139,10 @@ internal sealed class AliyunKmsApiClient : IAliyunKmsApiClient
         var parameters = new Dictionary<string, string>
         {
             ["Action"] = "DeleteSecret",
-            ["SecretName"] = secretName,
-            ["ForceDeleteWithoutRecovery"] = "true"
+            ["SecretName"] = secretName
         };
 
-        var response = await PostAsync(parameters, cancellationToken);
+        using var response = await PostAsync(parameters, cancellationToken);
 
         var error = await TryParseErrorAsync(response, cancellationToken);
         if (error?.Code == "Forbidden.ResourceNotFound")
@@ -162,11 +165,11 @@ internal sealed class AliyunKmsApiClient : IAliyunKmsApiClient
                 ["Action"] = "ListSecretVersionIds",
                 ["SecretName"] = secretName,
                 ["IncludeDeprecated"] = "true",
-                ["PageNumber"] = pageNumber.ToString(),
-                ["PageSize"] = pageSize.ToString()
+                ["PageNumber"] = pageNumber.ToString(CultureInfo.InvariantCulture),
+                ["PageSize"] = pageSize.ToString(CultureInfo.InvariantCulture)
             };
 
-            var response = await PostAsync(parameters, cancellationToken);
+            using var response = await PostAsync(parameters, cancellationToken);
             await EnsureSuccess(response, $"listing versions for '{secretName}'", cancellationToken);
 
             var body = await response.Content.ReadFromJsonAsync<ListSecretVersionIdsResponse>(JsonOptions, cancellationToken)
@@ -191,7 +194,9 @@ internal sealed class AliyunKmsApiClient : IAliyunKmsApiClient
 
     public ValueTask DisposeAsync()
     {
-        _http.Dispose();
+        if (_ownsHttp)
+            _http.Dispose();
+
         return ValueTask.CompletedTask;
     }
 
@@ -211,7 +216,7 @@ internal sealed class AliyunKmsApiClient : IAliyunKmsApiClient
             ["AccessKeyId"] = _accessKeyId,
             ["SignatureMethod"] = "HMAC-SHA1",
             ["SignatureVersion"] = "1.0",
-            ["Timestamp"] = DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'"),
+            ["Timestamp"] = DateTime.UtcNow.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture),
             ["SignatureNonce"] = Guid.NewGuid().ToString()
         };
 

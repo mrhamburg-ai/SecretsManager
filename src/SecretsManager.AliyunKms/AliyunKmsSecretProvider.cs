@@ -71,6 +71,7 @@ public sealed class AliyunKmsSecretProvider : ISecretProvider
                 UpdatedAt = result.CreateTime
             };
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
@@ -118,6 +119,7 @@ public sealed class AliyunKmsSecretProvider : ISecretProvider
                 UpdatedAt = DateTimeOffset.UtcNow
             };
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
@@ -138,6 +140,7 @@ public sealed class AliyunKmsSecretProvider : ISecretProvider
         {
             await _client.DeleteSecretAsync(key, cancellationToken);
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
@@ -170,6 +173,7 @@ public sealed class AliyunKmsSecretProvider : ISecretProvider
                 .ToList()
                 .AsReadOnly();
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
@@ -193,6 +197,7 @@ public sealed class AliyunKmsSecretProvider : ISecretProvider
                 key, versionStage: null, versionId: null, cancellationToken);
             return result is not null;
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex)
         {
             throw new SecretProviderException(

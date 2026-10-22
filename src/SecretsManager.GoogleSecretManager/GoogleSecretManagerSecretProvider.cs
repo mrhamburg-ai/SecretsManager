@@ -67,6 +67,10 @@ public sealed class GoogleSecretManagerSecretProvider : ISecretProvider
         {
             throw new SecretNotFoundException(key, ex);
         }
+        catch (RpcException ex) when (ex.StatusCode == StatusCode.Cancelled && cancellationToken.IsCancellationRequested)
+        {
+            throw new OperationCanceledException(cancellationToken);
+        }
         catch (RpcException ex)
         {
             throw new SecretProviderException(
@@ -127,6 +131,10 @@ public sealed class GoogleSecretManagerSecretProvider : ISecretProvider
         {
             throw new SecretNotFoundException(key, ex);
         }
+        catch (RpcException ex) when (ex.StatusCode == StatusCode.Cancelled && cancellationToken.IsCancellationRequested)
+        {
+            throw new OperationCanceledException(cancellationToken);
+        }
         catch (RpcException ex)
         {
             throw new SecretProviderException(
@@ -150,6 +158,10 @@ public sealed class GoogleSecretManagerSecretProvider : ISecretProvider
         catch (RpcException ex) when (ex.StatusCode == StatusCode.NotFound)
         {
             throw new SecretNotFoundException(key, ex);
+        }
+        catch (RpcException ex) when (ex.StatusCode == StatusCode.Cancelled && cancellationToken.IsCancellationRequested)
+        {
+            throw new OperationCanceledException(cancellationToken);
         }
         catch (RpcException ex)
         {
@@ -198,6 +210,10 @@ public sealed class GoogleSecretManagerSecretProvider : ISecretProvider
 
             return versions.AsReadOnly();
         }
+        catch (RpcException ex) when (ex.StatusCode == StatusCode.Cancelled && cancellationToken.IsCancellationRequested)
+        {
+            throw new OperationCanceledException(cancellationToken);
+        }
         catch (RpcException ex)
         {
             throw new SecretProviderException(
@@ -217,6 +233,10 @@ public sealed class GoogleSecretManagerSecretProvider : ISecretProvider
         try
         {
             return await _client.SecretExistsAsync(key, cancellationToken);
+        }
+        catch (RpcException ex) when (ex.StatusCode == StatusCode.Cancelled && cancellationToken.IsCancellationRequested)
+        {
+            throw new OperationCanceledException(cancellationToken);
         }
         catch (RpcException ex)
         {

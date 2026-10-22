@@ -37,12 +37,12 @@ internal sealed partial class PostgreSqlSecretStore : IPostgreSqlSecretStore
 
     public async Task EnsureSchemaAsync(CancellationToken cancellationToken)
     {
-        if (_schemaEnsured || !_autoCreateSchema) return;
+        if (Volatile.Read(ref _schemaEnsured) || !_autoCreateSchema) return;
 
         await _schemaLock.WaitAsync(cancellationToken);
         try
         {
-            if (_schemaEnsured) return;
+            if (Volatile.Read(ref _schemaEnsured)) return;
 
             var ddl = $"""
                 CREATE TABLE IF NOT EXISTS {SecretsTable} (
@@ -75,7 +75,7 @@ internal sealed partial class PostgreSqlSecretStore : IPostgreSqlSecretStore
 
             await VerifyTableOwnershipAsync(conn, cancellationToken);
 
-            _schemaEnsured = true;
+            Volatile.Write(ref _schemaEnsured, true);
         }
         finally
         {
@@ -178,6 +178,16 @@ internal sealed partial class PostgreSqlSecretStore : IPostgreSqlSecretStore
 
         await using var conn = await _dataSource.OpenConnectionAsync(cancellationToken);
         await using var tx = await conn.BeginTransactionAsync(cancellationToken);
+
+        // Serialize concurrent writes for the same key. Without this lock, two transactions can
+        // both read the same MAX(version) and one of them fails on the UNIQUE(secret_id, version)
+        // constraint.
+        await using (var lockCommand = new NpgsqlCommand(
+            "SELECT pg_advisory_xact_lock(hashtext($1))", conn, tx))
+        {
+            lockCommand.Parameters.Add(new NpgsqlParameter { Value = key });
+            await lockCommand.ExecuteNonQueryAsync(cancellationToken);
+        }
 
         // Upsert secret row
         var upsertSql = $"""

@@ -68,6 +68,7 @@ public sealed class AwsSecretsManagerSecretProvider : ISecretProvider
         {
             throw new SecretNotFoundException(key, ex);
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
@@ -102,6 +103,7 @@ public sealed class AwsSecretsManagerSecretProvider : ISecretProvider
                 ContentType = metadata?.ContentType,
             };
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
@@ -126,6 +128,7 @@ public sealed class AwsSecretsManagerSecretProvider : ISecretProvider
         {
             throw new SecretNotFoundException(key, ex);
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
@@ -163,6 +166,7 @@ public sealed class AwsSecretsManagerSecretProvider : ISecretProvider
         {
             throw;
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
@@ -183,6 +187,7 @@ public sealed class AwsSecretsManagerSecretProvider : ISecretProvider
         {
             return await _client.SecretExistsAsync(key, cancellationToken);
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(

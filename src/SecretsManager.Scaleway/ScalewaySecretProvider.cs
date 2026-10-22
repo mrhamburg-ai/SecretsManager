@@ -66,6 +66,7 @@ public sealed class ScalewaySecretProvider : ISecretProvider
                 UpdatedAt = secret.UpdatedAt
             };
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
@@ -108,6 +109,7 @@ public sealed class ScalewaySecretProvider : ISecretProvider
                 UpdatedAt = version.UpdatedAt
             };
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
@@ -131,6 +133,7 @@ public sealed class ScalewaySecretProvider : ISecretProvider
 
             await _client.DeleteSecretAsync(secret.Id, cancellationToken);
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
@@ -166,6 +169,7 @@ public sealed class ScalewaySecretProvider : ISecretProvider
                 .ToList()
                 .AsReadOnly();
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
@@ -187,6 +191,7 @@ public sealed class ScalewaySecretProvider : ISecretProvider
             var secret = await _client.FindSecretByNameAsync(key, cancellationToken);
             return secret is not null;
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex)
         {
             throw new SecretProviderException(

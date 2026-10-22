@@ -75,6 +75,7 @@ public sealed class ConjurSecretProvider : ISecretProvider
                 CreatedAt = resolved?.CreatedAt
             };
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
@@ -109,6 +110,7 @@ public sealed class ConjurSecretProvider : ISecretProvider
                 CreatedAt = latest?.CreatedAt
             };
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
@@ -129,6 +131,7 @@ public sealed class ConjurSecretProvider : ISecretProvider
         {
             await _client.DeleteSecretAsync(key, cancellationToken);
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
@@ -160,6 +163,7 @@ public sealed class ConjurSecretProvider : ISecretProvider
                 .ToList()
                 .AsReadOnly();
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
@@ -180,6 +184,7 @@ public sealed class ConjurSecretProvider : ISecretProvider
         {
             return await _client.SecretExistsAsync(key, cancellationToken);
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex)
         {
             throw new SecretProviderException(

@@ -9,13 +9,15 @@ namespace SecretsManager.Conjur.Internal;
 internal sealed class ConjurApiClient : IConjurApiClient
 {
     private readonly HttpClient _http;
+    private readonly bool _ownsHttp;
     private readonly string _account;
     private readonly string _login;
     private readonly string _apiKey;
     private readonly string _policyPath;
 
     private readonly SemaphoreSlim _tokenLock = new(1, 1);
-    private readonly HashSet<string> _knownVariables = new(StringComparer.Ordinal);
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> _knownVariables =
+        new(StringComparer.Ordinal);
     private string? _token;
     private DateTimeOffset _tokenExpiry;
 
@@ -42,11 +44,13 @@ internal sealed class ConjurApiClient : IConjurApiClient
         {
             BaseAddress = new Uri(options.Url.TrimEnd('/'))
         };
+        _ownsHttp = true;
     }
 
     internal ConjurApiClient(HttpClient httpClient, ConjurOptions options)
     {
         _http = httpClient;
+        _ownsHttp = false;
         _account = options.Account;
         _login = options.Login;
         _apiKey = options.ApiKey;
@@ -56,6 +60,7 @@ internal sealed class ConjurApiClient : IConjurApiClient
     public async Task<string?> GetSecretValueAsync(
         string key, int? version, CancellationToken cancellationToken)
     {
+        ValidateKey(key);
         var url = $"/secrets/{_account}/variable/{Uri.EscapeDataString(key)}";
         if (version.HasValue)
             url += $"?version={version.Value}";
@@ -63,7 +68,7 @@ internal sealed class ConjurApiClient : IConjurApiClient
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         await SetAuthorizationAsync(request, cancellationToken);
 
-        var response = await _http.SendAsync(request, cancellationToken);
+        using var response = await _http.SendAsync(request, cancellationToken);
 
         if (response.StatusCode == HttpStatusCode.NotFound)
             return null;
@@ -76,6 +81,7 @@ internal sealed class ConjurApiClient : IConjurApiClient
     public async Task PutSecretAsync(
         string key, string value, CancellationToken cancellationToken)
     {
+        ValidateKey(key);
         await EnsureVariableExistsAsync(key, cancellationToken);
 
         var url = $"/secrets/{_account}/variable/{Uri.EscapeDataString(key)}";
@@ -84,13 +90,14 @@ internal sealed class ConjurApiClient : IConjurApiClient
         request.Content = new StringContent(value, Encoding.UTF8, "application/octet-stream");
         await SetAuthorizationAsync(request, cancellationToken);
 
-        var response = await _http.SendAsync(request, cancellationToken);
+        using var response = await _http.SendAsync(request, cancellationToken);
         await EnsureSuccess(response, $"setting secret '{key}'", cancellationToken);
     }
 
     public async Task DeleteSecretAsync(string key, CancellationToken cancellationToken)
     {
-        _knownVariables.Remove(key);
+        ValidateKey(key);
+        _knownVariables.TryRemove(key, out _);
 
         var url = $"/policies/{_account}/policy/{Uri.EscapeDataString(_policyPath)}";
         var policy = $"- !delete\n  record: !variable {key}\n";
@@ -99,19 +106,20 @@ internal sealed class ConjurApiClient : IConjurApiClient
         request.Content = new StringContent(policy, Encoding.UTF8, "text/plain");
         await SetAuthorizationAsync(request, cancellationToken);
 
-        var response = await _http.SendAsync(request, cancellationToken);
+        using var response = await _http.SendAsync(request, cancellationToken);
         await EnsureSuccess(response, $"deleting secret '{key}'", cancellationToken);
     }
 
     public async Task<IReadOnlyList<ConjurVersionResult>> ListVersionsAsync(
         string key, CancellationToken cancellationToken)
     {
+        ValidateKey(key);
         var url = $"/resources/{_account}/variable/{Uri.EscapeDataString(key)}";
 
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         await SetAuthorizationAsync(request, cancellationToken);
 
-        var response = await _http.SendAsync(request, cancellationToken);
+        using var response = await _http.SendAsync(request, cancellationToken);
 
         if (response.StatusCode == HttpStatusCode.NotFound)
             return [];
@@ -135,20 +143,38 @@ internal sealed class ConjurApiClient : IConjurApiClient
 
     public async Task<bool> SecretExistsAsync(string key, CancellationToken cancellationToken)
     {
+        ValidateKey(key);
         var url = $"/resources/{_account}/variable/{Uri.EscapeDataString(key)}";
 
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         await SetAuthorizationAsync(request, cancellationToken);
 
-        var response = await _http.SendAsync(request, cancellationToken);
+        using var response = await _http.SendAsync(request, cancellationToken);
         return response.StatusCode != HttpStatusCode.NotFound && response.IsSuccessStatusCode;
     }
 
     public ValueTask DisposeAsync()
     {
-        _http.Dispose();
         _tokenLock.Dispose();
+
+        if (_ownsHttp)
+            _http.Dispose();
+
         return ValueTask.CompletedTask;
+    }
+
+    private static void ValidateKey(string key)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+            throw new ArgumentException("Secret key is required.", nameof(key));
+
+        foreach (var ch in key)
+        {
+            if (!char.IsLetterOrDigit(ch) && ch is not ('_' or '-' or '.' or '/' or '@'))
+                throw new ArgumentException(
+                    $"Invalid Conjur secret key '{key}'. Allowed characters are letters, digits, '_', '-', '.', '/' and '@'.",
+                    nameof(key));
+        }
     }
 
     private async Task SetAuthorizationAsync(
@@ -161,13 +187,13 @@ internal sealed class ConjurApiClient : IConjurApiClient
     private async Task EnsureVariableExistsAsync(
         string key, CancellationToken cancellationToken)
     {
-        if (_knownVariables.Contains(key))
+        if (_knownVariables.ContainsKey(key))
             return;
 
         if (!await SecretExistsAsync(key, cancellationToken))
             await LoadVariablePolicyAsync(key, cancellationToken);
 
-        _knownVariables.Add(key);
+        _knownVariables.TryAdd(key, 0);
     }
 
     private async Task LoadVariablePolicyAsync(
@@ -186,7 +212,7 @@ internal sealed class ConjurApiClient : IConjurApiClient
         request.Content = new StringContent(policy, Encoding.UTF8, "text/plain");
         await SetAuthorizationAsync(request, cancellationToken);
 
-        var response = await _http.SendAsync(request, cancellationToken);
+        using var response = await _http.SendAsync(request, cancellationToken);
         await EnsureSuccess(response, $"creating variable '{key}'", cancellationToken);
     }
 
@@ -207,7 +233,7 @@ internal sealed class ConjurApiClient : IConjurApiClient
             request.Content = new StringContent(_apiKey, Encoding.UTF8, "text/plain");
             request.Headers.TryAddWithoutValidation("Accept-Encoding", "base64");
 
-            var response = await _http.SendAsync(request, cancellationToken);
+            using var response = await _http.SendAsync(request, cancellationToken);
             await EnsureSuccess(response, "authenticating", cancellationToken);
 
             var token = (await response.Content.ReadAsStringAsync(cancellationToken)).Trim();

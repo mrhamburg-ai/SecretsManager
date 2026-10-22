@@ -65,6 +65,7 @@ public sealed class VaultSecretProvider : ISecretProvider
                 UpdatedAt = secret.UpdatedAt
             };
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
@@ -98,6 +99,7 @@ public sealed class VaultSecretProvider : ISecretProvider
                 UpdatedAt = result.UpdatedAt
             };
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
@@ -117,6 +119,7 @@ public sealed class VaultSecretProvider : ISecretProvider
         {
             await _client.DeleteSecretAsync(key, cancellationToken);
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
@@ -149,6 +152,7 @@ public sealed class VaultSecretProvider : ISecretProvider
                 .ToList()
                 .AsReadOnly();
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
@@ -169,6 +173,7 @@ public sealed class VaultSecretProvider : ISecretProvider
         {
             return await _client.SecretExistsAsync(key, cancellationToken);
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex)
         {
             throw new SecretProviderException(

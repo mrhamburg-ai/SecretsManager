@@ -69,6 +69,7 @@ public sealed class TencentCloudSecretProvider : ISecretProvider
                 UpdatedAt = result.CreateTime
             };
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
@@ -116,6 +117,7 @@ public sealed class TencentCloudSecretProvider : ISecretProvider
                 UpdatedAt = DateTimeOffset.UtcNow
             };
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
@@ -136,6 +138,7 @@ public sealed class TencentCloudSecretProvider : ISecretProvider
         {
             await _client.DeleteSecretAsync(key, cancellationToken);
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
@@ -168,6 +171,7 @@ public sealed class TencentCloudSecretProvider : ISecretProvider
                 .ToList()
                 .AsReadOnly();
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
@@ -191,6 +195,7 @@ public sealed class TencentCloudSecretProvider : ISecretProvider
                 key, versionId: null, cancellationToken);
             return result is not null;
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex)
         {
             throw new SecretProviderException(

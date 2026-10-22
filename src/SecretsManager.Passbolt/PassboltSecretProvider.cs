@@ -76,6 +76,7 @@ public sealed class PassboltSecretProvider : ISecretProvider
                 UpdatedAt = resource.Modified
             };
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
@@ -128,6 +129,7 @@ public sealed class PassboltSecretProvider : ISecretProvider
                 UpdatedAt = resource.Modified
             };
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
@@ -151,6 +153,7 @@ public sealed class PassboltSecretProvider : ISecretProvider
 
             await _client.DeleteResourceAsync(resource.Id, cancellationToken);
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
@@ -184,6 +187,7 @@ public sealed class PassboltSecretProvider : ISecretProvider
                 }
             }.ToList().AsReadOnly();
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
@@ -205,6 +209,7 @@ public sealed class PassboltSecretProvider : ISecretProvider
             var resource = await FindResourceByNameAsync(key, cancellationToken);
             return resource is not null;
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex)
         {
             throw new SecretProviderException(

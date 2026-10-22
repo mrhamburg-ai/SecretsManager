@@ -92,7 +92,6 @@ internal sealed class AwsSecretsManagerClient : IAwsSecretsManagerClient
         var request = new DeleteSecretRequest
         {
             SecretId = secretId,
-            ForceDeleteWithoutRecovery = true,
         };
 
         await _client.DeleteSecretAsync(request, cancellationToken);

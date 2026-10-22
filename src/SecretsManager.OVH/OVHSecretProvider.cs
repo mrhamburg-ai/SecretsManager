@@ -53,10 +53,7 @@ public sealed class OVHSecretProvider : ISecretProvider
             var secret = await _client.FindSecretByNameAsync(key, cancellationToken)
                 ?? throw new SecretNotFoundException(key);
 
-            var secretMetadata = await _client.FindSecretByNameAsync(key, cancellationToken);
-            var currentVersion = secretMetadata is not null
-                ? GetCurrentVersion(secretMetadata, query?.Version)
-                : 1;
+            var currentVersion = GetCurrentVersion(secret, query?.Version);
 
             var access = await _client.AccessVersionAsync(key, currentVersion, cancellationToken);
             var value = access.Data;
@@ -73,6 +70,7 @@ public sealed class OVHSecretProvider : ISecretProvider
                 UpdatedAt = secret.UpdatedAt
             };
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
@@ -124,6 +122,7 @@ public sealed class OVHSecretProvider : ISecretProvider
                 };
             }
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
@@ -143,6 +142,7 @@ public sealed class OVHSecretProvider : ISecretProvider
         {
             await _client.DeleteSecretAsync(key, cancellationToken);
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
@@ -176,6 +176,7 @@ public sealed class OVHSecretProvider : ISecretProvider
                 .ToList()
                 .AsReadOnly();
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
@@ -197,6 +198,7 @@ public sealed class OVHSecretProvider : ISecretProvider
             var secret = await _client.FindSecretByNameAsync(key, cancellationToken);
             return secret is not null;
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex)
         {
             throw new SecretProviderException(
@@ -217,6 +219,6 @@ public sealed class OVHSecretProvider : ISecretProvider
         if (int.TryParse(requestedVersion, out var parsed))
             return parsed;
 
-        return 1;
+        return secret.CurrentVersion > 0 ? secret.CurrentVersion : 1;
     }
 }
