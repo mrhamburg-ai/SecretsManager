@@ -1,5 +1,6 @@
 using System;
 using Microsoft.Extensions.Logging;
+using SecretsManager.Internal;
 
 namespace SecretsManager;
 
@@ -53,11 +54,17 @@ public sealed class LoggerSecretProviderLogger : ISecretProviderLogger
     /// <param name="context">Context of the failed operation.</param>
     /// <param name="exception">The exception that ended the operation.</param>
     /// <param name="duration">How long the operation ran before failing.</param>
-    public void LogFailure(SecretProviderLogContext context, Exception exception, TimeSpan duration) =>
+    public void LogFailure(SecretProviderLogContext context, Exception exception, TimeSpan duration)
+    {
+        var failureType = exception is RedactedSecretProviderException redacted
+            ? redacted.OriginalTypeName
+            : exception.GetType().FullName;
+
         _logger.LogError(
             exception,
-            "Secret operation {Operation} failed for key {Key} in provider {Provider} after {ElapsedMs} ms",
-            context.Operation, context.Key, context.Provider, duration.TotalMilliseconds);
+            "Secret operation {Operation} failed for key {Key} in provider {Provider} after {ElapsedMs} ms. FailureType={FailureType}",
+            context.Operation, context.Key, context.Provider, duration.TotalMilliseconds, failureType);
+    }
 
     /// <summary>
     /// Called when an operation is retried.

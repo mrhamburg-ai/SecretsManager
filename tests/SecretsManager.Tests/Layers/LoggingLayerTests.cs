@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using SecretsManager.Builder;
 
@@ -230,5 +231,30 @@ public sealed class LoggingLayerTests
         await provider.GetSecretAsync("key");
 
         Assert.All(logger.Entries, entry => Assert.Equal("test", entry.Context.Provider));
+    }
+
+    [Fact]
+    public async Task LoggingLayer_RedactsPutValueFromFailureLog()
+    {
+        const string secret = "super-secret-value";
+        var logger = new RecordingLogger();
+        await using var provider = new LoggingLayer(new LoggingLayerOptions { Logger = logger })
+            .Wrap(new DelegatingSecretProvider
+            {
+                PutSecretAsyncImpl = (_, value, _, _) =>
+                    Task.FromException<SecretValue>(
+                        new SecretProviderException($"backend rejected {value}"))
+            });
+
+        var thrown = await Assert.ThrowsAsync<SecretProviderException>(
+            () => provider.PutSecretAsync("key", secret));
+
+        var logged = string.Join(
+            Environment.NewLine,
+            logger.Entries.Select(entry => entry.Exception?.ToString() ?? string.Empty));
+
+        Assert.DoesNotContain(secret, logged);
+        Assert.Contains("[REDACTED]", logged);
+        Assert.Contains(secret, thrown.Message);
     }
 }

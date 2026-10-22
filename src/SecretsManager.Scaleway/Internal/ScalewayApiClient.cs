@@ -51,7 +51,7 @@ internal sealed class ScalewayApiClient : IScalewayApiClient
         if (response.StatusCode == HttpStatusCode.NotFound)
             return null;
 
-        await EnsureSuccess(response, "listing secrets", cancellationToken);
+        EnsureSuccess(response, "listing secrets");
 
         var body = await response.Content.ReadFromJsonAsync<ListSecretsResponse>(JsonOptions, cancellationToken);
         if (body?.Secrets is null || body.Secrets.Count == 0)
@@ -74,7 +74,7 @@ internal sealed class ScalewayApiClient : IScalewayApiClient
         };
 
         using var response = await _http.PostAsJsonAsync(url, payload, JsonOptions, cancellationToken);
-        await EnsureSuccess(response, $"creating secret '{name}'", cancellationToken);
+        EnsureSuccess(response, $"creating secret '{name}'");
 
         var s = await response.Content.ReadFromJsonAsync<SecretDto>(JsonOptions, cancellationToken)
             ?? throw new SecretProviderException($"Empty response when creating secret '{name}'.");
@@ -86,7 +86,7 @@ internal sealed class ScalewayApiClient : IScalewayApiClient
     {
         var url = $"{BasePath}/secrets/{Uri.EscapeDataString(secretId)}";
         using var response = await _http.DeleteAsync(url, cancellationToken);
-        await EnsureSuccess(response, $"deleting secret '{secretId}'", cancellationToken);
+        EnsureSuccess(response, $"deleting secret '{secretId}'");
     }
 
     public async Task<ScalewayVersionResult> CreateVersionAsync(
@@ -99,7 +99,7 @@ internal sealed class ScalewayApiClient : IScalewayApiClient
         };
 
         using var response = await _http.PostAsJsonAsync(url, payload, JsonOptions, cancellationToken);
-        await EnsureSuccess(response, $"creating version for secret '{secretId}'", cancellationToken);
+        EnsureSuccess(response, $"creating version for secret '{secretId}'");
 
         var v = await response.Content.ReadFromJsonAsync<VersionDto>(JsonOptions, cancellationToken)
             ?? throw new SecretProviderException($"Empty response when creating version for secret '{secretId}'.");
@@ -112,7 +112,7 @@ internal sealed class ScalewayApiClient : IScalewayApiClient
     {
         var url = $"{BasePath}/secrets/{Uri.EscapeDataString(secretId)}/versions/{Uri.EscapeDataString(revision)}/access";
         using var response = await _http.GetAsync(url, cancellationToken);
-        await EnsureSuccess(response, $"accessing version '{revision}' of secret '{secretId}'", cancellationToken);
+        EnsureSuccess(response, $"accessing version '{revision}' of secret '{secretId}'");
 
         var body = await response.Content.ReadFromJsonAsync<AccessVersionResponse>(JsonOptions, cancellationToken)
             ?? throw new SecretProviderException($"Empty response when accessing secret '{secretId}'.");
@@ -131,7 +131,7 @@ internal sealed class ScalewayApiClient : IScalewayApiClient
         {
             var url = $"{BasePath}/secrets/{Uri.EscapeDataString(secretId)}/versions?page={page}&page_size=100";
             using var response = await _http.GetAsync(url, cancellationToken);
-            await EnsureSuccess(response, $"listing versions for secret '{secretId}'", cancellationToken);
+            EnsureSuccess(response, $"listing versions for secret '{secretId}'");
 
             var body = await response.Content.ReadFromJsonAsync<ListVersionsResponse>(JsonOptions, cancellationToken);
             if (body?.Versions is null || body.Versions.Count == 0)
@@ -160,24 +160,14 @@ internal sealed class ScalewayApiClient : IScalewayApiClient
     private static ScalewayVersionResult MapVersion(VersionDto v) =>
         new(v.Revision, v.SecretId, v.Status, v.CreatedAt, v.UpdatedAt, v.Latest);
 
-    private static async Task EnsureSuccess(
-        HttpResponseMessage response, string operation, CancellationToken cancellationToken)
+    private static void EnsureSuccess(HttpResponseMessage response, string operation)
     {
         if (response.IsSuccessStatusCode)
             return;
 
-        string detail;
-        try
-        {
-            detail = await response.Content.ReadAsStringAsync(cancellationToken);
-        }
-        catch
-        {
-            detail = response.StatusCode.ToString();
-        }
-
+        // Never include the response body: backends can echo submitted secret values in error payloads.
         throw new SecretProviderException(
-            $"Scaleway API error {operation}: HTTP {(int)response.StatusCode} — {detail}");
+            $"Scaleway API error {operation}: HTTP {(int)response.StatusCode} {response.ReasonPhrase}");
     }
 
     // --- DTOs for JSON serialization ---

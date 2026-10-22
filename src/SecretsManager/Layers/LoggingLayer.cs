@@ -76,7 +76,8 @@ public sealed class LoggingLayer : ISecretProviderLayer, IProviderNameAwareLayer
             return await ExecuteAsync(
                 () => _inner.PutSecretAsync(key, value, metadata, cancellationToken),
                 (timestamp, outcome) => CreateContext(
-                    "PutSecretAsync", key, metadata is not null, timestamp, outcome));
+                    "PutSecretAsync", key, metadata is not null, timestamp, outcome),
+                secretValue: value);
         }
 
         public async Task DeleteSecretAsync(string key, CancellationToken cancellationToken = default)
@@ -109,7 +110,8 @@ public sealed class LoggingLayer : ISecretProviderLayer, IProviderNameAwareLayer
 
         private async Task<T> ExecuteAsync<T>(
             Func<Task<T>> operation,
-            Func<DateTimeOffset, SecretProviderLogOutcome?, SecretProviderLogContext> createContext)
+            Func<DateTimeOffset, SecretProviderLogOutcome?, SecretProviderLogContext> createContext,
+            string? secretValue = null)
         {
             var started = Stopwatch.GetTimestamp();
             var timestamp = DateTimeOffset.UtcNow;
@@ -126,7 +128,9 @@ public sealed class LoggingLayer : ISecretProviderLayer, IProviderNameAwareLayer
             {
                 if (IsEnabled(SecretProviderLogLevel.Error))
                     SecretProviderLogging.TryLog(() => _logger.LogFailure(
-                        createContext(timestamp, SecretProviderLogOutcome.Failure), ex, GetElapsed(started)));
+                        createContext(timestamp, SecretProviderLogOutcome.Failure),
+                        RedactSecret(ex, secretValue),
+                        GetElapsed(started)));
                 throw;
             }
 
@@ -138,7 +142,8 @@ public sealed class LoggingLayer : ISecretProviderLayer, IProviderNameAwareLayer
 
         private async Task ExecuteAsync(
             Func<Task> operation,
-            Func<DateTimeOffset, SecretProviderLogOutcome?, SecretProviderLogContext> createContext)
+            Func<DateTimeOffset, SecretProviderLogOutcome?, SecretProviderLogContext> createContext,
+            string? secretValue = null)
         {
             var started = Stopwatch.GetTimestamp();
             var timestamp = DateTimeOffset.UtcNow;
@@ -154,13 +159,26 @@ public sealed class LoggingLayer : ISecretProviderLayer, IProviderNameAwareLayer
             {
                 if (IsEnabled(SecretProviderLogLevel.Error))
                     SecretProviderLogging.TryLog(() => _logger.LogFailure(
-                        createContext(timestamp, SecretProviderLogOutcome.Failure), ex, GetElapsed(started)));
+                        createContext(timestamp, SecretProviderLogOutcome.Failure),
+                        RedactSecret(ex, secretValue),
+                        GetElapsed(started)));
                 throw;
             }
 
             if (IsEnabled(SecretProviderLogLevel.Debug))
                 SecretProviderLogging.TryLog(() => _logger.LogSuccess(
                     createContext(timestamp, SecretProviderLogOutcome.Success), GetElapsed(started)));
+        }
+
+        private static Exception RedactSecret(Exception exception, string? secretValue)
+        {
+            if (string.IsNullOrEmpty(secretValue)
+                || !exception.ToString().Contains(secretValue, StringComparison.Ordinal))
+            {
+                return exception;
+            }
+
+            return new RedactedSecretProviderException(exception, secretValue);
         }
 
         private bool IsEnabled(SecretProviderLogLevel level)

@@ -55,7 +55,7 @@ internal sealed class VaultApiClient : IVaultApiClient
         if (response.StatusCode == HttpStatusCode.NotFound)
             return null;
 
-        await EnsureSuccess(response, $"reading secret '{key}'", cancellationToken);
+        EnsureSuccess(response, $"reading secret '{key}'");
 
         var envelope = await response.Content.ReadFromJsonAsync<GetResponseEnvelope>(JsonOptions, cancellationToken)
             ?? throw new SecretProviderException($"Empty response when reading secret '{key}'.");
@@ -80,7 +80,7 @@ internal sealed class VaultApiClient : IVaultApiClient
         };
 
         using var response = await _http.PutAsJsonAsync(url, payload, JsonOptions, cancellationToken);
-        await EnsureSuccess(response, $"writing secret '{key}'", cancellationToken);
+        EnsureSuccess(response, $"writing secret '{key}'");
 
         var envelope = await response.Content.ReadFromJsonAsync<PutResponseEnvelope>(JsonOptions, cancellationToken)
             ?? throw new SecretProviderException($"Empty response when writing secret '{key}'.");
@@ -98,7 +98,7 @@ internal sealed class VaultApiClient : IVaultApiClient
         if (response.StatusCode == HttpStatusCode.NotFound)
             return;
 
-        await EnsureSuccess(response, $"deleting secret '{key}'", cancellationToken);
+        EnsureSuccess(response, $"deleting secret '{key}'");
     }
 
     public async Task<IReadOnlyList<VaultVersionResult>> ListVersionsAsync(
@@ -110,7 +110,7 @@ internal sealed class VaultApiClient : IVaultApiClient
         if (response.StatusCode == HttpStatusCode.NotFound)
             return [];
 
-        await EnsureSuccess(response, $"listing versions for '{key}'", cancellationToken);
+        EnsureSuccess(response, $"listing versions for '{key}'");
 
         var envelope = await response.Content.ReadFromJsonAsync<MetadataEnvelope>(JsonOptions, cancellationToken)
             ?? throw new SecretProviderException($"Empty response when listing versions for '{key}'.");
@@ -142,24 +142,14 @@ internal sealed class VaultApiClient : IVaultApiClient
         return ValueTask.CompletedTask;
     }
 
-    private static async Task EnsureSuccess(
-        HttpResponseMessage response, string operation, CancellationToken cancellationToken)
+    private static void EnsureSuccess(HttpResponseMessage response, string operation)
     {
         if (response.IsSuccessStatusCode)
             return;
 
-        string detail;
-        try
-        {
-            detail = await response.Content.ReadAsStringAsync(cancellationToken);
-        }
-        catch
-        {
-            detail = response.StatusCode.ToString();
-        }
-
+        // Never include the response body: backends can echo submitted secret values in error payloads.
         throw new SecretProviderException(
-            $"Vault API error {operation}: HTTP {(int)response.StatusCode} — {detail}");
+            $"Vault API error {operation}: HTTP {(int)response.StatusCode} {response.ReasonPhrase}");
     }
 
     // --- DTOs for JSON serialization ---
