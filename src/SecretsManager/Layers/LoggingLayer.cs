@@ -3,15 +3,17 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
+using SecretsManager.Internal;
 
 namespace SecretsManager;
 
 /// <summary>
 /// Adds logging hooks around provider operations.
 /// </summary>
-public sealed class LoggingLayer : ISecretProviderLayer
+public sealed class LoggingLayer : ISecretProviderLayer, IProviderNameAwareLayer
 {
     private readonly LoggingLayerOptions _options;
+    private string? _providerName;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="LoggingLayer"/> class.
@@ -36,10 +38,22 @@ public sealed class LoggingLayer : ISecretProviderLayer
     public ISecretProvider Wrap(ISecretProvider inner)
     {
         ArgumentNullException.ThrowIfNull(inner);
-        return new LoggingSecretProvider(inner, _options);
+        return new LoggingSecretProvider(inner, _options, _options.ProviderName ?? _providerName ?? string.Empty);
     }
 
-    private sealed class LoggingSecretProvider(ISecretProvider inner, LoggingLayerOptions options) : ISecretProvider
+    void IProviderNameAwareLayer.SetProviderName(string providerName)
+    {
+        // Kept off the shared options so that building the same layer for several providers cannot
+        // change the name that an earlier provider reports.
+        _providerName = providerName;
+    }
+
+    internal LoggingLayerOptions Options => _options;
+
+    private sealed class LoggingSecretProvider(
+        ISecretProvider inner,
+        LoggingLayerOptions options,
+        string providerName) : ISecretProvider
     {
         private readonly ISecretProvider _inner = inner;
         private readonly ISecretProviderLogger _logger = options.Logger;
@@ -52,16 +66,11 @@ public sealed class LoggingLayer : ISecretProviderLayer
             SecretQuery? query = null,
             CancellationToken cancellationToken = default)
         {
-            var context = new SecretProviderLogContext
-            {
-                Operation = ComposeOperation("GetSecretAsync"),
-                Key = key,
-                IsMetadataWrite = false
-            };
-
             return await ExecuteAsync(
                 () => _inner.GetSecretAsync(key, query, cancellationToken),
-                context);
+                (timestamp, outcome) => CreateContext(
+                    "GetSecretAsync", key, isMetadataWrite: false, timestamp, outcome),
+                cancellationToken);
         }
 
         public async Task<SecretValue> PutSecretAsync(
@@ -70,97 +79,151 @@ public sealed class LoggingLayer : ISecretProviderLayer
             SecretMetadata? metadata = null,
             CancellationToken cancellationToken = default)
         {
-            var context = new SecretProviderLogContext
-            {
-                Operation = ComposeOperation("PutSecretAsync"),
-                Key = key,
-                IsMetadataWrite = metadata is not null
-            };
-
             return await ExecuteAsync(
                 () => _inner.PutSecretAsync(key, value, metadata, cancellationToken),
-                context);
+                (timestamp, outcome) => CreateContext(
+                    "PutSecretAsync", key, metadata is not null, timestamp, outcome),
+                cancellationToken,
+                secretValue: value);
         }
 
         public async Task DeleteSecretAsync(string key, CancellationToken cancellationToken = default)
         {
-            var context = new SecretProviderLogContext
-            {
-                Operation = ComposeOperation("DeleteSecretAsync"),
-                Key = key,
-                IsMetadataWrite = false
-            };
-
             await ExecuteAsync(
                 () => _inner.DeleteSecretAsync(key, cancellationToken),
-                context);
+                (timestamp, outcome) => CreateContext(
+                    "DeleteSecretAsync", key, isMetadataWrite: false, timestamp, outcome),
+                cancellationToken);
         }
 
         public async Task<IReadOnlyList<SecretVersionInfo>> GetSecretVersionsAsync(
             string key,
             CancellationToken cancellationToken = default)
         {
-            var context = new SecretProviderLogContext
-            {
-                Operation = ComposeOperation("GetSecretVersionsAsync"),
-                Key = key,
-                IsMetadataWrite = false
-            };
-
             return await ExecuteAsync(
                 () => _inner.GetSecretVersionsAsync(key, cancellationToken),
-                context);
+                (timestamp, outcome) => CreateContext(
+                    "GetSecretVersionsAsync", key, isMetadataWrite: false, timestamp, outcome),
+                cancellationToken);
         }
 
         public async Task<bool> SecretExistsAsync(string key, CancellationToken cancellationToken = default)
         {
-            var context = new SecretProviderLogContext
-            {
-                Operation = ComposeOperation("SecretExistsAsync"),
-                Key = key,
-                IsMetadataWrite = false
-            };
-
             return await ExecuteAsync(
                 () => _inner.SecretExistsAsync(key, cancellationToken),
-                context);
+                (timestamp, outcome) => CreateContext(
+                    "SecretExistsAsync", key, isMetadataWrite: false, timestamp, outcome),
+                cancellationToken);
         }
 
         public ValueTask DisposeAsync() => _inner.DisposeAsync();
 
-        private async Task<T> ExecuteAsync<T>(Func<Task<T>> operation, SecretProviderLogContext context)
+        private async Task<T> ExecuteAsync<T>(
+            Func<Task<T>> operation,
+            Func<DateTimeOffset, SecretProviderLogOutcome?, SecretProviderLogContext> createContext,
+            CancellationToken cancellationToken,
+            string? secretValue = null)
         {
-            _logger.LogStart(context);
-
             var started = Stopwatch.GetTimestamp();
+            var timestamp = DateTimeOffset.UtcNow;
+
+            if (IsEnabled(SecretProviderLogLevel.Debug))
+                SecretProviderLogging.TryLog(() => _logger.LogStart(createContext(timestamp, null)));
+
+            T result;
             try
             {
-                var result = await operation().ConfigureAwait(false);
-                _logger.LogSuccess(context, GetElapsed(started));
-                return result;
+                result = await operation().ConfigureAwait(false);
             }
             catch (Exception ex)
             {
-                _logger.LogFailure(context, ex, GetElapsed(started));
+                // A caller who cancels is not a backend failure; do not report it as an error.
+                if (ex is OperationCanceledException && cancellationToken.IsCancellationRequested)
+                    throw;
+
+                if (IsEnabled(SecretProviderLogLevel.Error))
+                    SecretProviderLogging.TryLog(() => _logger.LogFailure(
+                        createContext(timestamp, SecretProviderLogOutcome.Failure),
+                        RedactSecret(ex, secretValue),
+                        GetElapsed(started)));
                 throw;
             }
+
+            if (IsEnabled(SecretProviderLogLevel.Debug))
+                SecretProviderLogging.TryLog(() => _logger.LogSuccess(
+                    createContext(timestamp, SecretProviderLogOutcome.Success), GetElapsed(started)));
+            return result;
         }
 
-        private async Task ExecuteAsync(Func<Task> operation, SecretProviderLogContext context)
+        private async Task ExecuteAsync(
+            Func<Task> operation,
+            Func<DateTimeOffset, SecretProviderLogOutcome?, SecretProviderLogContext> createContext,
+            CancellationToken cancellationToken,
+            string? secretValue = null)
         {
-            _logger.LogStart(context);
-
             var started = Stopwatch.GetTimestamp();
+            var timestamp = DateTimeOffset.UtcNow;
+
+            if (IsEnabled(SecretProviderLogLevel.Debug))
+                SecretProviderLogging.TryLog(() => _logger.LogStart(createContext(timestamp, null)));
+
             try
             {
                 await operation().ConfigureAwait(false);
-                _logger.LogSuccess(context, GetElapsed(started));
             }
             catch (Exception ex)
             {
-                _logger.LogFailure(context, ex, GetElapsed(started));
+                // A caller who cancels is not a backend failure; do not report it as an error.
+                if (ex is OperationCanceledException && cancellationToken.IsCancellationRequested)
+                    throw;
+
+                if (IsEnabled(SecretProviderLogLevel.Error))
+                    SecretProviderLogging.TryLog(() => _logger.LogFailure(
+                        createContext(timestamp, SecretProviderLogOutcome.Failure),
+                        RedactSecret(ex, secretValue),
+                        GetElapsed(started)));
                 throw;
             }
+
+            if (IsEnabled(SecretProviderLogLevel.Debug))
+                SecretProviderLogging.TryLog(() => _logger.LogSuccess(
+                    createContext(timestamp, SecretProviderLogOutcome.Success), GetElapsed(started)));
+        }
+
+        private static Exception RedactSecret(Exception exception, string? secretValue)
+        {
+            if (string.IsNullOrEmpty(secretValue)
+                || !exception.ToString().Contains(secretValue, StringComparison.Ordinal))
+            {
+                return exception;
+            }
+
+            return new RedactedSecretProviderException(exception, secretValue);
+        }
+
+        private bool IsEnabled(SecretProviderLogLevel level)
+        {
+            var enabled = false;
+            SecretProviderLogging.TryLog(() => enabled = _logger.IsEnabled(level));
+            return enabled;
+        }
+
+        private SecretProviderLogContext CreateContext(
+            string operation,
+            string? key,
+            bool isMetadataWrite,
+            DateTimeOffset timestamp,
+            SecretProviderLogOutcome? outcome)
+        {
+            return new SecretProviderLogContext
+            {
+                Operation = ComposeOperation(operation),
+                Key = key,
+                IsMetadataWrite = isMetadataWrite,
+                Provider = providerName,
+                Outcome = outcome,
+                Timestamp = timestamp
+            };
         }
 
         private TimeSpan GetElapsed(long startTimestamp)

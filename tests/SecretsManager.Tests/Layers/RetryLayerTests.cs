@@ -1,5 +1,7 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
+using SecretsManager.Builder;
 
 namespace SecretsManager.Tests;
 
@@ -113,5 +115,118 @@ public sealed class RetryLayerTests
         await Assert.ThrowsAsync<SecretNotFoundException>(() => provider.GetSecretAsync("missing"));
 
         Assert.Equal(1, attempts);
+    }
+
+    [Fact]
+    public async Task RetryLayer_LogsEachRetryWithAttemptAndDelay()
+    {
+        var logger = new RecordingLogger();
+        var attempts = 0;
+
+        var provider = new RetryLayer(new RetryLayerOptions
+        {
+            Logger = logger,
+            MaxAttempts = 3,
+            BaseDelay = TimeSpan.FromMilliseconds(1),
+            MaxDelay = TimeSpan.FromMilliseconds(1),
+            JitterFactor = 0
+        }).Wrap(new DelegatingSecretProvider
+        {
+            GetSecretAsyncImpl = (key, _, _) =>
+            {
+                attempts++;
+                if (attempts < 3)
+                    throw new TimeoutException("temporary");
+
+                return Task.FromResult(new SecretValue { Key = key, Value = "ok" });
+            }
+        });
+
+        await provider.GetSecretAsync("key");
+
+        var retries = logger.Entries.Where(e => e.Type == "retry").ToList();
+        Assert.Equal(2, retries.Count);
+        Assert.Equal(2, retries[0].Attempt);
+        Assert.Equal(3, retries[1].Attempt);
+        Assert.Equal(TimeSpan.FromMilliseconds(1), retries[0].Delay);
+        Assert.Equal("GetSecretAsync", retries[0].Context.Operation);
+        Assert.Equal("key", retries[0].Context.Key);
+    }
+
+    [Fact]
+    public async Task RetryLayer_ThrowingRetryLoggerStillRetries()
+    {
+        var logger = new ThrowingSecretProviderLogger { ThrowOnRetry = true };
+        var attempts = 0;
+
+        var provider = new RetryLayer(new RetryLayerOptions
+        {
+            Logger = logger,
+            MaxAttempts = 2,
+            BaseDelay = TimeSpan.FromMilliseconds(1),
+            MaxDelay = TimeSpan.FromMilliseconds(1),
+            JitterFactor = 0
+        }).Wrap(new DelegatingSecretProvider
+        {
+            GetSecretAsyncImpl = (key, _, _) =>
+            {
+                attempts++;
+                if (attempts == 1)
+                    throw new TimeoutException("temporary");
+
+                return Task.FromResult(new SecretValue { Key = key, Value = "ok" });
+            }
+        });
+
+        var result = await provider.GetSecretAsync("key");
+
+        Assert.Equal("ok", result.Value);
+        Assert.Equal(2, attempts);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Builder_SharesLoggerWithRetryLayer(bool loggingFirst)
+    {
+        var logger = new RecordingLogger();
+        var attempts = 0;
+        var baseProvider = new DelegatingSecretProvider
+        {
+            GetSecretAsyncImpl = (key, _, _) =>
+            {
+                attempts++;
+                if (attempts == 1)
+                    throw new TimeoutException("temporary");
+
+                return Task.FromResult(new SecretValue { Key = key, Value = "ok" });
+            }
+        };
+
+        var builder = new SecretProviderBuilder()
+            .RegisterProvider(new TestLayerProviderFactory(baseProvider))
+            .UseProvider("test");
+
+        if (loggingFirst)
+            builder.WithLogging(o => o.Logger = logger).WithRetry(o =>
+            {
+                o.MaxAttempts = 2;
+                o.BaseDelay = TimeSpan.FromMilliseconds(1);
+                o.MaxDelay = TimeSpan.FromMilliseconds(1);
+                o.JitterFactor = 0;
+            });
+        else
+            builder.WithRetry(o =>
+            {
+                o.MaxAttempts = 2;
+                o.BaseDelay = TimeSpan.FromMilliseconds(1);
+                o.MaxDelay = TimeSpan.FromMilliseconds(1);
+                o.JitterFactor = 0;
+            }).WithLogging(o => o.Logger = logger);
+
+        await using var provider = builder.Build();
+        await provider.GetSecretAsync("key");
+
+        Assert.Contains(logger.Entries, e => e.Type == "retry" && e.Context.Provider == "test");
     }
 }

@@ -80,7 +80,7 @@ Layers are decorators that wrap a provider to add operational capabilities like 
 | `ConcurrentLimiterLayer` | `.WithConcurrentLimiter()` | Limits concurrent operations with an optional acquire timeout |
 | `RetryLayer` | `.WithRetry()` | Retries failed operations with exponential backoff and jitter |
 | `TimeoutLayer` | `.WithTimeout()` | Enforces a per-operation timeout |
-| `LoggingLayer` | `.WithLogging()` | Logs operation start, success, and failure events |
+| `LoggingLayer` | `.WithLogging()` | Logs start, success, failure, and retry events. Includes a `Microsoft.Extensions.Logging` adapter |
 | `AuditLayer` | `.WithAudit()` / `.WithAuditSink()` | Writes durable per-access audit records without secret values |
 | `OtelMetricsLayer` | `.WithOtelMetrics()` | Emits OpenTelemetry-compatible metrics (counters, histograms) |
 | `OtelTraceLayer` | `.WithOtelTrace()` | Emits OpenTelemetry-compatible distributed traces |
@@ -106,7 +106,7 @@ await using var provider = new SecretProviderBuilder()
     })
     .WithTimeout(opts => opts.Timeout = TimeSpan.FromSeconds(30))
     .WithLogging(opts => {
-        opts.Logger = new MySecretProviderLogger();
+        opts.Logger = new LoggerSecretProviderLogger(logger);   // Microsoft.Extensions.Logging
         opts.OperationPrefix = "secrets";
     })
     .WithOtelMetrics(opts => {

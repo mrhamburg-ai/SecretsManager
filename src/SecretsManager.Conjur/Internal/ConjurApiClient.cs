@@ -73,7 +73,7 @@ internal sealed class ConjurApiClient : IConjurApiClient
         if (response.StatusCode == HttpStatusCode.NotFound)
             return null;
 
-        await EnsureSuccess(response, $"retrieving secret '{key}'", cancellationToken);
+        EnsureSuccess(response, $"retrieving secret '{key}'");
 
         return await response.Content.ReadAsStringAsync(cancellationToken);
     }
@@ -91,7 +91,7 @@ internal sealed class ConjurApiClient : IConjurApiClient
         await SetAuthorizationAsync(request, cancellationToken);
 
         using var response = await _http.SendAsync(request, cancellationToken);
-        await EnsureSuccess(response, $"setting secret '{key}'", cancellationToken);
+        EnsureSuccess(response, $"setting secret '{key}'");
     }
 
     public async Task DeleteSecretAsync(string key, CancellationToken cancellationToken)
@@ -107,7 +107,7 @@ internal sealed class ConjurApiClient : IConjurApiClient
         await SetAuthorizationAsync(request, cancellationToken);
 
         using var response = await _http.SendAsync(request, cancellationToken);
-        await EnsureSuccess(response, $"deleting secret '{key}'", cancellationToken);
+        EnsureSuccess(response, $"deleting secret '{key}'");
     }
 
     public async Task<IReadOnlyList<ConjurVersionResult>> ListVersionsAsync(
@@ -124,7 +124,7 @@ internal sealed class ConjurApiClient : IConjurApiClient
         if (response.StatusCode == HttpStatusCode.NotFound)
             return [];
 
-        await EnsureSuccess(response, $"listing versions for '{key}'", cancellationToken);
+        EnsureSuccess(response, $"listing versions for '{key}'");
 
         var resource = await response.Content.ReadFromJsonAsync<ResourceResponse>(JsonOptions, cancellationToken)
             ?? throw new SecretProviderException($"Empty response when listing versions for '{key}'.");
@@ -213,7 +213,7 @@ internal sealed class ConjurApiClient : IConjurApiClient
         await SetAuthorizationAsync(request, cancellationToken);
 
         using var response = await _http.SendAsync(request, cancellationToken);
-        await EnsureSuccess(response, $"creating variable '{key}'", cancellationToken);
+        EnsureSuccess(response, $"creating variable '{key}'");
     }
 
     private async Task<string> GetTokenAsync(CancellationToken cancellationToken)
@@ -234,7 +234,7 @@ internal sealed class ConjurApiClient : IConjurApiClient
             request.Headers.TryAddWithoutValidation("Accept-Encoding", "base64");
 
             using var response = await _http.SendAsync(request, cancellationToken);
-            await EnsureSuccess(response, "authenticating", cancellationToken);
+            EnsureSuccess(response, "authenticating");
 
             var token = (await response.Content.ReadAsStringAsync(cancellationToken)).Trim();
             if (token.Length == 0)
@@ -282,24 +282,14 @@ internal sealed class ConjurApiClient : IConjurApiClient
         return Convert.FromBase64String(s);
     }
 
-    private static async Task EnsureSuccess(
-        HttpResponseMessage response, string operation, CancellationToken cancellationToken)
+    private static void EnsureSuccess(HttpResponseMessage response, string operation)
     {
         if (response.IsSuccessStatusCode)
             return;
 
-        string detail;
-        try
-        {
-            detail = await response.Content.ReadAsStringAsync(cancellationToken);
-        }
-        catch
-        {
-            detail = response.StatusCode.ToString();
-        }
-
+        // Never include the response body: backends can echo submitted secret values in error payloads.
         throw new SecretProviderException(
-            $"Conjur API error {operation}: HTTP {(int)response.StatusCode} — {detail}");
+            $"Conjur API error {operation}: HTTP {(int)response.StatusCode} {response.ReasonPhrase}");
     }
 
     // GET /resources/{account}/variable/{identifier} response (subset of fields used)

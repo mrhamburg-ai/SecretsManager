@@ -30,4 +30,10 @@ public sealed class RetryLayerOptions
     /// Defaults to retrying all non-cancellation exceptions.
     /// </summary>
     public Func<Exception, bool>? RetryPredicate { get; set; }
+
+    /// <summary>
+    /// Optional logging sink that receives one event for each retry.
+    /// When null, the builder shares the logger from a configured <see cref="LoggingLayer"/>.
+    /// </summary>
+    public ISecretProviderLogger? Logger { get; set; }
 }

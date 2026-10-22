@@ -137,24 +137,78 @@ internal sealed class TestTrackingLayer : ISecretProviderLayer
     }
 }
 
-internal sealed class RecordingLogger : ISecretProviderLogger
+internal sealed class ThrowingSecretProviderLogger : ISecretProviderLogger
 {
-    public record Entry(string Type, string Operation, Exception? Exception, TimeSpan? Duration = null);
+    public bool ThrowOnIsEnabled { get; init; }
+    public bool ThrowOnStart { get; init; }
+    public bool ThrowOnSuccess { get; init; }
+    public bool ThrowOnFailure { get; init; }
+    public bool ThrowOnRetry { get; init; }
+    public List<string> Calls { get; } = new();
 
-    public List<Entry> Entries { get; } = new();
+    public bool IsEnabled(SecretProviderLogLevel level)
+    {
+        if (ThrowOnIsEnabled)
+            throw new IOException("sink down");
+
+        return true;
+    }
 
     public void LogStart(SecretProviderLogContext context)
     {
-        Entries.Add(new Entry("start", context.Operation, null));
+        Calls.Add("start");
+        if (ThrowOnStart)
+            throw new IOException("sink down");
     }
 
     public void LogSuccess(SecretProviderLogContext context, TimeSpan duration)
     {
-        Entries.Add(new Entry("success", context.Operation, null, duration));
+        Calls.Add("success");
+        if (ThrowOnSuccess)
+            throw new IOException("sink down");
     }
 
     public void LogFailure(SecretProviderLogContext context, Exception exception, TimeSpan duration)
     {
-        Entries.Add(new Entry("failure", context.Operation, exception, duration));
+        Calls.Add("failure");
+        if (ThrowOnFailure)
+            throw new IOException("sink down");
     }
+
+    public void LogRetry(SecretProviderLogContext context, int attempt, TimeSpan delay)
+    {
+        Calls.Add("retry");
+        if (ThrowOnRetry)
+            throw new IOException("sink down");
+    }
+}
+
+internal sealed class RecordingLogger : ISecretProviderLogger
+{
+    public record Entry(
+        string Type,
+        SecretProviderLogContext Context,
+        Exception? Exception = null,
+        TimeSpan? Duration = null,
+        int? Attempt = null,
+        TimeSpan? Delay = null);
+
+    public HashSet<SecretProviderLogLevel> EnabledLevels { get; } =
+        Enum.GetValues<SecretProviderLogLevel>().ToHashSet();
+
+    public List<Entry> Entries { get; } = new();
+
+    public bool IsEnabled(SecretProviderLogLevel level) => EnabledLevels.Contains(level);
+
+    public void LogStart(SecretProviderLogContext context) =>
+        Entries.Add(new Entry("start", context));
+
+    public void LogSuccess(SecretProviderLogContext context, TimeSpan duration) =>
+        Entries.Add(new Entry("success", context, Duration: duration));
+
+    public void LogFailure(SecretProviderLogContext context, Exception exception, TimeSpan duration) =>
+        Entries.Add(new Entry("failure", context, exception, duration));
+
+    public void LogRetry(SecretProviderLogContext context, int attempt, TimeSpan delay) =>
+        Entries.Add(new Entry("retry", context, Attempt: attempt, Delay: delay));
 }

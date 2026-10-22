@@ -1,3 +1,5 @@
+using SecretsManager.Internal;
+
 namespace SecretsManager;
 
 /// <summary>
@@ -8,9 +10,11 @@ namespace SecretsManager;
 /// is never retried because writes are not idempotent. Configure <see cref="RetryLayerOptions.RetryPredicate"/>
 /// to override the default classification.
 /// </remarks>
-public sealed class RetryLayer : ISecretProviderLayer
+public sealed class RetryLayer : ISecretProviderLayer, IProviderNameAwareLayer, ISecretProviderLoggerAwareLayer
 {
     private readonly RetryLayerOptions _options;
+    private ISecretProviderLogger _logger;
+    private string _providerName = string.Empty;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="RetryLayer"/> class.
@@ -23,6 +27,7 @@ public sealed class RetryLayer : ISecretProviderLayer
     public RetryLayer(RetryLayerOptions? options = null)
     {
         _options = options ?? new RetryLayerOptions();
+        _logger = _options.Logger ?? new NullSecretProviderLogger();
 
         if (_options.MaxAttempts < 1)
             throw new ArgumentOutOfRangeException(nameof(RetryLayerOptions.MaxAttempts));
@@ -46,10 +51,25 @@ public sealed class RetryLayer : ISecretProviderLayer
     public ISecretProvider Wrap(ISecretProvider inner)
     {
         ArgumentNullException.ThrowIfNull(inner);
-        return new RetrySecretProvider(inner, _options);
+        return new RetrySecretProvider(inner, _options, _logger, _providerName);
     }
 
-    private sealed class RetrySecretProvider(ISecretProvider inner, RetryLayerOptions options) : ISecretProvider
+    void IProviderNameAwareLayer.SetProviderName(string providerName)
+    {
+        _providerName = providerName;
+    }
+
+    void ISecretProviderLoggerAwareLayer.SetLogger(ISecretProviderLogger logger)
+    {
+        if (_options.Logger is null)
+            _logger = logger;
+    }
+
+    private sealed class RetrySecretProvider(
+        ISecretProvider inner,
+        RetryLayerOptions options,
+        ISecretProviderLogger logger,
+        string providerName) : ISecretProvider
     {
         public async Task<SecretValue> GetSecretAsync(
             string key,
@@ -58,7 +78,9 @@ public sealed class RetryLayer : ISecretProviderLayer
         {
             return await ExecuteAsync(
                 token => inner.GetSecretAsync(key, query, token),
-                cancellationToken);
+                cancellationToken,
+                "GetSecretAsync",
+                key);
         }
 
         public Task<SecretValue> PutSecretAsync(
@@ -76,7 +98,9 @@ public sealed class RetryLayer : ISecretProviderLayer
         {
             await ExecuteAsync(
                 token => inner.DeleteSecretAsync(key, token),
-                cancellationToken);
+                cancellationToken,
+                "DeleteSecretAsync",
+                key);
         }
 
         public async Task<IReadOnlyList<SecretVersionInfo>> GetSecretVersionsAsync(
@@ -85,21 +109,27 @@ public sealed class RetryLayer : ISecretProviderLayer
         {
             return await ExecuteAsync(
                 token => inner.GetSecretVersionsAsync(key, token),
-                cancellationToken);
+                cancellationToken,
+                "GetSecretVersionsAsync",
+                key);
         }
 
         public async Task<bool> SecretExistsAsync(string key, CancellationToken cancellationToken = default)
         {
             return await ExecuteAsync(
                 token => inner.SecretExistsAsync(key, token),
-                cancellationToken);
+                cancellationToken,
+                "SecretExistsAsync",
+                key);
         }
 
         public ValueTask DisposeAsync() => inner.DisposeAsync();
 
         private async Task ExecuteAsync(
             Func<CancellationToken, Task> operationExecutor,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            string operation,
+            string key)
         {
             await ExecuteAsync<object>(
                 async token =>
@@ -107,14 +137,19 @@ public sealed class RetryLayer : ISecretProviderLayer
                     await operationExecutor(token);
                     return null!;
                 },
-                cancellationToken);
+                cancellationToken,
+                operation,
+                key);
         }
 
         private async Task<TResult> ExecuteAsync<TResult>(
             Func<CancellationToken, Task<TResult>> operationExecutor,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            string operation,
+            string key)
         {
             var attempt = 1;
+            var startedAt = DateTimeOffset.UtcNow;
 
             while (true)
             {
@@ -130,9 +165,40 @@ public sealed class RetryLayer : ISecretProviderLayer
                 {
                     attempt++;
                     var delay = CalculateDelay(attempt);
+                    LogRetry(operation, key, attempt, delay, startedAt);
                     await Task.Delay(delay, cancellationToken);
                 }
             }
+        }
+
+        private void LogRetry(
+            string operation,
+            string key,
+            int attempt,
+            TimeSpan delay,
+            DateTimeOffset startedAt)
+        {
+            if (!IsEnabled(SecretProviderLogLevel.Warning))
+                return;
+
+            var context = new SecretProviderLogContext
+            {
+                Operation = operation,
+                Key = key,
+                IsMetadataWrite = false,
+                Provider = providerName,
+                Outcome = SecretProviderLogOutcome.Failure,
+                Timestamp = startedAt
+            };
+
+            SecretProviderLogging.TryLog(() => logger.LogRetry(context, attempt, delay));
+        }
+
+        private bool IsEnabled(SecretProviderLogLevel level)
+        {
+            var enabled = false;
+            SecretProviderLogging.TryLog(() => enabled = logger.IsEnabled(level));
+            return enabled;
         }
 
         private bool ShouldRetry(Exception ex)

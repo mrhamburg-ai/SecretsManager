@@ -142,7 +142,7 @@ var provider = new SecretProviderBuilder()
     .WithConcurrentLimiter()   // controls max concurrent operations
     .WithRetry()               // retries transient failures
     .WithTimeout()             // per-operation timeout
-    .WithLogging()             // start/success/failure logging hooks
+    .WithLogging()             // start/success/failure/retry logging
     .WithAudit()               // durable per-access audit records
     .WithOtelMetrics()         // emits System.Diagnostics.Metrics
     .WithOtelTrace()           // emits OpenTelemetry Activity spans
@@ -161,6 +161,19 @@ var provider = new SecretProviderBuilder()
     .WithOtelTrace(options => options.ActivitySourceName = "secrets-traces")
     .Build();
 ```
+
+### Logging types
+
+`LoggingLayer` writes events to an `ISecretProviderLogger`. See [Logging](./advanced/logging.md).
+
+| Type | Description |
+|------|-------------|
+| `ISecretProviderLogger` | Log sink with `IsEnabled`, `LogStart`, `LogSuccess`, `LogFailure` and `LogRetry` |
+| `LoggerSecretProviderLogger` | Adapter that writes to a `Microsoft.Extensions.Logging` `ILogger` |
+| `NullSecretProviderLogger` | No-op default |
+| `SecretProviderLogContext` | Operation, key, provider, outcome and timestamp. It never holds a secret value |
+| `SecretProviderLogLevel` | `Debug`, `Information`, `Warning` or `Error` |
+| `SecretProviderLogOutcome` | `Success` or `Failure` |
 
 ### Audit types
 

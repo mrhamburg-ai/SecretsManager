@@ -97,7 +97,7 @@ internal sealed class OVHOAuthHttpClient : IOVHApiClient
         if (response.StatusCode == HttpStatusCode.NotFound)
             return null;
 
-        await EnsureSuccess(response, "getting secret", cancellationToken);
+        EnsureSuccess(response, "getting secret");
 
         var body = await response.Content.ReadFromJsonAsync<SecretResponse>(JsonOptions, cancellationToken);
         if (body?.Path is null)
@@ -122,7 +122,7 @@ internal sealed class OVHOAuthHttpClient : IOVHApiClient
 
         using var response = await SendAsync(
             HttpMethod.Post, url, JsonContent.Create(payload, options: JsonOptions), cancellationToken);
-        await EnsureSuccess(response, $"creating secret '{path}'", cancellationToken);
+        EnsureSuccess(response, $"creating secret '{path}'");
 
         var body = await response.Content.ReadFromJsonAsync<SecretResponse>(JsonOptions, cancellationToken)
             ?? throw new SecretProviderException($"Empty response when creating secret '{path}'.");
@@ -138,7 +138,7 @@ internal sealed class OVHOAuthHttpClient : IOVHApiClient
     {
         var url = $"{BasePath}/secret/{Uri.EscapeDataString(path)}";
         using var response = await SendAsync(HttpMethod.Delete, url, content: null, cancellationToken);
-        await EnsureSuccess(response, $"deleting secret '{path}'", cancellationToken);
+        EnsureSuccess(response, $"deleting secret '{path}'");
     }
 
     public async Task<OVHVersionResult> CreateVersionAsync(
@@ -149,7 +149,7 @@ internal sealed class OVHOAuthHttpClient : IOVHApiClient
 
         using var response = await SendAsync(
             HttpMethod.Post, url, JsonContent.Create(payload, options: JsonOptions), cancellationToken);
-        await EnsureSuccess(response, $"creating version for secret '{path}'", cancellationToken);
+        EnsureSuccess(response, $"creating version for secret '{path}'");
 
         var body = await response.Content.ReadFromJsonAsync<VersionResponse>(JsonOptions, cancellationToken)
             ?? throw new SecretProviderException($"Empty response when creating version for secret '{path}'.");
@@ -162,7 +162,7 @@ internal sealed class OVHOAuthHttpClient : IOVHApiClient
     {
         var url = $"{BasePath}/secret/{Uri.EscapeDataString(path)}/version/{version}?includeData=true";
         using var response = await SendAsync(HttpMethod.Get, url, content: null, cancellationToken);
-        await EnsureSuccess(response, $"accessing version '{version}' of secret '{path}'", cancellationToken);
+        EnsureSuccess(response, $"accessing version '{version}' of secret '{path}'");
 
         var body = await response.Content.ReadFromJsonAsync<VersionResponse>(JsonOptions, cancellationToken)
             ?? throw new SecretProviderException($"Empty response when accessing secret '{path}'.");
@@ -175,7 +175,7 @@ internal sealed class OVHOAuthHttpClient : IOVHApiClient
     {
         var url = $"{BasePath}/secret/{Uri.EscapeDataString(path)}/version";
         using var response = await SendAsync(HttpMethod.Get, url, content: null, cancellationToken);
-        await EnsureSuccess(response, $"listing versions for secret '{path}'", cancellationToken);
+        EnsureSuccess(response, $"listing versions for secret '{path}'");
 
         var versions = await response.Content.ReadFromJsonAsync<List<VersionResponse>>(JsonOptions, cancellationToken);
         if (versions is null)
@@ -228,24 +228,14 @@ internal sealed class OVHOAuthHttpClient : IOVHApiClient
         return "$1$" + Convert.ToBase64String(hash);
     }
 
-    private async Task EnsureSuccess(
-        HttpResponseMessage response, string operation, CancellationToken cancellationToken)
+    private void EnsureSuccess(HttpResponseMessage response, string operation)
     {
         if (response.IsSuccessStatusCode)
             return;
 
-        string detail;
-        try
-        {
-            detail = await response.Content.ReadAsStringAsync(cancellationToken);
-        }
-        catch
-        {
-            detail = response.StatusCode.ToString();
-        }
-
+        // Never include the response body: backends can echo submitted secret values in error payloads.
         throw new SecretProviderException(
-            $"OVH API error {operation}: HTTP {(int)response.StatusCode} — {detail}");
+            $"OVH API error {operation}: HTTP {(int)response.StatusCode} {response.ReasonPhrase}");
     }
 
     private static string MapEndpoint(string endpoint)
