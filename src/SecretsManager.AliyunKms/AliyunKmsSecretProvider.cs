@@ -71,7 +71,7 @@ public sealed class AliyunKmsSecretProvider : ISecretProvider
                 UpdatedAt = result.CreateTime
             };
         }
-        catch (Exception ex) when (ex is not SecretProviderException)
+        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
         {
             throw new SecretProviderException(
                 $"Aliyun KMS error for secret '{key}': {ex.Message}", ex);
@@ -118,7 +118,7 @@ public sealed class AliyunKmsSecretProvider : ISecretProvider
                 UpdatedAt = DateTimeOffset.UtcNow
             };
         }
-        catch (Exception ex) when (ex is not SecretProviderException)
+        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
         {
             throw new SecretProviderException(
                 $"Aliyun KMS error putting secret '{key}': {ex.Message}", ex);
@@ -138,7 +138,7 @@ public sealed class AliyunKmsSecretProvider : ISecretProvider
         {
             await _client.DeleteSecretAsync(key, cancellationToken);
         }
-        catch (Exception ex) when (ex is not SecretProviderException)
+        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
         {
             throw new SecretProviderException(
                 $"Aliyun KMS error deleting secret '{key}': {ex.Message}", ex);
@@ -170,7 +170,7 @@ public sealed class AliyunKmsSecretProvider : ISecretProvider
                 .ToList()
                 .AsReadOnly();
         }
-        catch (Exception ex) when (ex is not SecretProviderException)
+        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
         {
             throw new SecretProviderException(
                 $"Aliyun KMS error listing versions for '{key}': {ex.Message}", ex);
@@ -193,7 +193,7 @@ public sealed class AliyunKmsSecretProvider : ISecretProvider
                 key, versionStage: null, versionId: null, cancellationToken);
             return result is not null;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
         {
             throw new SecretProviderException(
                 $"Aliyun KMS error checking existence of '{key}': {ex.Message}", ex);

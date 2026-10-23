@@ -131,7 +131,12 @@ internal sealed class VaultApiClient : IVaultApiClient
     {
         var url = $"{_basePath}/metadata/{Uri.EscapeDataString(key)}";
         using var response = await _http.GetAsync(url, cancellationToken);
-        return response.StatusCode != HttpStatusCode.NotFound && response.IsSuccessStatusCode;
+
+        if (response.StatusCode == HttpStatusCode.NotFound)
+            return false;
+
+        EnsureSuccess(response, $"checking existence of '{key}'");
+        return true;
     }
 
     public ValueTask DisposeAsync()

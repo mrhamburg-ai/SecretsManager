@@ -394,4 +394,18 @@ public sealed class PostgreSqlSecretProviderTests
 
         Assert.Contains("no encryption key is configured", ex.Message);
     }
+
+    [Fact]
+    public async Task GetSecretAsync_Cancellation_PropagatesOperationCanceledException()
+    {
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        _mockStore.GetSecretByKeyAsync("my-secret", Arg.Any<CancellationToken>())
+            .ThrowsAsync(new OperationCanceledException(cts.Token));
+
+        await using var provider = CreateProvider();
+        await Assert.ThrowsAsync<OperationCanceledException>(
+            () => provider.GetSecretAsync("my-secret", cancellationToken: cts.Token));
+    }
 }

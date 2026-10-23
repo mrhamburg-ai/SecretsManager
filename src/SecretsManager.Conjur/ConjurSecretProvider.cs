@@ -75,7 +75,7 @@ public sealed class ConjurSecretProvider : ISecretProvider
                 CreatedAt = resolved?.CreatedAt
             };
         }
-        catch (Exception ex) when (ex is not SecretProviderException)
+        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
         {
             throw new SecretProviderException(
                 $"Conjur error for secret '{key}': {ex.Message}", ex);
@@ -109,7 +109,7 @@ public sealed class ConjurSecretProvider : ISecretProvider
                 CreatedAt = latest?.CreatedAt
             };
         }
-        catch (Exception ex) when (ex is not SecretProviderException)
+        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
         {
             throw new SecretProviderException(
                 $"Conjur error putting secret '{key}': {ex.Message}", ex);
@@ -129,7 +129,7 @@ public sealed class ConjurSecretProvider : ISecretProvider
         {
             await _client.DeleteSecretAsync(key, cancellationToken);
         }
-        catch (Exception ex) when (ex is not SecretProviderException)
+        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
         {
             throw new SecretProviderException(
                 $"Conjur error deleting secret '{key}': {ex.Message}", ex);
@@ -160,7 +160,7 @@ public sealed class ConjurSecretProvider : ISecretProvider
                 .ToList()
                 .AsReadOnly();
         }
-        catch (Exception ex) when (ex is not SecretProviderException)
+        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
         {
             throw new SecretProviderException(
                 $"Conjur error listing versions for '{key}': {ex.Message}", ex);
@@ -180,7 +180,7 @@ public sealed class ConjurSecretProvider : ISecretProvider
         {
             return await _client.SecretExistsAsync(key, cancellationToken);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
         {
             throw new SecretProviderException(
                 $"Conjur error checking existence of '{key}': {ex.Message}", ex);

@@ -226,12 +226,12 @@ public sealed class RetryLayer : ISecretProviderLayer, IProviderNameAwareLayer, 
             _ => false,
         };
 
-        private TimeSpan CalculateDelay(int attempt)
+        private TimeSpan CalculateDelay(int nextAttempt)
         {
-            if (attempt <= 1)
-                return options.BaseDelay;
-
-            var exponent = Math.Min(10, attempt - 1);
+            // nextAttempt is the attempt number that will run after this delay: 2 for the first
+            // retry, 3 for the second, and so on. The first retry waits BaseDelay, then the delay
+            // doubles per attempt up to MaxDelay.
+            var exponent = Math.Min(10, Math.Max(0, nextAttempt - 2));
             var exponential = Math.Min(
                 options.MaxDelay.TotalMilliseconds,
                 options.BaseDelay.TotalMilliseconds * Math.Pow(2, exponent));
@@ -241,7 +241,7 @@ public sealed class RetryLayer : ISecretProviderLayer, IProviderNameAwareLayer, 
 
             var jitterAmount = exponential * options.JitterFactor;
             var jitter = (Random.Shared.NextDouble() * 2 - 1) * jitterAmount;
-            var value = Math.Max(0, exponential + jitter);
+            var value = Math.Clamp(exponential + jitter, 0, options.MaxDelay.TotalMilliseconds);
             return TimeSpan.FromMilliseconds(value);
         }
     }

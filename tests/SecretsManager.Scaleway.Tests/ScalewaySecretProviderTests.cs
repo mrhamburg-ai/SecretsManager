@@ -267,4 +267,18 @@ public sealed class ScalewaySecretProviderTests
         await Assert.ThrowsAsync<SecretProviderException>(
             () => provider.SecretExistsAsync("broken"));
     }
+
+    [Fact]
+    public async Task GetSecretAsync_Cancellation_PropagatesOperationCanceledException()
+    {
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        _mockClient.FindSecretByNameAsync("my-secret", Arg.Any<CancellationToken>())
+            .ThrowsAsync(new OperationCanceledException(cts.Token));
+
+        await using var provider = CreateProvider();
+        await Assert.ThrowsAsync<OperationCanceledException>(
+            () => provider.GetSecretAsync("my-secret", cancellationToken: cts.Token));
+    }
 }

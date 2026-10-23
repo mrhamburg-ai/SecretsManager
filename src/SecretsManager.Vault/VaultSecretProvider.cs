@@ -65,7 +65,7 @@ public sealed class VaultSecretProvider : ISecretProvider
                 UpdatedAt = secret.UpdatedAt
             };
         }
-        catch (Exception ex) when (ex is not SecretProviderException)
+        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
         {
             throw new SecretProviderException(
                 $"Vault error for secret '{key}': {ex.Message}", ex);
@@ -98,7 +98,7 @@ public sealed class VaultSecretProvider : ISecretProvider
                 UpdatedAt = result.UpdatedAt
             };
         }
-        catch (Exception ex) when (ex is not SecretProviderException)
+        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
         {
             throw new SecretProviderException(
                 $"Vault error putting secret '{key}': {ex.Message}", ex);
@@ -117,7 +117,7 @@ public sealed class VaultSecretProvider : ISecretProvider
         {
             await _client.DeleteSecretAsync(key, cancellationToken);
         }
-        catch (Exception ex) when (ex is not SecretProviderException)
+        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
         {
             throw new SecretProviderException(
                 $"Vault error deleting secret '{key}': {ex.Message}", ex);
@@ -149,7 +149,7 @@ public sealed class VaultSecretProvider : ISecretProvider
                 .ToList()
                 .AsReadOnly();
         }
-        catch (Exception ex) when (ex is not SecretProviderException)
+        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
         {
             throw new SecretProviderException(
                 $"Vault error listing versions for '{key}': {ex.Message}", ex);
@@ -169,7 +169,7 @@ public sealed class VaultSecretProvider : ISecretProvider
         {
             return await _client.SecretExistsAsync(key, cancellationToken);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
         {
             throw new SecretProviderException(
                 $"Vault error checking existence of '{key}': {ex.Message}", ex);

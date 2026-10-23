@@ -68,7 +68,7 @@ public sealed class AwsSecretsManagerSecretProvider : ISecretProvider
         {
             throw new SecretNotFoundException(key, ex);
         }
-        catch (Exception ex) when (ex is not SecretProviderException)
+        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
         {
             throw new SecretProviderException(
                 $"AWS Secrets Manager error for secret '{key}': {ex.Message}", ex);
@@ -102,7 +102,7 @@ public sealed class AwsSecretsManagerSecretProvider : ISecretProvider
                 ContentType = metadata?.ContentType,
             };
         }
-        catch (Exception ex) when (ex is not SecretProviderException)
+        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
         {
             throw new SecretProviderException(
                 $"AWS Secrets Manager error putting secret '{key}': {ex.Message}", ex);
@@ -126,7 +126,7 @@ public sealed class AwsSecretsManagerSecretProvider : ISecretProvider
         {
             throw new SecretNotFoundException(key, ex);
         }
-        catch (Exception ex) when (ex is not SecretProviderException)
+        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
         {
             throw new SecretProviderException(
                 $"AWS Secrets Manager error deleting secret '{key}': {ex.Message}", ex);
@@ -163,7 +163,7 @@ public sealed class AwsSecretsManagerSecretProvider : ISecretProvider
         {
             throw;
         }
-        catch (Exception ex) when (ex is not SecretProviderException)
+        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
         {
             throw new SecretProviderException(
                 $"AWS Secrets Manager error listing versions for '{key}': {ex.Message}", ex);
@@ -183,7 +183,7 @@ public sealed class AwsSecretsManagerSecretProvider : ISecretProvider
         {
             return await _client.SecretExistsAsync(key, cancellationToken);
         }
-        catch (Exception ex) when (ex is not SecretProviderException)
+        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
         {
             throw new SecretProviderException(
                 $"AWS Secrets Manager error checking existence of '{key}': {ex.Message}", ex);
