@@ -13,7 +13,8 @@ public sealed class TimeoutLayerTests
         {
             GetSecretAsyncImpl = async (_, _, token) =>
             {
-                await Task.Delay(100, token);
+                // Long enough that the timeout always fires first, even on a loaded CI runner.
+                await Task.Delay(TimeSpan.FromSeconds(5), token);
                 return new SecretValue { Key = "key", Value = "slow" };
             }
         };
@@ -36,14 +37,14 @@ public sealed class TimeoutLayerTests
         {
             GetSecretAsyncImpl = async (_, _, token) =>
             {
-                await Task.Delay(100, token);
-                return new SecretValue { Key = "key", Value = "value" };
+                await Task.Delay(Timeout.InfiniteTimeSpan, token);
+                return new SecretValue { Key = "key", Value = "slow" };
             }
         };
 
         await using var provider = new TimeoutLayer(new TimeoutLayerOptions
         {
-            Timeout = TimeSpan.FromMilliseconds(500)
+            Timeout = TimeSpan.FromMilliseconds(20)
         }).Wrap(baseProvider);
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => provider.GetSecretAsync("key", cancellationToken: cts.Token));

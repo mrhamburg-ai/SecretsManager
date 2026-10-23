@@ -166,8 +166,12 @@ public sealed class IBMCloudSecretsManagerSecretProviderTests
                 DateTimeOffset.Parse("2026-03-01T00:00:00Z"), null, true));
 
         await using var provider = CreateProvider();
-        await provider.PutSecretAsync("tagged", "val",
+        var result = await provider.PutSecretAsync("tagged", "val",
             new SecretMetadata { Tags = tags.AsReadOnly() });
+
+        Assert.Equal("tagged", result.Key);
+        Assert.Equal("val", result.Value);
+        Assert.Equal("1", result.Version);
 
         await _mockClient.Received(1).CreateSecretAsync("tagged",
             Arg.Is<string[]?>(t => t != null && t.Length == 2),
@@ -181,7 +185,13 @@ public sealed class IBMCloudSecretsManagerSecretProviderTests
             .Returns(MakeSecret(name: "to-delete"));
 
         await using var provider = CreateProvider();
+        Assert.True(await provider.SecretExistsAsync("to-delete"));
+
         await provider.DeleteSecretAsync("to-delete");
+
+        _mockClient.FindSecretByNameAsync("to-delete", Arg.Any<CancellationToken>())
+            .Returns((IBMCloudSecretsManagerSecretResult?)null);
+        Assert.False(await provider.SecretExistsAsync("to-delete"));
 
         await _mockClient.Received(1).DeleteSecretAsync("secret-id-1", Arg.Any<CancellationToken>());
     }

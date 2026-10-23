@@ -27,7 +27,7 @@ public sealed class RetryLayerOptions
 
     /// <summary>
     /// Optional predicate that determines if a failure should be retried.
-    /// Defaults to retrying all non-cancellation exceptions.
+    /// Defaults to retrying transient failures only (see <see cref="RetryLayer"/>).
     /// </summary>
     public Func<Exception, bool>? RetryPredicate { get; set; }
 

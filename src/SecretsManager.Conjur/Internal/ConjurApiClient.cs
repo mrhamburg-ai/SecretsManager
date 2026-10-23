@@ -100,7 +100,8 @@ internal sealed class ConjurApiClient : IConjurApiClient
         _knownVariables.TryRemove(key, out _);
 
         var url = $"/policies/{_account}/policy/{Uri.EscapeDataString(_policyPath)}";
-        var policy = $"- !delete\n  record: !variable {key}\n";
+        var relativeKey = GetRelativeKey(key);
+        var policy = $"- !delete\n  record: !variable {relativeKey}\n";
 
         using var request = new HttpRequestMessage(HttpMethod.Patch, url);
         request.Content = new StringContent(policy, Encoding.UTF8, "text/plain");
@@ -150,7 +151,12 @@ internal sealed class ConjurApiClient : IConjurApiClient
         await SetAuthorizationAsync(request, cancellationToken);
 
         using var response = await _http.SendAsync(request, cancellationToken);
-        return response.StatusCode != HttpStatusCode.NotFound && response.IsSuccessStatusCode;
+
+        if (response.StatusCode == HttpStatusCode.NotFound)
+            return false;
+
+        EnsureSuccess(response, $"checking existence of '{key}'");
+        return true;
     }
 
     public ValueTask DisposeAsync()
@@ -196,14 +202,26 @@ internal sealed class ConjurApiClient : IConjurApiClient
         _knownVariables.TryAdd(key, 0);
     }
 
-    private async Task LoadVariablePolicyAsync(
-        string key, CancellationToken cancellationToken)
+    /// <summary>
+    /// Conjur policy statements resolve identifiers relative to the policy branch they are patched
+    /// into. A key that already carries the branch prefix (for example <c>team/app/db</c> with
+    /// <c>PolicyPath</c> <c>team/app</c>) must therefore have that prefix removed, or the statement
+    /// targets <c>team/app/team/app/db</c>.
+    /// </summary>
+    private string GetRelativeKey(string key)
     {
-        var relativeKey = key;
         var prefix = _policyPath + "/";
         if (!string.Equals(_policyPath, "root", StringComparison.OrdinalIgnoreCase)
             && key.StartsWith(prefix, StringComparison.Ordinal))
-            relativeKey = key[prefix.Length..];
+            return key[prefix.Length..];
+
+        return key;
+    }
+
+    private async Task LoadVariablePolicyAsync(
+        string key, CancellationToken cancellationToken)
+    {
+        var relativeKey = GetRelativeKey(key);
 
         var url = $"/policies/{_account}/policy/{Uri.EscapeDataString(_policyPath)}";
         var policy = $"- !variable\n  id: {relativeKey}\n";

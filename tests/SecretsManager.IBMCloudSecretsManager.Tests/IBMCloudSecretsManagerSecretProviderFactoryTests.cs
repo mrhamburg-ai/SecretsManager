@@ -49,7 +49,7 @@ public sealed class IBMCloudSecretsManagerSecretProviderFactoryTests
     }
 
     [Fact]
-    public void MapConfiguration_EmptySettings_IgnoresNullOrEmpty()
+    public void MapConfiguration_EmptySettings_IgnoresNullOrWhiteSpace()
     {
         var configuration = new Dictionary<string, string>
         {
@@ -61,7 +61,7 @@ public sealed class IBMCloudSecretsManagerSecretProviderFactoryTests
         var options = IBMCloudSecretsManagerSecretProviderFactory.MapConfiguration(configuration);
 
         Assert.Equal("", options.Region);
-        Assert.Equal("   ", options.InstanceId);
+        Assert.Equal("", options.InstanceId);
         Assert.Equal("test-api-key", options.ApiKey);
         Assert.Null(options.ServiceUrl);
     }

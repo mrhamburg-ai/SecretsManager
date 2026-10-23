@@ -229,4 +229,67 @@ public sealed class RetryLayerTests
 
         Assert.Contains(logger.Entries, e => e.Type == "retry" && e.Context.Provider == "test");
     }
+
+    [Fact]
+    public async Task RetryLayer_UsesExponentialBackoffStartingAtBaseDelay()
+    {
+        var logger = new RecordingLogger();
+        var attempts = 0;
+
+        var provider = new RetryLayer(new RetryLayerOptions
+        {
+            Logger = logger,
+            MaxAttempts = 4,
+            BaseDelay = TimeSpan.FromMilliseconds(10),
+            MaxDelay = TimeSpan.FromMilliseconds(1_000),
+            JitterFactor = 0
+        }).Wrap(new DelegatingSecretProvider
+        {
+            GetSecretAsyncImpl = (_, _, _) =>
+            {
+                attempts++;
+                throw new TimeoutException("temporary");
+            }
+        });
+
+        await Assert.ThrowsAsync<TimeoutException>(() => provider.GetSecretAsync("key"));
+
+        Assert.Equal(4, attempts);
+        var delays = logger.Entries
+            .Where(e => e.Type == "retry")
+            .Select(e => e.Delay!.Value)
+            .ToArray();
+        Assert.Equal(
+            [
+                TimeSpan.FromMilliseconds(10),
+                TimeSpan.FromMilliseconds(20),
+                TimeSpan.FromMilliseconds(40)
+            ],
+            delays);
+    }
+
+    [Fact]
+    public async Task RetryLayer_ClampsJitteredDelayToMaxDelay()
+    {
+        var logger = new RecordingLogger();
+
+        var provider = new RetryLayer(new RetryLayerOptions
+        {
+            Logger = logger,
+            MaxAttempts = 6,
+            BaseDelay = TimeSpan.FromMilliseconds(20),
+            MaxDelay = TimeSpan.FromMilliseconds(25),
+            JitterFactor = 1
+        }).Wrap(new DelegatingSecretProvider
+        {
+            GetSecretAsyncImpl = (_, _, _) => throw new TimeoutException("temporary")
+        });
+
+        await Assert.ThrowsAsync<TimeoutException>(() => provider.GetSecretAsync("key"));
+
+        var delays = logger.Entries.Where(e => e.Type == "retry").Select(e => e.Delay!.Value).ToList();
+        Assert.Equal(5, delays.Count);
+        Assert.All(delays, delay => Assert.InRange(
+            delay, TimeSpan.Zero, TimeSpan.FromMilliseconds(25)));
+    }
 }

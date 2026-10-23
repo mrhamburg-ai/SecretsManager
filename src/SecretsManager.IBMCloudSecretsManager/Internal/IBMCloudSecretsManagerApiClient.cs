@@ -54,11 +54,14 @@ internal sealed class IBMCloudSecretsManagerApiClient : IIBMCloudSecretsManagerA
         EnsureSuccess(response, "listing secrets");
 
         var body = await response.Content.ReadFromJsonAsync<ListSecretsResponse>(JsonOptions, cancellationToken);
-        if (body?.Secrets is null || body.Secrets.Count == 0)
+        var match = body?.Secrets?.FirstOrDefault(
+            s => string.Equals(s.Name, name, StringComparison.Ordinal));
+
+        if (match is null)
             return null;
 
-        var s = body.Secrets[0];
-        return new IBMCloudSecretsManagerSecretResult(s.Id, s.Name, s.CreatedAt, s.UpdatedAt, s.Tags ?? [], s.VersionCount);
+        return new IBMCloudSecretsManagerSecretResult(
+            match.Id, match.Name, match.CreatedAt, match.UpdatedAt, match.Tags ?? [], match.VersionCount);
     }
 
     public async Task<IBMCloudSecretsManagerSecretResult> CreateSecretAsync(

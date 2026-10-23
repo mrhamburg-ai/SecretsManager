@@ -29,7 +29,7 @@ public static class SecretProviderBuilderExtensions
 
         builder.UseProvider("azurekeyvault", settings =>
         {
-            settings["vault.url"] = options.VaultUrl;
+            settings["vaulturl"] = options.VaultUrl;
 
             if (options.AuthenticationType is not "default")
                 settings["authentication.type"] = options.AuthenticationType;
