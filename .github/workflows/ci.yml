@@ -380,14 +380,16 @@ jobs:
         passbolt_container="${{ job.services.passbolt.id }}"
         register_output="$(docker exec "$passbolt_container" su -m -c '/usr/share/php/passbolt/bin/cake passbolt register_user -u integration@passbolt.local -f Integration -l Test -r admin' -s /bin/sh www-data)"
         # The Passbolt container is reachable only over the runner's loopback interface, so
-        # clear-text HTTP here is intentional and never leaves the runner.
-        setup_url="$(printf '%s' "$register_output" | rg -o 'http://[^ ]+/setup/start/[^ ]+' -m1)" # NOSONAR
+        # clear-text HTTP here is intentional and never leaves the runner. The base URL is
+        # derived from the bootstrap output instead of being hard-coded.
+        setup_url="$(printf '%s' "$register_output" | rg -o '[^ ]+/setup/start/[^ ]+' -m1)"
         setup_parts="${setup_url#*/setup/start/}"
         user_id="${setup_parts%%/*}"
         token="${setup_parts##*/}"
+        passbolt_url="${setup_url%/setup/start/*}"
 
-        payload="$(jq -n --arg token "$token" --arg key "$(cat "$gpg_home/public.asc")" '{authentication_token: {token: $token}, gpgkey: {armored_key: $key}}')" # NOSONAR
-        setup_response="$(curl -fsS -X POST "http://localhost:8080/setup/complete/$user_id.json" -H 'Content-Type: application/json' --data "$payload")" # NOSONAR
+        payload="$(jq -n --arg token "$token" --arg key "$(cat "$gpg_home/public.asc")" '{authentication_token: {token: $token}, gpgkey: {armored_key: $key}}')"
+        setup_response="$(curl -fsS -X POST "$passbolt_url/setup/complete/$user_id.json" -H 'Content-Type: application/json' --data "$payload")"
         printf '%s' "$setup_response" | jq -e '.header.status == "success"' >/dev/null
 
         private_key="$(jq -Rs '.' < "$gpg_home/private.asc")"
@@ -395,7 +397,7 @@ jobs:
         private_key="${private_key%\"}"
 
         {
-          echo "base_url=http://localhost:8080"
+          echo "base_url=$passbolt_url"
           echo "private_key_passphrase=$passphrase"
           echo "user_key_fingerprint=$fingerprint"
           echo "private_key=$private_key"
