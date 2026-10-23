@@ -91,7 +91,7 @@ public sealed class PostgreSqlSecretProvider : ISecretProvider
                 Tags = secret.Tags
             };
         }
-        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
+        catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
                 $"PostgreSQL error for secret '{key}': {ex.Message}", ex);
@@ -132,7 +132,7 @@ public sealed class PostgreSqlSecretProvider : ISecretProvider
                 Tags = secret.Tags
             };
         }
-        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
+        catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
                 $"PostgreSQL error putting secret '{key}': {ex.Message}", ex);
@@ -154,7 +154,7 @@ public sealed class PostgreSqlSecretProvider : ISecretProvider
             if (!deleted)
                 throw new SecretNotFoundException(key);
         }
-        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
+        catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
                 $"PostgreSQL error deleting secret '{key}': {ex.Message}", ex);
@@ -189,7 +189,7 @@ public sealed class PostgreSqlSecretProvider : ISecretProvider
                 .ToList()
                 .AsReadOnly();
         }
-        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
+        catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
                 $"PostgreSQL error listing versions for '{key}': {ex.Message}", ex);
@@ -209,7 +209,7 @@ public sealed class PostgreSqlSecretProvider : ISecretProvider
         {
             return await _store.SecretExistsAsync(key, cancellationToken);
         }
-        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
+        catch (Exception ex)
         {
             throw new SecretProviderException(
                 $"PostgreSQL error checking existence of '{key}': {ex.Message}", ex);

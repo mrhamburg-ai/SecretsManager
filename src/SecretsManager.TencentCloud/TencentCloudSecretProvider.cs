@@ -69,7 +69,7 @@ public sealed class TencentCloudSecretProvider : ISecretProvider
                 UpdatedAt = result.CreateTime
             };
         }
-        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
+        catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
                 $"Tencent Cloud error for secret '{key}': {ex.Message}", ex);
@@ -116,7 +116,7 @@ public sealed class TencentCloudSecretProvider : ISecretProvider
                 UpdatedAt = DateTimeOffset.UtcNow
             };
         }
-        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
+        catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
                 $"Tencent Cloud error putting secret '{key}': {ex.Message}", ex);
@@ -136,7 +136,7 @@ public sealed class TencentCloudSecretProvider : ISecretProvider
         {
             await _client.DeleteSecretAsync(key, cancellationToken);
         }
-        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
+        catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
                 $"Tencent Cloud error deleting secret '{key}': {ex.Message}", ex);
@@ -168,7 +168,7 @@ public sealed class TencentCloudSecretProvider : ISecretProvider
                 .ToList()
                 .AsReadOnly();
         }
-        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
+        catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
                 $"Tencent Cloud error listing versions for '{key}': {ex.Message}", ex);
@@ -191,7 +191,7 @@ public sealed class TencentCloudSecretProvider : ISecretProvider
                 key, versionId: null, cancellationToken);
             return result is not null;
         }
-        catch (Exception ex) when (ex is not SecretProviderException and not OperationCanceledException)
+        catch (Exception ex)
         {
             throw new SecretProviderException(
                 $"Tencent Cloud error checking existence of '{key}': {ex.Message}", ex);

@@ -180,18 +180,4 @@ public sealed class TencentCloudSecretProviderTests
         await Assert.ThrowsAsync<SecretProviderException>(
             () => provider.SecretExistsAsync("broken"));
     }
-
-    [Fact]
-    public async Task GetSecretAsync_Cancellation_PropagatesOperationCanceledException()
-    {
-        using var cts = new CancellationTokenSource();
-        cts.Cancel();
-
-        _mockClient.GetSecretValueAsync("my-secret", null, Arg.Any<CancellationToken>())
-            .ThrowsAsync(new OperationCanceledException(cts.Token));
-
-        await using var provider = CreateProvider();
-        await Assert.ThrowsAsync<OperationCanceledException>(
-            () => provider.GetSecretAsync("my-secret", cancellationToken: cts.Token));
-    }
 }

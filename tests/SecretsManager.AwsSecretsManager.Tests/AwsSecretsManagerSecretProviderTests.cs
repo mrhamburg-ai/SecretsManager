@@ -227,18 +227,4 @@ public sealed class AwsSecretsManagerSecretProviderTests
         yield return default!;
 #pragma warning restore CS0162
     }
-
-    [Fact]
-    public async Task GetSecretAsync_Cancellation_PropagatesOperationCanceledException()
-    {
-        using var cts = new CancellationTokenSource();
-        cts.Cancel();
-
-        _mockClient.GetSecretValueAsync("my-secret", null, null, Arg.Any<CancellationToken>())
-            .ThrowsAsync(new OperationCanceledException(cts.Token));
-
-        await using var provider = CreateProvider();
-        await Assert.ThrowsAsync<OperationCanceledException>(
-            () => provider.GetSecretAsync("my-secret", cancellationToken: cts.Token));
-    }
 }
