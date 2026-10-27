@@ -1,5 +1,6 @@
 using SecretsManager;
 using SecretsManager.Builder;
+using CoreSecretMetadata = SecretsManager.SecretMetadata;
 using SecretsManager.FileSystem;
 using SecretsManager.AzureKeyVault;
 using SecretsManager.Scaleway;
@@ -11,6 +12,7 @@ using SecretsManager.GoogleSecretManager;
 using SecretsManager.Passbolt;
 using SecretsManager.AliyunKms;
 using SecretsManager.IBMCloudSecretsManager;
+using SecretsManager.Infisical;
 using SecretsManager.TencentCloud;
 using SecretsManager.Vault;
 using SecretsManager.Conjur;
@@ -52,6 +54,7 @@ try
         .WithAliyunKms()
         .WithTencentCloud()
         .WithIBMCloudSecretsManager()
+        .WithInfisical()
         .WithVault()
         .WithConjur()
         .FromYamlFile(configPath)
@@ -120,7 +123,7 @@ await using (provider)
     // Step 7: Put with metadata
     await RunStep("Put secret with metadata", async () =>
     {
-        var metadata = new SecretMetadata
+        var metadata = new CoreSecretMetadata
         {
             ContentType = "text/plain",
             Tags = new Dictionary<string, string> { ["env"] = "integration-test" }

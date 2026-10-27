@@ -121,7 +121,6 @@ jobs:
         dotnet test
         --no-build
         -c Release
-        --filter "FullyQualifiedName~SecretsManager.Tests"
         --collect:"XPlat Code Coverage"
         --results-directory ./test-results
 
@@ -517,6 +516,149 @@ jobs:
               skip:
                 tls:
                   verify: true
+
+  # Self-contained: uses only service containers and a local Infisical container, so it also runs
+  # on pull requests.
+  infisical:
+    name: Infisical
+    runs-on: ubuntu-26.04
+    needs: unit-tests
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: infisical
+          POSTGRES_PASSWORD: "infisical-test-${{ github.run_id }}"
+          POSTGRES_DB: infisical
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U infisical -d infisical"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Start Infisical
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        docker run -d --name infisical --network host \
+          -e ENCRYPTION_KEY="$(openssl rand -hex 16)" \
+          -e AUTH_SECRET="$(openssl rand -base64 32)" \
+          -e DB_CONNECTION_URI="postgres://infisical:infisical-test-${{ github.run_id }}@localhost:5432/infisical" \
+          -e REDIS_URL="redis://localhost:6379" \
+          -e SITE_URL="http://localhost:8080" \
+          infisical/infisical:v0.167.4
+
+    - name: Bootstrap Infisical test instance
+      id: infisical-bootstrap
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        ready=false
+        for _ in {1..120}; do
+          if curl -fsS "http://localhost:8080/api/status" >/dev/null; then
+            ready=true
+            break
+          fi
+          sleep 2
+        done
+        if [ "$ready" = false ]; then
+          echo "Infisical did not become ready in time" >&2
+          docker logs infisical || true
+          exit 1
+        fi
+
+        admin_password="$(openssl rand -base64 24)"
+        bootstrap=""
+        for _ in {1..30}; do
+          if bootstrap="$(curl -fsS -X POST "http://localhost:8080/api/v1/admin/bootstrap" \
+            -H 'Content-Type: application/json' \
+            -d "{\"email\":\"admin@example.com\",\"password\":\"$admin_password\",\"organization\":\"integration\"}")"; then
+            break
+          fi
+          sleep 2
+        done
+        if [ -z "$bootstrap" ]; then
+          echo "Infisical bootstrap failed" >&2
+          exit 1
+        fi
+
+        token="$(jq -r '.identity.credentials.token' <<<"$bootstrap")"
+        org_id="$(jq -r '.organization.id' <<<"$bootstrap")"
+
+        project="$(curl -fsS -X POST "http://localhost:8080/api/v1/projects" \
+          -H "Authorization: Bearer $token" -H 'Content-Type: application/json' \
+          -d '{"projectName":"Integration","slug":"integration","type":"secret-manager","shouldCreateDefaultEnvs":true}')"
+        project_id="$(jq -r '.project.id' <<<"$project")"
+        environment_slug="$(jq -r '.project.environments[] | select(.slug == "dev") | .slug' <<<"$project")"
+        if [ -z "$environment_slug" ]; then
+          environment_slug="$(jq -r '.project.environments[0].slug' <<<"$project")"
+        fi
+
+        identity="$(curl -fsS -X POST "http://localhost:8080/api/v1/identities" \
+          -H "Authorization: Bearer $token" -H 'Content-Type: application/json' \
+          -d "{\"name\":\"integration\",\"organizationId\":\"$org_id\",\"role\":\"admin\"}")"
+        identity_id="$(jq -r '.identity.id' <<<"$identity")"
+
+        universal_auth="$(curl -fsS -X POST "http://localhost:8080/api/v1/auth/universal-auth/identities/$identity_id" \
+          -H "Authorization: Bearer $token" -H 'Content-Type: application/json' -d '{}')"
+        client_id="$(jq -r '.identityUniversalAuth.clientId' <<<"$universal_auth")"
+
+        client_secret_response="$(curl -fsS -X POST "http://localhost:8080/api/v1/auth/universal-auth/identities/$identity_id/client-secrets" \
+          -H "Authorization: Bearer $token" -H 'Content-Type: application/json' \
+          -d '{"description":"integration"}')"
+        client_secret="$(jq -r '.clientSecret' <<<"$client_secret_response")"
+
+        curl -fsS -X POST "http://localhost:8080/api/v1/projects/$project_id/memberships/identities/$identity_id" \
+          -H "Authorization: Bearer $token" -H 'Content-Type: application/json' \
+          -d '{"role":"admin"}' >/dev/null
+
+        echo "::add-mask::$client_secret"
+        {
+          echo "client_id=$client_id"
+          echo "client_secret=$client_secret"
+          echo "project_id=$project_id"
+          echo "environment_slug=$environment_slug"
+        } >> "$GITHUB_OUTPUT"
+
+    - uses: ./.github/actions/integration-test
+      with:
+        config: |
+          provider:
+            infisical:
+              host:
+                uri: http://localhost:8080
+              auth:
+                client:
+                  id: "${{ steps.infisical-bootstrap.outputs.client_id }}"
+                  secret: "${{ steps.infisical-bootstrap.outputs.client_secret }}"
+              project:
+                id: "${{ steps.infisical-bootstrap.outputs.project_id }}"
+              environment: "${{ steps.infisical-bootstrap.outputs.environment_slug }}"
+              secret:
+                path: /
+
+    - name: Dump Infisical logs on failure
+      if: failure()
+      shell: bash
+      run: |
+        echo "::group::infisical logs"
+        docker logs infisical || true
+        echo "::endgroup::"
 
   conjur:
     name: CyberArk Conjur

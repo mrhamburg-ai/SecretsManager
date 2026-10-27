@@ -1,0 +1,13 @@
+provider:
+  infisical:
+    host:
+      uri: http://localhost:8080
+    auth:
+      client:
+        id: your-machine-identity-client-id
+        secret: your-machine-identity-client-secret
+    project:
+      id: your-project-id
+    environment: dev
+    secret:
+      path: /

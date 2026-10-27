@@ -107,7 +107,7 @@ Fluent builder for configuring and creating providers.
 
 ```csharp
 var provider = new SecretProviderBuilder()
-    .WithFileSystem(options => { /* ... */ })    // or WithAzureKeyVault, WithScaleway, WithPostgreSql
+    .WithFileSystem(options => { /* ... */ })    // or WithAzureKeyVault, WithScaleway, WithPostgreSql, WithInfisical
     .FromEnvironment()                           // optional: load from env vars
     .FromYamlFile("secretstore.yaml")            // optional: load from YAML
     .Build();                                    // returns ISecretProvider
