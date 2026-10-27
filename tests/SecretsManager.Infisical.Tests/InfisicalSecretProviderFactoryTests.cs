@@ -9,7 +9,8 @@ public sealed class InfisicalSecretProviderFactoryTests
         ["auth.client.secret"] = "client-secret",
         ["project.id"] = "project-id",
         ["environment"] = "production",
-        ["secret.path"] = "/app"
+        ["secret.path"] = "/app",
+        ["expand.secret.references"] = "false"
     };
 
     [Fact]
@@ -39,6 +40,37 @@ public sealed class InfisicalSecretProviderFactoryTests
         Assert.Equal("project-id", options.ProjectId);
         Assert.Equal("production", options.EnvironmentSlug);
         Assert.Equal("/app", options.SecretPath);
+        Assert.False(options.ExpandSecretReferences);
+    }
+
+    [Theory]
+    [InlineData("true", true)]
+    [InlineData("TRUE", true)]
+    [InlineData("false", false)]
+    [InlineData("False", false)]
+    public void MapConfiguration_ParsesExpandSecretReferences(string value, bool expected)
+    {
+        var options = InfisicalSecretProviderFactory.MapConfiguration(
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["expand.secret.references"] = value
+            });
+
+        Assert.Equal(expected, options.ExpandSecretReferences);
+    }
+
+    [Fact]
+    public void MapConfiguration_InvalidExpandSecretReferences_Throws()
+    {
+        var exception = Assert.Throws<ArgumentException>(() =>
+            InfisicalSecretProviderFactory.MapConfiguration(
+                new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["expand.secret.references"] = "flase"
+                }));
+
+        Assert.Contains("expand.secret.references", exception.Message);
+        Assert.Contains("flase", exception.Message);
     }
 
     [Fact]
@@ -53,6 +85,7 @@ public sealed class InfisicalSecretProviderFactoryTests
         Assert.Equal("", options.ProjectId);
         Assert.Equal("dev", options.EnvironmentSlug);
         Assert.Equal("/", options.SecretPath);
+        Assert.True(options.ExpandSecretReferences);
     }
 
     [Fact]
@@ -60,6 +93,7 @@ public sealed class InfisicalSecretProviderFactoryTests
     {
         var configuration = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
+            ["expand.secret.references"] = "  ",
             ["host.uri"] = "  ",
             ["auth.client.id"] = "  ",
             ["auth.client.secret"] = "  ",
@@ -76,6 +110,7 @@ public sealed class InfisicalSecretProviderFactoryTests
         Assert.Equal("", options.ProjectId);
         Assert.Equal("dev", options.EnvironmentSlug);
         Assert.Equal("/", options.SecretPath);
+        Assert.True(options.ExpandSecretReferences);
     }
 
     [Fact]

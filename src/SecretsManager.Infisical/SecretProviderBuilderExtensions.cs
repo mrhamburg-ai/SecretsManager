@@ -46,6 +46,9 @@ public static class SecretProviderBuilderExtensions
 
             if (!string.IsNullOrEmpty(options.SecretPath))
                 settings["secret.path"] = options.SecretPath;
+
+            settings["expand.secret.references"] =
+                options.ExpandSecretReferences ? "true" : "false";
         });
 
         return builder;

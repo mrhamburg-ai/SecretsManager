@@ -37,6 +37,7 @@ public static class InfisicalConfigurationExtensions
             o.ProjectId = options.ProjectId;
             o.EnvironmentSlug = options.EnvironmentSlug;
             o.SecretPath = options.SecretPath;
+            o.ExpandSecretReferences = options.ExpandSecretReferences;
         });
     }
 }

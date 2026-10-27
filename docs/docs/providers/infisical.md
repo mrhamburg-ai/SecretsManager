@@ -44,10 +44,11 @@ dotnet add package SecretsManager.Infisical
 | `ProjectId` | `string` | Yes | `""` | ID of the Infisical project that contains the secrets |
 | `EnvironmentSlug` | `string` | No | `"dev"` | Slug of the environment that contains the secrets |
 | `SecretPath` | `string` | No | `"/"` | Secret path that contains the secrets |
+| `ExpandSecretReferences` | `bool` | No | `true` | Whether Infisical expands `${OTHER_SECRET}` references when a secret is read. Set to `false` to read back exactly the stored value |
 
 `InfisicalOptions.Validate()` requires `HostUri`, `ClientId`, `ClientSecret`, `ProjectId`,
 `EnvironmentSlug` and `SecretPath`. The default values satisfy the `HostUri`, `EnvironmentSlug` and
-`SecretPath` requirements.
+`SecretPath` requirements. `ExpandSecretReferences` is a flag and needs no validation.
 
 ### Fluent API
 
@@ -61,6 +62,7 @@ var provider = new SecretProviderBuilder()
         options.ProjectId = "your-project-id";
         options.EnvironmentSlug = "dev";
         options.SecretPath = "/";
+        options.ExpandSecretReferences = true;
     })
     .Build();
 ```
@@ -75,6 +77,7 @@ export SECRETS_INFISICAL_AUTH_CLIENT_SECRET=your-machine-identity-client-secret
 export SECRETS_INFISICAL_PROJECT_ID=your-project-id
 export SECRETS_INFISICAL_ENVIRONMENT=dev
 export SECRETS_INFISICAL_SECRET_PATH=/
+export SECRETS_INFISICAL_EXPAND_SECRET_REFERENCES=true
 ```
 
 ```csharp title="Program.cs"
@@ -100,6 +103,9 @@ provider:
     environment: dev
     secret:
       path: /
+    expand:
+      secret:
+        references: true
 ```
 
 ### Dependency Injection (IOptions&lt;T&gt;)
@@ -119,7 +125,8 @@ var provider = new SecretProviderBuilder()
       "ClientSecret": "your-machine-identity-client-secret",
       "ProjectId": "your-project-id",
       "EnvironmentSlug": "dev",
-      "SecretPath": "/"
+      "SecretPath": "/",
+      "ExpandSecretReferences": true
     }
   }
 }
@@ -198,7 +205,7 @@ await provider.DeleteSecretAsync("old-secret");
 | Secret key | Secret name |
 | Secret value | Secret value |
 | Version | Numeric secret version |
-| `SecretMetadata.Tags` | Per-secret metadata (`secretMetadata`) |
+| `SecretMetadata.Tags` | Per-secret metadata (`secretMetadata`). `null` leaves existing metadata unchanged and an empty dictionary clears it |
 | `SecretMetadata.ContentType` | Not supported |
 | `SecretValue.CreatedAt` / `UpdatedAt` | Not exposed by the .NET SDK |
 
@@ -212,7 +219,19 @@ await provider.DeleteSecretAsync("old-secret");
   versions are skipped. Histories longer than 1000 versions are rejected to bound the request count.
   `CreatedAt` is `null` because the SDK does not expose secret timestamps.
 - **Metadata:** `SecretMetadata.Tags` is stored as Infisical per-secret metadata. Infisical project
-  tags are not supported because they require pre-created tag IDs.
+  tags are not supported because they require pre-created tag IDs. On update, `null` tags leave the
+  existing metadata unchanged and an empty dictionary removes it. Infisical's create and update
+  responses do not include metadata, so `PutSecretAsync` reports the tags that are now stored
+  (the tags you sent, or the existing ones when you sent none).
+- **Secret keys:** The SDK appends the key to the request path without escaping it. To avoid
+  addressing the wrong secret or API route, keys that are empty, equal to `.` or `..`, or contain
+  `/`, `\`, `?` or `#` are rejected with `SecretProviderException` before any request is sent.
+- **Empty values:** Infisical rejects empty secret values, so `PutSecretAsync` with an empty string
+  throws `SecretProviderException`.
+- **Secret references:** By default Infisical expands references such as `${OTHER_SECRET}` when a
+  secret is read, so a value written as `pre-${OTHER_SECRET}-post` is returned expanded by
+  `GetSecretAsync`, while `PutSecretAsync` returns it as stored. Set `ExpandSecretReferences` to
+  `false` to read back exactly what was written.
 - **Multi-line values:** New and updated values are written with `SkipMultilineEncoding = true` so
   values round-trip unchanged. Values written by other clients with encoding enabled may be returned
   encoded.
@@ -225,9 +244,10 @@ await provider.DeleteSecretAsync("old-secret");
   read but cannot be updated through this provider.
 - **Delete:** `DeleteSecretAsync` permanently deletes the secret and throws
   `SecretNotFoundException` when the secret does not exist.
-- **Missing secrets:** The SDK retries failed GET requests, so `GetSecretAsync` for a missing secret
-  can take several seconds before `SecretNotFoundException` is thrown. `SecretExistsAsync` uses a
-  list call and does not have this delay.
+- **Missing secrets:** The SDK retries every failed GET request three times with 2, 4 and 8 second
+  waits, so `GetSecretAsync` for a missing secret (or a missing version) takes about 14 seconds
+  before `SecretNotFoundException` is thrown. `SecretExistsAsync` uses a list call and does not have
+  this delay, so check it first when a secret may not exist.
 - **One environment and path:** Each provider instance targets one project, environment and secret
   path. Create multiple providers to read from multiple environments or paths.
 - **TLS:** The SDK does not expose an HTTP handler, so there is no `SkipTlsVerify` option. Use a

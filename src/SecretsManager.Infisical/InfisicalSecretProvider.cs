@@ -1,3 +1,4 @@
+using System.Globalization;
 using SecretsManager.Infisical.Internal;
 using SecretsManager.Internal;
 
@@ -38,28 +39,35 @@ public sealed class InfisicalSecretProvider : ISecretProvider
     /// Retrieves a secret from Infisical, optionally selecting a numeric version and/or extracting
     /// a JSON property from the stored value.
     /// </summary>
-    /// <param name="key">The secret name.</param>
+    /// <param name="key">The secret name. It must not be empty, <c>.</c> or <c>..</c>, or contain
+    /// <c>/</c>, <c>\</c>, <c>?</c> or <c>#</c>, because the SDK does not escape it in the request
+    /// path.</param>
     /// <param name="query">Optional version and/or JSON property selector.</param>
     /// <param name="cancellationToken">Token to cancel the operation.</param>
     /// <returns>The secret value, with its version and metadata.</returns>
     /// <exception cref="SecretNotFoundException">Thrown when the secret does not exist.</exception>
-    /// <exception cref="SecretProviderException">Thrown when the Infisical API call fails.</exception>
+    /// <exception cref="SecretProviderException">
+    /// Thrown when <paramref name="key"/> cannot be addressed or the Infisical API call fails.
+    /// </exception>
     public async Task<SecretValue> GetSecretAsync(
         string key, SecretQuery? query = null, CancellationToken cancellationToken = default)
     {
         try
         {
+            ValidateKey(key);
+
             int? version = null;
             if (query?.Version is { } value)
             {
-                if (!int.TryParse(value, out var parsed) || parsed < 1)
+                if (!int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed)
+                    || parsed < 1)
                     throw new SecretProviderException(
                         $"Invalid Infisical version '{value}'. Version must be a positive integer.");
 
                 version = parsed;
             }
 
-            var secret = await _client.GetSecretAsync(key, version, true, cancellationToken)
+            var secret = await _client.GetSecretAsync(key, version, includeValue: true, cancellationToken)
                 ?? throw new SecretNotFoundException(key);
 
             var secretValue = secret.Value;
@@ -70,7 +78,7 @@ public sealed class InfisicalSecretProvider : ISecretProvider
             {
                 Key = key,
                 Value = secretValue,
-                Version = secret.Version.ToString(),
+                Version = secret.Version.ToString(CultureInfo.InvariantCulture),
                 Tags = secret.Metadata
             };
         }
@@ -87,9 +95,14 @@ public sealed class InfisicalSecretProvider : ISecretProvider
     /// <param name="key">The secret name.</param>
     /// <param name="value">The value to store.</param>
     /// <param name="metadata">Optional metadata. <see cref="SecretMetadata.Tags"/> is stored as
-    /// Infisical secret metadata; <see cref="SecretMetadata.ContentType"/> is not supported.</param>
+    /// Infisical secret metadata: <see langword="null"/> leaves existing metadata unchanged and an
+    /// empty dictionary removes it. <see cref="SecretMetadata.ContentType"/> is not supported.</param>
     /// <param name="cancellationToken">Token to cancel the operation.</param>
     /// <returns>The stored value, with its version and metadata.</returns>
+    /// <exception cref="SecretProviderException">
+    /// Thrown when <paramref name="key"/> cannot be addressed (see <see cref="GetSecretAsync"/>)
+    /// or the Infisical API call fails.
+    /// </exception>
     /// <exception cref="SecretProviderException">Thrown when the Infisical API call fails.</exception>
     public async Task<SecretValue> PutSecretAsync(
         string key, string value, SecretMetadata? metadata = null,
@@ -97,6 +110,8 @@ public sealed class InfisicalSecretProvider : ISecretProvider
     {
         try
         {
+            ValidateKey(key);
+
             var existing = await _client.FindSecretAsync(key, cancellationToken);
             var tags = metadata?.Tags;
 
@@ -108,8 +123,11 @@ public sealed class InfisicalSecretProvider : ISecretProvider
             {
                 Key = key,
                 Value = result.Value,
-                Version = result.Version.ToString(),
+                Version = result.Version.ToString(CultureInfo.InvariantCulture),
+                // Infisical's create and update responses omit secret metadata, so report what
+                // is now stored: the tags just written, or the existing ones when none were sent.
                 Tags = result.Metadata
+                    ?? (tags is null ? existing?.Metadata : tags.Count > 0 ? tags : null)
             };
         }
         catch (Exception ex) when (ex is not SecretProviderException)
@@ -131,6 +149,8 @@ public sealed class InfisicalSecretProvider : ISecretProvider
     {
         try
         {
+            ValidateKey(key);
+
             if (!await _client.DeleteSecretAsync(key, cancellationToken))
                 throw new SecretNotFoundException(key);
         }
@@ -169,14 +189,14 @@ public sealed class InfisicalSecretProvider : ISecretProvider
             for (var version = 1; version <= current.Version; version++)
             {
                 var secret = await _client.GetSecretAsync(
-                    key, version, false, cancellationToken);
+                    key, version, includeValue: false, cancellationToken);
 
                 if (secret is null)
                     continue;
 
                 versions.Add(new SecretVersionInfo
                 {
-                    Version = version.ToString(),
+                    Version = version.ToString(CultureInfo.InvariantCulture),
                     IsCurrent = version == current.Version
                 });
             }
@@ -214,6 +234,19 @@ public sealed class InfisicalSecretProvider : ISecretProvider
     /// <summary>
     /// Disposes the underlying Infisical API client.
     /// </summary>
-    public async ValueTask DisposeAsync() =>
-        await _client.DisposeAsync();
+    public ValueTask DisposeAsync() =>
+        _client.DisposeAsync();
+
+    // The SDK appends the key to the request path without escaping it, so a key containing '?',
+    // '#', '/' or '\\', or equal to '.' or '..', would silently address a different secret or
+    // API route (for example "name?x=1" reads the secret "name").
+    private static void ValidateKey(string key)
+    {
+        if (string.IsNullOrWhiteSpace(key)
+            || key is "." or ".."
+            || key.AsSpan().IndexOfAny("/\\?#") >= 0)
+            throw new SecretProviderException(
+                $"Invalid Infisical secret key '{key}'. A key must not be empty, '.' or '..', " +
+                "or contain '/', '\\', '?' or '#'.");
+    }
 }
