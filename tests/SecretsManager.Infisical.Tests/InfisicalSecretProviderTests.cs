@@ -215,6 +215,92 @@ public sealed class InfisicalSecretProviderTests
     }
 
     [Fact]
+    public async Task PutSecretAsync_CreateResponseWithoutMetadata_ReturnsRequestedTags()
+    {
+        var tags = new Dictionary<string, string> { ["env"] = "test" };
+        _client.FindSecretAsync("new-secret", Arg.Any<CancellationToken>())
+            .Returns((InfisicalSecretResult?)null);
+        _client.CreateSecretAsync("new-secret", "value", tags, Arg.Any<CancellationToken>())
+            .Returns(Result("new-secret", "value", 1));
+
+        await using var provider = CreateProvider();
+        var result = await provider.PutSecretAsync(
+            "new-secret", "value", new SecretMetadata { Tags = tags });
+
+        Assert.Equal(tags, result.Tags);
+    }
+
+    [Fact]
+    public async Task PutSecretAsync_UpdateWithoutTags_ReturnsExistingMetadata()
+    {
+        var existingTags = new Dictionary<string, string> { ["owner"] = "platform" };
+        _client.FindSecretAsync("existing", Arg.Any<CancellationToken>())
+            .Returns(Result("existing", "", 1, existingTags));
+        _client.UpdateSecretAsync("existing", "new-value", null, Arg.Any<CancellationToken>())
+            .Returns(Result("existing", "new-value", 2));
+
+        await using var provider = CreateProvider();
+        var result = await provider.PutSecretAsync("existing", "new-value");
+
+        Assert.Equal(existingTags, result.Tags);
+    }
+
+    [Fact]
+    public async Task PutSecretAsync_UpdateWithEmptyTags_ClearsMetadata()
+    {
+        var empty = new Dictionary<string, string>();
+        _client.FindSecretAsync("existing", Arg.Any<CancellationToken>())
+            .Returns(Result("existing", "", 1, new Dictionary<string, string> { ["owner"] = "platform" }));
+        _client.UpdateSecretAsync("existing", "new-value", empty, Arg.Any<CancellationToken>())
+            .Returns(Result("existing", "new-value", 2));
+
+        await using var provider = CreateProvider();
+        var result = await provider.PutSecretAsync(
+            "existing", "new-value", new SecretMetadata { Tags = empty });
+
+        Assert.Null(result.Tags);
+        await _client.Received(1)
+            .UpdateSecretAsync("existing", "new-value", empty, Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("  ")]
+    [InlineData(".")]
+    [InlineData("..")]
+    [InlineData("../../v1/auth/token")]
+    [InlineData("name?query=1")]
+    [InlineData("name#fragment")]
+    [InlineData("folder/name")]
+    [InlineData("folder\\name")]
+    public async Task Operations_WithKeyThatCannotBeAddressed_ThrowBeforeCallingClient(string key)
+    {
+        await using var provider = CreateProvider();
+
+        await Assert.ThrowsAsync<SecretProviderException>(() => provider.GetSecretAsync(key));
+        await Assert.ThrowsAsync<SecretProviderException>(() => provider.PutSecretAsync(key, "value"));
+        await Assert.ThrowsAsync<SecretProviderException>(() => provider.DeleteSecretAsync(key));
+
+        Assert.Empty(_client.ReceivedCalls());
+    }
+
+    [Theory]
+    [InlineData("MY_SECRET")]
+    [InlineData("my-secret.v2")]
+    [InlineData("name with spaces")]
+    [InlineData("naïve")]
+    public async Task GetSecretAsync_WithOrdinaryKey_CallsClient(string key)
+    {
+        _client.GetSecretAsync(key, null, true, Arg.Any<CancellationToken>())
+            .Returns(Result(key, "value", 1));
+
+        await using var provider = CreateProvider();
+        var result = await provider.GetSecretAsync(key);
+
+        Assert.Equal("value", result.Value);
+    }
+
+    [Fact]
     public async Task PutSecretAsync_ApiError_ThrowsSecretProviderException()
     {
         _client.FindSecretAsync("broken", Arg.Any<CancellationToken>())

@@ -13,6 +13,7 @@ public sealed class InfisicalOptionsTests
         Assert.Equal("", options.ClientId);
         Assert.Equal("", options.ClientSecret);
         Assert.Equal("", options.ProjectId);
+        Assert.True(options.ExpandSecretReferences);
     }
 
     [Fact]

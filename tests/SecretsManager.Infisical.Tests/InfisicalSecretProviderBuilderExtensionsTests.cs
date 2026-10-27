@@ -59,4 +59,46 @@ public sealed class InfisicalSecretProviderBuilderExtensionsTests
 
         Assert.IsType<InfisicalSecretProvider>(provider);
     }
+
+    [Fact]
+    public async Task WithInfisical_ExpandSecretReferencesDisabled_FlowsToProvider()
+    {
+        var builder = new SecretProviderBuilder()
+            .WithInfisical(options =>
+            {
+                options.ClientId = "client-id";
+                options.ClientSecret = "client-secret";
+                options.ProjectId = "project-id";
+                options.ExpandSecretReferences = false;
+            });
+
+        await using var provider = builder.Build();
+
+        Assert.IsType<InfisicalSecretProvider>(provider);
+    }
+
+    [Fact]
+    public async Task WithInfisical_YamlExpandSecretReferences_IsAccepted()
+    {
+        var builder = new SecretProviderBuilder()
+            .WithInfisical()
+            .FromYaml(
+                """
+                provider:
+                  infisical:
+                    auth:
+                      client:
+                        id: client-id
+                        secret: client-secret
+                    project:
+                      id: project-id
+                    expand:
+                      secret:
+                        references: false
+                """);
+
+        await using var provider = builder.Build();
+
+        Assert.IsType<InfisicalSecretProvider>(provider);
+    }
 }

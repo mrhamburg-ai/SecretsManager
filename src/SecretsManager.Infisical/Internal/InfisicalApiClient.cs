@@ -1,3 +1,4 @@
+using System.Net;
 using Infisical.Sdk.Api;
 using Infisical.Sdk.Client;
 using SdkCreateSecretOptions = CreateSecretOptions;
@@ -15,6 +16,9 @@ namespace SecretsManager.Infisical.Internal;
 /// </summary>
 internal sealed class InfisicalApiClient : IInfisicalApiClient
 {
+    private const double MaxTokenLifetimeSeconds = 365 * 24 * 60 * 60;
+    private const double TokenRefreshMarginSeconds = 30;
+
     private readonly ApiClient _apiClient;
     private readonly AuthClient _authClient;
     private readonly SecretsClient _secretsClient;
@@ -23,9 +27,12 @@ internal sealed class InfisicalApiClient : IInfisicalApiClient
     private readonly string _projectId;
     private readonly string _environmentSlug;
     private readonly string _secretPath;
+    private readonly bool _expandSecretReferences;
     private readonly SemaphoreSlim _authLock = new(1, 1);
 
-    private DateTimeOffset _tokenExpiry = DateTimeOffset.MinValue;
+    // Monotonic deadline (Environment.TickCount64 milliseconds). A long is read and written
+    // atomically, and the monotonic clock is unaffected by wall-clock adjustments.
+    private long _tokenValidUntil = long.MinValue;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="InfisicalApiClient"/> class.
@@ -40,6 +47,7 @@ internal sealed class InfisicalApiClient : IInfisicalApiClient
         _projectId = options.ProjectId;
         _environmentSlug = options.EnvironmentSlug;
         _secretPath = options.SecretPath;
+        _expandSecretReferences = options.ExpandSecretReferences;
 
         _apiClient = new ApiClient(options.HostUri);
         _authClient = new AuthClient(_apiClient, token => _apiClient.SetAccessToken(token));
@@ -83,7 +91,8 @@ internal sealed class InfisicalApiClient : IInfisicalApiClient
                 SecretPath = _secretPath,
                 SecretName = key,
                 Version = version,
-                ViewSecretValue = includeValue
+                ViewSecretValue = includeValue,
+                ExpandSecretReferences = _expandSecretReferences
             }),
             $"retrieving secret '{key}'",
             allowNotFound: true,
@@ -107,7 +116,7 @@ internal sealed class InfisicalApiClient : IInfisicalApiClient
                 SecretPath = _secretPath,
                 SecretName = key,
                 SecretValue = value,
-                Metadata = ToSdkMetadata(metadata),
+                Metadata = ToSdkMetadata(metadata, emptyClears: false),
                 SkipMultilineEncoding = true
             }),
             $"creating secret '{key}'",
@@ -133,7 +142,7 @@ internal sealed class InfisicalApiClient : IInfisicalApiClient
                 SecretPath = _secretPath,
                 SecretName = key,
                 NewSecretValue = value,
-                NewMetadata = ToSdkMetadata(metadata),
+                NewMetadata = ToSdkMetadata(metadata, emptyClears: true),
                 NewSkipMultilineEncoding = true
             }),
             $"updating secret '{key}'",
@@ -189,11 +198,11 @@ internal sealed class InfisicalApiClient : IInfisicalApiClient
             {
                 throw;
             }
-            catch (Exception ex) when (allowNotFound && IsNotFound(ex))
+            catch (Exception ex) when (allowNotFound && HasStatus(ex, HttpStatusCode.NotFound))
             {
                 return null;
             }
-            catch (Exception ex) when (attempt == 0 && IsUnauthorized(ex))
+            catch (Exception ex) when (attempt == 0 && HasStatus(ex, HttpStatusCode.Unauthorized))
             {
                 InvalidateToken();
             }
@@ -207,23 +216,24 @@ internal sealed class InfisicalApiClient : IInfisicalApiClient
 
     private async Task EnsureAuthenticatedAsync(CancellationToken cancellationToken)
     {
-        if (_tokenExpiry > DateTimeOffset.UtcNow)
+        if (HasValidToken())
             return;
 
         await _authLock.WaitAsync(cancellationToken);
         try
         {
-            if (_tokenExpiry > DateTimeOffset.UtcNow)
+            if (HasValidToken())
                 return;
 
             var credential = await _authClient.UniversalAuth()
                 .LoginAsync(_clientId, _clientSecret)
                 .WaitAsync(cancellationToken);
 
-            var lifetime = TimeSpan.FromSeconds((double)credential.ExpiresIn);
-            _tokenExpiry = lifetime > TimeSpan.FromSeconds(60)
-                ? DateTimeOffset.UtcNow + lifetime - TimeSpan.FromSeconds(30)
-                : DateTimeOffset.UtcNow + lifetime;
+            var seconds = Math.Clamp((double)credential.ExpiresIn, 0, MaxTokenLifetimeSeconds);
+            if (seconds > TokenRefreshMarginSeconds * 2)
+                seconds -= TokenRefreshMarginSeconds;
+
+            Volatile.Write(ref _tokenValidUntil, Environment.TickCount64 + (long)(seconds * 1000));
         }
         catch (OperationCanceledException)
         {
@@ -240,29 +250,39 @@ internal sealed class InfisicalApiClient : IInfisicalApiClient
         }
     }
 
-    private void InvalidateToken() => _tokenExpiry = DateTimeOffset.MinValue;
+    private bool HasValidToken() =>
+        Environment.TickCount64 < Volatile.Read(ref _tokenValidUntil);
+
+    private void InvalidateToken() => Volatile.Write(ref _tokenValidUntil, long.MinValue);
 
     private static InfisicalSecretResult Map(SdkSecret secret)
     {
-        IReadOnlyDictionary<string, string>? metadata = secret.Metadata is { Length: > 0 }
-            ? secret.Metadata.ToDictionary(
-                item => item.Key,
-                item => item.Value,
-                StringComparer.Ordinal)
-            : null;
+        Dictionary<string, string>? metadata = null;
+        if (secret.Metadata is { Length: > 0 })
+        {
+            metadata = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (var item in secret.Metadata)
+            {
+                if (item?.Key is { } key)
+                    metadata[key] = item.Value ?? "";
+            }
+        }
 
         return new InfisicalSecretResult(
             secret.SecretKey,
-            secret.SecretValue,
+            secret.SecretValue ?? "",
             secret.Version,
-            metadata);
+            metadata is { Count: > 0 } ? metadata : null);
     }
 
     private static SdkSecretMetadata[]? ToSdkMetadata(
-        IReadOnlyDictionary<string, string>? metadata)
+        IReadOnlyDictionary<string, string>? metadata, bool emptyClears)
     {
-        if (metadata is null || metadata.Count == 0)
+        if (metadata is null)
             return null;
+
+        if (metadata.Count == 0)
+            return emptyClears ? [] : null;
 
         return metadata
             .Select(item => new SdkSecretMetadata { Key = item.Key, Value = item.Value })
@@ -278,20 +298,24 @@ internal sealed class InfisicalApiClient : IInfisicalApiClient
         return current.Message;
     }
 
-    private static bool IsNotFound(Exception exception) =>
-        ContainsStatus(exception, "NotFound", "404");
-
-    private static bool IsUnauthorized(Exception exception) =>
-        ContainsStatus(exception, "Unauthorized", "401");
-
-    private static bool ContainsStatus(
-        Exception exception, string statusName, string statusCode)
+    // The SDK reports every non-success response as an HttpRequestException whose message starts
+    // with "Unexpected response: <StatusCode> <ReasonPhrase>" followed by the response body, and
+    // does not set HttpRequestException.StatusCode. Match only that prefix: the body is free text
+    // and can mention any status name or number.
+    private static bool HasStatus(Exception exception, HttpStatusCode status)
     {
+        var prefix = $"Unexpected response: {status}";
+
         for (var current = exception; current is not null; current = current.InnerException)
         {
-            if (current is HttpRequestException
-                && (current.Message.Contains(statusName, StringComparison.OrdinalIgnoreCase)
-                    || current.Message.Contains(statusCode, StringComparison.Ordinal)))
+            if (current is not HttpRequestException http)
+                continue;
+
+            if (http.StatusCode == status)
+                return true;
+
+            if (http.Message.StartsWith(prefix, StringComparison.Ordinal)
+                && (http.Message.Length == prefix.Length || http.Message[prefix.Length] == ' '))
                 return true;
         }
 

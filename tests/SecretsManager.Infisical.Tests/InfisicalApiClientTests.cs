@@ -250,13 +250,248 @@ public sealed class InfisicalApiClientTests
         Assert.Contains("creating secret 'my-secret'", exception.Message);
     }
 
-    private static InfisicalApiClient CreateClient(string hostUri) =>
+    [Fact]
+    public async Task DeleteSecretAsync_ForbiddenResponseMentioningNotFound_IsNotTreatedAsMissing()
+    {
+        await using var server = new StubHttpServer((request, _) =>
+            request.Url!.AbsolutePath.Contains("universal-auth/login", StringComparison.Ordinal)
+                ? Response(HttpStatusCode.OK, LoginResponse)
+                : Response(
+                    HttpStatusCode.Forbidden,
+                    """{"message":"No permission for secret 'item-404' (NotFound in policy)"}"""));
+
+        await using var client = CreateClient(server.Url);
+
+        var exception = await Assert.ThrowsAsync<SecretProviderException>(
+            () => client.DeleteSecretAsync("item-404", CancellationToken.None));
+
+        Assert.IsNotType<SecretNotFoundException>(exception);
+        Assert.Contains("Forbidden", exception.Message);
+    }
+
+    [Fact]
+    public async Task CreateSecretAsync_ServerErrorMentioningUnauthorized_DoesNotReauthenticateOrRetry()
+    {
+        var loginCount = 0;
+        var createCount = 0;
+        await using var server = new StubHttpServer((request, _) =>
+        {
+            if (request.Url!.AbsolutePath.Contains("universal-auth/login", StringComparison.Ordinal))
+            {
+                loginCount++;
+                return Response(HttpStatusCode.OK, LoginResponse);
+            }
+
+            createCount++;
+            return Response(
+                HttpStatusCode.InternalServerError,
+                """{"message":"upstream returned 401 Unauthorized"}""");
+        });
+
+        await using var client = CreateClient(server.Url);
+
+        await Assert.ThrowsAsync<SecretProviderException>(
+            () => client.CreateSecretAsync("my-secret", "secret-value", null, CancellationToken.None));
+
+        Assert.Equal(1, loginCount);
+        Assert.Equal(1, createCount);
+    }
+
+    [Fact]
+    public async Task GetSecretAsync_DuplicateMetadataKeys_LastValueWins()
+    {
+        await using var server = new StubHttpServer((request, _) =>
+            request.Url!.AbsolutePath.Contains("universal-auth/login", StringComparison.Ordinal)
+                ? Response(HttpStatusCode.OK, LoginResponse)
+                : Response(
+                    HttpStatusCode.OK,
+                    """{"secret":{"secretKey":"my-secret","secretValue":"v","version":1,"secretMetadata":[{"key":"env","value":"dev"},{"key":"env","value":"prod"}]}}"""));
+
+        await using var client = CreateClient(server.Url);
+        var result = await client.GetSecretAsync("my-secret", null, true, CancellationToken.None);
+
+        Assert.NotNull(result);
+        Assert.Equal("prod", result.Metadata!["env"]);
+    }
+
+    [Fact]
+    public async Task GetSecretAsync_ResponseWithoutValue_ReturnsEmptyValue()
+    {
+        await using var server = new StubHttpServer((request, _) =>
+            request.Url!.AbsolutePath.Contains("universal-auth/login", StringComparison.Ordinal)
+                ? Response(HttpStatusCode.OK, LoginResponse)
+                : Response(HttpStatusCode.OK, """{"secret":{"secretKey":"my-secret","version":3}}"""));
+
+        await using var client = CreateClient(server.Url);
+        var result = await client.GetSecretAsync("my-secret", null, false, CancellationToken.None);
+
+        Assert.NotNull(result);
+        Assert.Equal("", result.Value);
+        Assert.Null(result.Metadata);
+    }
+
+    [Theory]
+    [InlineData(true, "expandSecretReferences=true")]
+    [InlineData(false, "expandSecretReferences=false")]
+    public async Task GetSecretAsync_SendsConfiguredExpandSecretReferences(bool expand, string expectedQuery)
+    {
+        string? query = null;
+        await using var server = new StubHttpServer((request, _) =>
+        {
+            if (request.Url!.AbsolutePath.Contains("universal-auth/login", StringComparison.Ordinal))
+                return Response(HttpStatusCode.OK, LoginResponse);
+
+            query = request.Url.Query;
+            return Response(HttpStatusCode.OK, SecretResponse);
+        });
+
+        await using var client = CreateClient(server.Url, expand);
+        await client.GetSecretAsync("my-secret", null, true, CancellationToken.None);
+
+        Assert.NotNull(query);
+        Assert.Contains(expectedQuery, query, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task UpdateSecretAsync_EmptyMetadata_SendsEmptyArrayToClearMetadata()
+    {
+        string? requestBody = null;
+        await using var server = new StubHttpServer((request, body) =>
+        {
+            if (request.Url!.AbsolutePath.Contains("universal-auth/login", StringComparison.Ordinal))
+                return Response(HttpStatusCode.OK, LoginResponse);
+
+            requestBody = body;
+            return Response(HttpStatusCode.OK, SecretResponse);
+        });
+
+        await using var client = CreateClient(server.Url);
+        await client.UpdateSecretAsync(
+            "my-secret", "new-value", new Dictionary<string, string>(), CancellationToken.None);
+
+        Assert.NotNull(requestBody);
+        Assert.Contains("\"secretMetadata\":[]", requestBody, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task UpdateSecretAsync_NullMetadata_LeavesMetadataUntouched()
+    {
+        string? requestBody = null;
+        await using var server = new StubHttpServer((request, body) =>
+        {
+            if (request.Url!.AbsolutePath.Contains("universal-auth/login", StringComparison.Ordinal))
+                return Response(HttpStatusCode.OK, LoginResponse);
+
+            requestBody = body;
+            return Response(HttpStatusCode.OK, SecretResponse);
+        });
+
+        await using var client = CreateClient(server.Url);
+        await client.UpdateSecretAsync("my-secret", "new-value", null, CancellationToken.None);
+
+        Assert.NotNull(requestBody);
+        Assert.DoesNotContain("secretMetadata", requestBody, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task CreateSecretAsync_EmptyMetadata_OmitsMetadata()
+    {
+        string? requestBody = null;
+        await using var server = new StubHttpServer((request, body) =>
+        {
+            if (request.Url!.AbsolutePath.Contains("universal-auth/login", StringComparison.Ordinal))
+                return Response(HttpStatusCode.OK, LoginResponse);
+
+            requestBody = body;
+            return Response(HttpStatusCode.OK, SecretResponse);
+        });
+
+        await using var client = CreateClient(server.Url);
+        await client.CreateSecretAsync(
+            "my-secret", "secret-value", new Dictionary<string, string>(), CancellationToken.None);
+
+        Assert.NotNull(requestBody);
+        Assert.DoesNotContain("secretMetadata", requestBody, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ConcurrentCalls_ShareOneLoginWhileTokenIsValid()
+    {
+        var loginCount = 0;
+        await using var server = new StubHttpServer((request, _) =>
+        {
+            if (request.Url!.AbsolutePath.Contains("universal-auth/login", StringComparison.Ordinal))
+            {
+                Interlocked.Increment(ref loginCount);
+                return Response(HttpStatusCode.OK, LoginResponse);
+            }
+
+            return Response(HttpStatusCode.OK, """{"secrets":[]}""");
+        });
+
+        await using var client = CreateClient(server.Url);
+        await Task.WhenAll(Enumerable.Range(0, 10)
+            .Select(_ => client.FindSecretAsync("missing", CancellationToken.None)));
+
+        Assert.Equal(1, loginCount);
+    }
+
+    [Fact]
+    public async Task ExpiredToken_IsRefreshedBeforeNextCall()
+    {
+        var loginCount = 0;
+        await using var server = new StubHttpServer((request, _) =>
+        {
+            if (request.Url!.AbsolutePath.Contains("universal-auth/login", StringComparison.Ordinal))
+            {
+                Interlocked.Increment(ref loginCount);
+                return Response(
+                    HttpStatusCode.OK,
+                    """{"accessToken":"token","expiresIn":0,"accessTokenMaxTTL":0,"tokenType":"Bearer"}""");
+            }
+
+            return Response(HttpStatusCode.OK, """{"secrets":[]}""");
+        });
+
+        await using var client = CreateClient(server.Url);
+        await client.FindSecretAsync("missing", CancellationToken.None);
+        await client.FindSecretAsync("missing", CancellationToken.None);
+
+        Assert.Equal(2, loginCount);
+    }
+
+    [Fact]
+    public async Task Login_WithVeryLargeLifetime_DoesNotFail()
+    {
+        await using var server = new StubHttpServer((request, _) =>
+            request.Url!.AbsolutePath.Contains("universal-auth/login", StringComparison.Ordinal)
+                ? Response(
+                    HttpStatusCode.OK,
+                    """{"accessToken":"token","expiresIn":79228162514264337593543950335,"accessTokenMaxTTL":0,"tokenType":"Bearer"}""")
+                : Response(HttpStatusCode.OK, """{"secrets":[]}"""));
+
+        await using var client = CreateClient(server.Url);
+
+        Assert.Null(await client.FindSecretAsync("missing", CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task DisposeAsync_CalledTwice_DoesNotThrow()
+    {
+        var client = CreateClient("http://127.0.0.1:1");
+
+        await client.DisposeAsync();
+        await client.DisposeAsync();
+    }
+
+    private static InfisicalApiClient CreateClient(string hostUri, bool expandSecretReferences = true) =>
         new(new InfisicalOptions
         {
             HostUri = hostUri,
             ClientId = "client-id",
             ClientSecret = "client-secret",
-            ProjectId = "project-id"
+            ProjectId = "project-id",
+            ExpandSecretReferences = expandSecretReferences
         });
 
     private static Task<(HttpStatusCode Status, string Body)> Response(HttpStatusCode status, string body) =>

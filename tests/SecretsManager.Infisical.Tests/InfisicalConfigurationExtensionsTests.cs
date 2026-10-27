@@ -16,7 +16,8 @@ public sealed class InfisicalConfigurationExtensionsTests
                 ["SecretsManager:Infisical:ClientSecret"] = "client-secret",
                 ["SecretsManager:Infisical:ProjectId"] = "project-id",
                 ["SecretsManager:Infisical:EnvironmentSlug"] = "production",
-                ["SecretsManager:Infisical:SecretPath"] = "/app"
+                ["SecretsManager:Infisical:SecretPath"] = "/app",
+                ["SecretsManager:Infisical:ExpandSecretReferences"] = "false"
             })
             .Build();
 

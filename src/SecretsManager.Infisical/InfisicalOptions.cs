@@ -37,6 +37,13 @@ public sealed class InfisicalOptions
     public string SecretPath { get; set; } = "/";
 
     /// <summary>
+    /// Whether Infisical expands secret references such as <c>${OTHER_SECRET}</c> when a secret is
+    /// read. Defaults to <see langword="true"/>, which matches Infisical's own behavior. Set this to
+    /// <see langword="false"/> to read back exactly the value that was stored.
+    /// </summary>
+    public bool ExpandSecretReferences { get; set; } = true;
+
+    /// <summary>
     /// Returns the validation errors for the current options; an empty sequence means the options
     /// are valid. Requires <see cref="HostUri"/>, <see cref="ClientId"/>,
     /// <see cref="ClientSecret"/>, <see cref="ProjectId"/>, <see cref="EnvironmentSlug"/> and

@@ -17,6 +17,11 @@ var builder = new SecretProviderBuilder()
     });
 ```
 
+Options can also be supplied from environment variables (`SECRETS_INFISICAL_*`), YAML, or
+`IConfiguration` via `ConfigureInfisical`. See the
+[Infisical provider documentation](https://mrhamburg.github.io/SecretsManager/docs/providers/infisical)
+for the full options reference and behavior notes.
+
 ## Installation
 
 ```bash
