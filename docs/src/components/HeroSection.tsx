@@ -27,10 +27,57 @@ const providers = [
     {
         options.VaultUrl = "https://my-vault.vault.azure.net";
         options.AuthenticationType = "serviceprincipal";
-        options.TenantId = tenantId;
-        options.ClientId = clientId;
+        options.TenantId = "your-tenant-id";
+        options.ClientId = "your-client-id";
         options.ClientSecret = Environment
             .GetEnvironmentVariable("AZURE_CLIENT_SECRET");
+    })
+    .Build();`,
+  },
+  {
+    id: 'scaleway',
+    name: 'Scaleway',
+    package: 'SecretsManager.Scaleway',
+    to: '/docs/providers/scaleway',
+    snippet: `var provider = new SecretProviderBuilder()
+    .WithScaleway(options =>
+    {
+        options.Region = "fr-par";
+        options.ProjectId = "your-project-uuid";
+        options.AccessKey = "your-access-key";
+        options.SecretKey = Environment
+            .GetEnvironmentVariable("SECRETS_SCALEWAY_SECRETKEY");
+    })
+    .Build();`,
+  },
+  {
+    id: 'ovh',
+    name: 'OVH',
+    package: 'SecretsManager.OVH',
+    to: '/docs/providers/ovh',
+    snippet: `var provider = new SecretProviderBuilder()
+    .WithOVH(options =>
+    {
+        options.Endpoint = "ovh-eu";
+        options.ApplicationKey = "your-application-key";
+        options.ApplicationSecret = Environment
+            .GetEnvironmentVariable("SECRETS_OVH_APPLICATIONSECRET");
+        options.ConsumerKey = "your-consumer-key";
+        options.OkmsId = "your-okms-id";
+    })
+    .Build();`,
+  },
+  {
+    id: 'postgresql',
+    name: 'PostgreSQL',
+    package: 'SecretsManager.PostgreSql',
+    to: '/docs/providers/postgresql',
+    snippet: `var provider = new SecretProviderBuilder()
+    .WithPostgreSql(options =>
+    {
+        options.ConnectionString = "Host=localhost;Database=secrets;Username=app;Password=secret";
+        options.Schema = "public";
+        options.EncryptionKey = "base64-encoded-32-byte-key";
     })
     .Build();`,
   },
@@ -51,6 +98,115 @@ const providers = [
     .Build();`,
   },
   {
+    id: 'oracle',
+    name: 'Oracle Vault',
+    package: 'SecretsManager.OracleVault',
+    to: '/docs/providers/oracle-vault',
+    snippet: `var provider = new SecretProviderBuilder()
+    .WithOracleVault(options =>
+    {
+        options.Region = "us-phoenix-1";
+        options.AuthenticationType = "configfile";
+        options.ProfileName = "DEFAULT";
+        options.VaultId = "ocid1.vault.oc1..xxxxx";
+        options.CompartmentId = "ocid1.compartment.oc1..xxxxx";
+    })
+    .Build();`,
+  },
+  {
+    id: 'gcp',
+    name: 'Google Cloud Secret Manager',
+    package: 'SecretsManager.GoogleSecretManager',
+    to: '/docs/providers/google-secret-manager',
+    snippet: `var provider = new SecretProviderBuilder()
+    .WithGoogleSecretManager(options =>
+    {
+        options.ProjectId = "my-gcp-project";
+        options.CredentialsPath = "/path/to/service-account-key.json";
+    })
+    .Build();`,
+  },
+  {
+    id: 'passbolt',
+    name: 'Passbolt',
+    package: 'SecretsManager.Passbolt',
+    to: '/docs/providers/passbolt',
+    snippet: `var provider = new SecretProviderBuilder()
+    .WithPassbolt(options =>
+    {
+        options.BaseUrl = "https://passbolt.example.com";
+        options.UserPrivateKey = Environment
+            .GetEnvironmentVariable("SECRETS_PASSBOLT_USERPRIVATEKEY");
+        options.UserPrivateKeyPassphrase = Environment
+            .GetEnvironmentVariable("SECRETS_PASSBOLT_USERPRIVATEPASSPHRASE");
+        options.UserKeyFingerprint = "ABCDEF1234567890";
+    })
+    .Build();`,
+  },
+  {
+    id: 'aliyun',
+    name: 'Aliyun KMS',
+    package: 'SecretsManager.AliyunKms',
+    to: '/docs/providers/aliyun-kms',
+    snippet: `var provider = new SecretProviderBuilder()
+    .WithAliyunKms(options =>
+    {
+        options.Region = "cn-hangzhou";
+        options.AccessKeyId = "LTAI5t...";
+        options.AccessKeySecret = Environment
+            .GetEnvironmentVariable("SECRETS_ALIYUNKMS_SECRETKEY");
+    })
+    .Build();`,
+  },
+  {
+    id: 'tencent',
+    name: 'Tencent Cloud',
+    package: 'SecretsManager.TencentCloud',
+    to: '/docs/providers/tencent-cloud',
+    snippet: `var provider = new SecretProviderBuilder()
+    .WithTencentCloud(options =>
+    {
+        options.Region = "ap-beijing";
+        options.SecretId = "AKID123...";
+        options.SecretKey = Environment
+            .GetEnvironmentVariable("SECRETS_TENCENTCLOUD_SECRETKEY");
+    })
+    .Build();`,
+  },
+  {
+    id: 'ibm',
+    name: 'IBM Cloud Secrets Manager',
+    package: 'SecretsManager.IBMCloudSecretsManager',
+    to: '/docs/providers/ibm-cloud-secrets-manager',
+    snippet: `var provider = new SecretProviderBuilder()
+    .WithIBMCloudSecretsManager(options =>
+    {
+        options.Region = "us-south";
+        options.InstanceId = "your-instance-id";
+        options.ApiKey = Environment
+            .GetEnvironmentVariable("SECRETS_IBMCLOUD_SECRETS_MANAGER_API_KEY");
+    })
+    .Build();`,
+  },
+  {
+    id: 'infisical',
+    name: 'Infisical',
+    package: 'SecretsManager.Infisical',
+    to: '/docs/providers/infisical',
+    snippet: `var provider = new SecretProviderBuilder()
+    .WithInfisical(options =>
+    {
+        options.HostUri = "https://infisical.example.com";
+        options.ClientId = "your-machine-identity-client-id";
+        options.ClientSecret = Environment
+            .GetEnvironmentVariable("SECRETS_INFISICAL_AUTH_CLIENT_SECRET");
+        options.ProjectId = "your-project-id";
+        options.EnvironmentSlug = "dev";
+        options.SecretPath = "/";
+    })
+    .Build();`,
+  },
+  {
     id: 'vault',
     name: 'HashiCorp Vault',
     package: 'SecretsManager.Vault',
@@ -62,6 +218,23 @@ const providers = [
         options.Token = Environment
             .GetEnvironmentVariable("VAULT_TOKEN");
         options.MountPath = "secret";
+    })
+    .Build();`,
+  },
+  {
+    id: 'conjur',
+    name: 'CyberArk Conjur',
+    package: 'SecretsManager.Conjur',
+    to: '/docs/providers/conjur',
+    snippet: `var provider = new SecretProviderBuilder()
+    .WithConjur(options =>
+    {
+        options.Url = "https://conjur.example.com:443";
+        options.Account = "myorg";
+        options.Login = "host/ci-app";
+        options.ApiKey = Environment
+            .GetEnvironmentVariable("SECRETS_CONJUR_APIKEY");
+        options.PolicyPath = "root";
     })
     .Build();`,
   },

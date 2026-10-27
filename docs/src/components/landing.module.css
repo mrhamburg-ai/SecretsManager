@@ -158,6 +158,7 @@
 }
 
 .panelBadge {
+  max-width: 60%;
   margin-left: auto;
   padding: 0.05rem 0.45rem;
   border: 1px solid var(--sm-line-strong);
@@ -166,6 +167,8 @@
   font-family: var(--ifm-font-family-monospace);
   font-size: 0.7rem;
   font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -175,7 +178,21 @@
   padding: 0 1rem;
   border-bottom: 1px solid var(--sm-line);
   overflow-x: auto;
-  scrollbar-width: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--sm-line-strong) transparent;
+}
+
+.tabs::-webkit-scrollbar {
+  height: 4px;
+}
+
+.tabs::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tabs::-webkit-scrollbar-thumb {
+  background: var(--sm-line-strong);
+  border-radius: 2px;
 }
 
 .tab {
