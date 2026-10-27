@@ -1,210 +1,183 @@
-import React, {useState} from 'react';
+import React, {useRef, useState} from 'react';
 import Link from '@docusaurus/Link';
-import {Copy, Check} from 'lucide-react';
-import {AzureLogo, ScalewayLogo, FileSystemLogo, PostgreSqlLogo, OVHLogo, AwsLogo, OracleLogo, GcpLogo, PassboltLogo, TencentCloudLogo, AliyunLogo, IBMCloudLogo, InfisicalLogo, VaultLogo, ConjurLogo} from './ProviderLogos';
+import styles from './landing.module.css';
 
 const providers = [
-  {id: 'filesystem', name: 'FileSystem', short: 'FS', package: 'SecretsManager.FileSystem'},
-  {id: 'azure', name: 'Azure Key Vault', short: 'Azure', package: 'SecretsManager.AzureKeyVault'},
-  {id: 'scaleway', name: 'Scaleway', short: 'Scaleway', package: 'SecretsManager.Scaleway'},
-  {id: 'ibmcloud', name: 'IBM Cloud', short: 'IBM', package: 'SecretsManager.IBMCloudSecretsManager'},
-  {id: 'postgresql', name: 'PostgreSQL', short: 'PG', package: 'SecretsManager.PostgreSql'},
-  {id: 'ovh', name: 'OVH', short: 'OVH', package: 'SecretsManager.OVH'},
-  {id: 'aws', name: 'AWS Secrets Manager', short: 'AWS', package: 'SecretsManager.AwsSecretsManager'},
-  {id: 'oracle', name: 'Oracle Vault', short: 'Oracle', package: 'SecretsManager.OracleVault'},
-  {id: 'gcp', name: 'Google Cloud', short: 'GCP', package: 'SecretsManager.GoogleSecretManager'},
-  {id: 'passbolt', name: 'Passbolt', short: 'Passbolt', package: 'SecretsManager.Passbolt'},
-  {id: 'aliyun', name: 'Aliyun KMS', short: 'Aliyun', package: 'SecretsManager.AliyunKms'},
-  {id: 'tencent', name: 'Tencent Cloud', short: 'Tencent', package: 'SecretsManager.TencentCloud'},
-  {id: 'infisical', name: 'Infisical', short: 'Infisical', package: 'SecretsManager.Infisical'},
-  {id: 'vault', name: 'HashiCorp Vault', short: 'Vault', package: 'SecretsManager.Vault'},
-  {id: 'conjur', name: 'CyberArk Conjur', short: 'Conjur', package: 'SecretsManager.Conjur'},
+  {
+    id: 'filesystem',
+    name: 'FileSystem',
+    package: 'SecretsManager.FileSystem',
+    to: '/docs/providers/filesystem',
+    snippet: `var provider = new SecretProviderBuilder()
+    .WithFileSystem(options =>
+    {
+        options.BasePath = "/var/secrets";
+        options.EncryptionKey = Environment
+            .GetEnvironmentVariable("SECRETS_FS_KEY");
+    })
+    .Build();`,
+  },
+  {
+    id: 'azure',
+    name: 'Azure Key Vault',
+    package: 'SecretsManager.AzureKeyVault',
+    to: '/docs/providers/azure-key-vault',
+    snippet: `var provider = new SecretProviderBuilder()
+    .WithAzureKeyVault(options =>
+    {
+        options.VaultUrl = "https://my-vault.vault.azure.net";
+        options.AuthenticationType = "serviceprincipal";
+        options.TenantId = tenantId;
+        options.ClientId = clientId;
+        options.ClientSecret = Environment
+            .GetEnvironmentVariable("AZURE_CLIENT_SECRET");
+    })
+    .Build();`,
+  },
+  {
+    id: 'aws',
+    name: 'AWS Secrets Manager',
+    package: 'SecretsManager.AwsSecretsManager',
+    to: '/docs/providers/aws-secrets-manager',
+    snippet: `var provider = new SecretProviderBuilder()
+    .WithAwsSecretsManager(options =>
+    {
+        options.Region = "us-east-1";
+        options.AccessKey = Environment
+            .GetEnvironmentVariable("AWS_ACCESS_KEY_ID");
+        options.SecretKey = Environment
+            .GetEnvironmentVariable("AWS_SECRET_ACCESS_KEY");
+    })
+    .Build();`,
+  },
+  {
+    id: 'vault',
+    name: 'HashiCorp Vault',
+    package: 'SecretsManager.Vault',
+    to: '/docs/providers/vault',
+    snippet: `var provider = new SecretProviderBuilder()
+    .WithVault(options =>
+    {
+        options.Url = "http://localhost:8200";
+        options.Token = Environment
+            .GetEnvironmentVariable("VAULT_TOKEN");
+        options.MountPath = "secret";
+    })
+    .Build();`,
+  },
 ];
 
-const providerLogos: Record<string, React.ReactNode> = {
-  filesystem: <FileSystemLogo style={{width: '1.5rem', height: '1.5rem'}} />,
-  azure: <AzureLogo style={{width: '1.5rem', height: '1.5rem'}} />,
-  scaleway: <ScalewayLogo style={{width: '1.5rem', height: '1.5rem'}} />,
-  ibmcloud: <IBMCloudLogo style={{width: '1.5rem', height: '1.5rem'}} />,
-  postgresql: <PostgreSqlLogo style={{width: '1.5rem', height: '1.5rem'}} />,
-  ovh: <OVHLogo style={{width: '1.5rem', height: '1.5rem'}} />,
-  aws: <AwsLogo style={{width: '1.5rem', height: '1.5rem'}} />,
-  oracle: <OracleLogo style={{width: '1.5rem', height: '1.5rem'}} />,
-  gcp: <GcpLogo style={{width: '1.5rem', height: '1.5rem'}} />,
-  passbolt: <PassboltLogo style={{width: '1.5rem', height: '1.5rem'}} />,
-  aliyun: <AliyunLogo style={{width: '1.5rem', height: '1.5rem'}} />,
-  tencent: <TencentCloudLogo style={{width: '1.5rem', height: '1.5rem'}} />,
-  infisical: <InfisicalLogo style={{width: '1.5rem', height: '1.5rem'}} />,
-  vault: <VaultLogo style={{width: '1.5rem', height: '1.5rem'}} />,
-  conjur: <ConjurLogo style={{width: '1.5rem', height: '1.5rem'}} />,
-};
+function ProviderPanel(): React.JSX.Element {
+  const [active, setActive] = useState(0);
+  const tabs = useRef<(HTMLButtonElement | null)[]>([]);
+  const provider = providers[active];
 
-export default function HeroSection(): React.JSX.Element {
-  const [selectedProvider, setSelectedProvider] = useState('filesystem');
-  const [copiedStep, setCopiedStep] = useState<number | null>(null);
+  const onKeyDown = (event: React.KeyboardEvent) => {
+    const step = {ArrowRight: 1, ArrowLeft: -1}[event.key];
+    if (!step) {
+      return;
+    }
 
-  const handleCopy = (text: string, step: number) => {
-    navigator.clipboard.writeText(text);
-    setCopiedStep(step);
-    setTimeout(() => setCopiedStep(null), 2000);
+    event.preventDefault();
+    const next = (active + step + providers.length) % providers.length;
+    setActive(next);
+    tabs.current[next]?.focus();
   };
 
-  const selectedPackage = providers.find(p => p.id === selectedProvider)?.package;
-
   return (
-    <section className="hero-gradient">
-      <div style={{maxWidth: '1200px', margin: '0 auto', padding: '4rem 1.5rem'}}>
-        {/* Hero content */}
-        <div style={{display: 'grid', gridTemplateColumns: '1fr', gap: '3rem', alignItems: 'center'}}>
-          <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 450px), 1fr))', gap: '3rem', alignItems: 'center'}}>
-            {/* Left: Text */}
-            <div>
-              <div style={{display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1.5rem'}}>
-                <span className="badge-pill badge-dotnet">.NET 10.0</span>
-                <span className="badge-pill badge-license">MIT / Apache 2.0</span>
-              </div>
+    <figure className={styles.panel} aria-label="Provider configuration example">
+      <div className={styles.panelHead}>
+        <span className={styles.panelTitle}>Program.cs</span>
+        <span className={styles.panelBadge}>{provider.package}</span>
+      </div>
 
-              <h1 style={{fontSize: 'clamp(2.5rem, 5vw, 3.5rem)', fontWeight: 700, marginBottom: '1.5rem', lineHeight: 1.1}}>
-                One Interface.{' '}
-                <span style={{
-                  background: 'linear-gradient(135deg, var(--ifm-color-primary), var(--sm-color-secondary))',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  backgroundClip: 'text',
-                }}>
-                  Any Secret Backend.
-                </span>
-              </h1>
+      <div className={styles.tabs} role="tablist" aria-label="Provider" onKeyDown={onKeyDown}>
+        {providers.map((item, index) => (
+          <button
+            key={item.id}
+            ref={(element) => {
+              tabs.current[index] = element;
+            }}
+            type="button"
+            role="tab"
+            id={`sm-tab-${item.id}`}
+            aria-selected={index === active}
+            aria-controls="sm-provider-panel"
+            tabIndex={index === active ? 0 : -1}
+            className={styles.tab}
+            onClick={() => setActive(index)}>
+            <span className={`sm-logo sm-logo--${item.id} ${styles.logo}`} aria-hidden="true" />
+            {item.name}
+          </button>
+        ))}
+      </div>
 
-                <p style={{fontSize: '1.25rem', color: 'var(--ifm-color-emphasis-700)', marginBottom: '2rem', lineHeight: 1.6}}>
-                A unified .NET 10.0 abstraction layer for 15 secret backends including Azure Key Vault, AWS, Google Cloud, Oracle Vault, PostgreSQL, Scaleway, OVH, IBM Cloud, Aliyun KMS, Passbolt, Tencent Cloud, Infisical, HashiCorp Vault, CyberArk Conjur, and local encrypted storage. Inspired by Kubernetes External Secrets.
-                </p>
-
-              <div style={{display: 'flex', flexWrap: 'wrap', gap: '1rem'}}>
-                <Link className="btn-primary" to="/docs/intro">
-                  Get Started
-                </Link>
-                <a className="btn-outline" href="https://github.com/mrhamburg/SecretsManager">
-                  View on GitHub
-                </a>
-              </div>
-            </div>
-
-            {/* Right: Visual */}
-            <div className="diagram-box">
-              <div style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.75rem',
-                padding: '0.5rem 1rem',
-                borderRadius: '0.5rem',
-                background: 'rgba(81, 43, 212, 0.2)',
-                border: '1px solid rgba(81, 43, 212, 0.3)',
-                marginBottom: '1rem',
-              }}>
-                <code style={{color: 'var(--sm-color-secondary)', fontFamily: 'var(--ifm-font-family-monospace)', fontSize: '0.9rem'}}>
-                  ISecretProvider
-                </code>
-              </div>
-
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(6, 1fr)',
-                gap: '0.5rem',
-                padding: '1rem',
-                borderRadius: '0.5rem',
-                background: 'rgba(81, 43, 212, 0.05)',
-                border: '1px solid rgba(81, 43, 212, 0.15)',
-              }}>
-                {providers.map(p => (
-                  <div
-                    key={p.id}
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: '0.25rem',
-                      padding: '0.5rem',
-                      borderRadius: '0.375rem',
-                      background: 'rgba(255, 255, 255, 0.5)',
-                      border: '1px solid rgba(81, 43, 212, 0.1)',
-                    }}
-                    title={p.name}
-                  >
-                    {providerLogos[p.id]}
-                    <span style={{fontSize: '0.625rem', color: 'var(--ifm-color-emphasis-600)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%'}}>
-                      {p.short}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+      <div
+        className={styles.panelBody}
+        role="tabpanel"
+        id="sm-provider-panel"
+        aria-labelledby={`sm-tab-${provider.id}`}>
+        <div className={styles.panelMeta}>
+          <span>Configure</span>
+          <code>{provider.name}</code>
+          <span>with one builder</span>
         </div>
+        <pre className={styles.code}>
+          <span className={styles.codeComment}>{`// ${provider.name}`}</span>
+          {'\n'}
+          {provider.snippet}
+        </pre>
+      </div>
 
-        {/* Installation Section */}
-        <div style={{marginTop: '3rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 350px), 1fr))', gap: '1rem'}}>
-          {/* Step 1: Base package */}
-          <div className="install-box">
-            <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem'}}>
-              <span style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                width: '1.5rem', height: '1.5rem', borderRadius: '50%',
-                background: 'var(--ifm-color-primary)', color: '#fff',
-                fontSize: '0.75rem', fontWeight: 700,
-              }}>1</span>
-              <span style={{fontSize: '0.875rem', fontWeight: 600}}>Install Base Package</span>
-            </div>
-            <code style={{color: 'var(--sm-color-secondary)', fontFamily: 'var(--ifm-font-family-monospace)', fontSize: '0.875rem'}}>
-              dotnet add package SecretsManager.Core
-            </code>
-            <button
-              className="copy-btn"
-              onClick={() => handleCopy('dotnet add package SecretsManager', 1)}
-              aria-label="Copy command"
-            >
-              {copiedStep === 1
-                ? <Check style={{width: '1rem', height: '1rem', color: '#34d399'}} />
-                : <Copy style={{width: '1rem', height: '1rem'}} />}
-            </button>
+      <Link className={styles.panelFoot} to={provider.to}>
+        Read the {provider.name} guide →
+      </Link>
+    </figure>
+  );
+}
+
+export default function HeroSection(): React.JSX.Element {
+  return (
+    <section className={styles.hero}>
+      <div className={styles.heroInner}>
+        <div className={styles.intro}>
+          <span className={styles.eyebrow}>SecretsManager · .NET 10</span>
+          <h1 className={styles.title}>
+            One interface.
+            <br />
+            <span className={styles.titleAccent}>Any secret backend.</span>
+          </h1>
+          <p className={styles.lede}>
+            A unified .NET abstraction for fifteen secret providers. Read, write,
+            version, and delete secrets through one contract, then add retries,
+            timeouts, logging, and telemetry without changing your application
+            code.
+          </p>
+          <div className={styles.actions}>
+            <Link className={styles.primary} to="/docs/getting-started/installation">
+              Get started
+            </Link>
+            <a className={styles.secondary} href="https://github.com/mrhamburg/SecretsManager">
+              View on GitHub
+            </a>
           </div>
-
-          {/* Step 2: Provider */}
-          <div className="install-box">
-            <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem'}}>
-              <span style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                width: '1.5rem', height: '1.5rem', borderRadius: '50%',
-                background: 'var(--ifm-color-primary)', color: '#fff',
-                fontSize: '0.75rem', fontWeight: 700,
-              }}>2</span>
-              <span style={{fontSize: '0.875rem', fontWeight: 600}}>Select a Provider</span>
-            </div>
-            <div style={{display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem'}}>
-              {providers.map(p => (
-                <button
-                  key={p.id}
-                  className={`provider-selector-btn ${selectedProvider === p.id ? 'provider-selector-btn--active' : 'provider-selector-btn--inactive'}`}
-                  onClick={() => setSelectedProvider(p.id)}
-                >
-                  {p.name}
-                </button>
+          <div className={styles.providers}>
+            <span className={styles.providersLabel}>Works with</span>
+            <ul className={styles.providerList}>
+              {providers.map((provider) => (
+                <li key={provider.id}>
+                  <span
+                    className={`sm-logo sm-logo--${provider.id} ${styles.logo}`}
+                    aria-hidden="true"
+                  />
+                  {provider.name}
+                </li>
               ))}
-            </div>
-            <code style={{color: 'var(--sm-color-secondary)', fontFamily: 'var(--ifm-font-family-monospace)', fontSize: '0.875rem'}}>
-              dotnet add package {selectedPackage}
-            </code>
-            <button
-              className="copy-btn"
-              onClick={() => handleCopy(`dotnet add package ${selectedPackage}`, 2)}
-              aria-label="Copy command"
-            >
-              {copiedStep === 2
-                ? <Check style={{width: '1rem', height: '1rem', color: '#34d399'}} />
-                : <Copy style={{width: '1rem', height: '1rem'}} />}
-            </button>
+            </ul>
           </div>
         </div>
+
+        <ProviderPanel />
       </div>
     </section>
   );

@@ -12,7 +12,7 @@ SecretsManager supports fifteen production-ready providers, each designed for di
 ## Available Providers
 
 <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '1.5rem', margin: '2rem 0'}}>
-  <div className="feature-card provider-card-fs" style={{padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid'}}>
+  <div className="feature-card provider-card-fs" style={{padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid var(--sm-line)'}}>
     <div style={{color: '#10B981', fontWeight: 600, fontSize: '1.125rem', marginBottom: '0.5rem'}}>FileSystem</div>
     <p style={{fontSize: '0.875rem', marginBottom: '0.75rem'}}>
       Local encrypted storage using AES-256-GCM. Perfect for development, edge devices, and air-gapped environments.
@@ -20,7 +20,7 @@ SecretsManager supports fifteen production-ready providers, each designed for di
     <a href="/docs/providers/filesystem" style={{color: '#10B981', fontSize: '0.875rem'}}>Learn more &rarr;</a>
   </div>
 
-  <div className="feature-card provider-card-azure" style={{padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid'}}>
+  <div className="feature-card provider-card-azure" style={{padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid var(--sm-line)'}}>
     <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem'}}>
       <img src="/img/azure-logo.svg" alt="Azure" style={{width: '1.25rem', height: '1.25rem'}} />
       <span style={{color: '#0078D4', fontWeight: 600, fontSize: '1.125rem'}}>Azure Key Vault</span>
@@ -31,7 +31,7 @@ SecretsManager supports fifteen production-ready providers, each designed for di
     <a href="/docs/providers/azure-key-vault" style={{color: '#0078D4', fontSize: '0.875rem'}}>Learn more &rarr;</a>
   </div>
 
-  <div className="feature-card provider-card-scaleway" style={{padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid'}}>
+  <div className="feature-card provider-card-scaleway" style={{padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid var(--sm-line)'}}>
     <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem'}}>
       <img src="/img/scaleway-logo.svg" alt="Scaleway" style={{width: '1.25rem', height: '1.25rem'}} />
       <span style={{color: '#4F0599', fontWeight: 600, fontSize: '1.125rem'}}>Scaleway</span>
@@ -42,7 +42,7 @@ SecretsManager supports fifteen production-ready providers, each designed for di
     <a href="/docs/providers/scaleway" style={{color: '#FF5900', fontSize: '0.875rem'}}>Learn more &rarr;</a>
   </div>
 
-  <div className="feature-card provider-card-ovh" style={{padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid'}}>
+  <div className="feature-card provider-card-ovh" style={{padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid var(--sm-line)'}}>
     <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem'}}>
       <img src="/img/ovh-logo.svg" alt="OVH" style={{width: '1.25rem', height: '1.25rem'}} />
       <span style={{color: '#10B981', fontWeight: 600, fontSize: '1.125rem'}}>OVH</span>
@@ -53,7 +53,7 @@ SecretsManager supports fifteen production-ready providers, each designed for di
     <a href="/docs/providers/ovh" style={{color: '#10B981', fontSize: '0.875rem'}}>Learn more &rarr;</a>
   </div>
 
-  <div className="feature-card provider-card-pg" style={{padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid'}}>
+  <div className="feature-card provider-card-pg" style={{padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid var(--sm-line)'}}>
     <div style={{color: '#336791', fontWeight: 600, fontSize: '1.125rem', marginBottom: '0.5rem'}}>PostgreSQL</div>
     <p style={{fontSize: '0.875rem', marginBottom: '0.75rem'}}>
       Store secrets in your existing PostgreSQL database with optional AES-256-GCM encryption at rest. Simple, self-hosted, and version-tracked.
@@ -61,7 +61,7 @@ SecretsManager supports fifteen production-ready providers, each designed for di
     <a href="/docs/providers/postgresql" style={{color: '#336791', fontSize: '0.875rem'}}>Learn more &rarr;</a>
   </div>
 
-  <div className="feature-card provider-card-aws" style={{padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid'}}>
+  <div className="feature-card provider-card-aws" style={{padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid var(--sm-line)'}}>
     <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem'}}>
       <img src="/img/aws-logo.svg" alt="AWS" style={{width: '1.25rem', height: '1.25rem'}} />
       <span style={{color: '#FF9900', fontWeight: 600, fontSize: '1.125rem'}}>AWS Secrets Manager</span>
@@ -72,7 +72,7 @@ SecretsManager supports fifteen production-ready providers, each designed for di
     <a href="/docs/providers/aws-secrets-manager" style={{color: '#FF9900', fontSize: '0.875rem'}}>Learn more &rarr;</a>
   </div>
 
-  <div className="feature-card provider-card-oracle" style={{padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid'}}>
+  <div className="feature-card provider-card-oracle" style={{padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid var(--sm-line)'}}>
     <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem'}}>
       <img src="/img/oracle-logo.svg" alt="Oracle" style={{width: '1.25rem', height: '1.25rem'}} />
       <span style={{color: '#F80000', fontWeight: 600, fontSize: '1.125rem'}}>Oracle Vault</span>
@@ -83,7 +83,7 @@ SecretsManager supports fifteen production-ready providers, each designed for di
     <a href="/docs/providers/oracle-vault" style={{color: '#F80000', fontSize: '0.875rem'}}>Learn more &rarr;</a>
   </div>
 
-  <div className="feature-card provider-card-gcp" style={{padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid'}}>
+  <div className="feature-card provider-card-gcp" style={{padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid var(--sm-line)'}}>
     <div style={{color: '#4285F4', fontWeight: 600, fontSize: '1.125rem', marginBottom: '0.5rem'}}>Google Cloud Secret Manager</div>
     <p style={{fontSize: '0.875rem', marginBottom: '0.75rem'}}>
       Fully managed secret storage with IAM integration, automatic versioning, and seamless ADC authentication.
@@ -91,7 +91,7 @@ SecretsManager supports fifteen production-ready providers, each designed for di
     <a href="/docs/providers/google-secret-manager" style={{color: '#4285F4', fontSize: '0.875rem'}}>Learn more &rarr;</a>
   </div>
 
-  <div className="feature-card provider-card-passbolt" style={{padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid'}}>
+  <div className="feature-card provider-card-passbolt" style={{padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid var(--sm-line)'}}>
     <div style={{color: '#F58220', fontWeight: 600, fontSize: '1.125rem', marginBottom: '0.5rem'}}>Passbolt</div>
     <p style={{fontSize: '0.875rem', marginBottom: '0.75rem'}}>
       Open-source password manager with end-to-end OpenPGP encryption. Self-hosted, team-oriented, and fully auditable.
@@ -99,7 +99,7 @@ SecretsManager supports fifteen production-ready providers, each designed for di
     <a href="/docs/providers/passbolt" style={{color: '#F58220', fontSize: '0.875rem'}}>Learn more &rarr;</a>
   </div>
 
-  <div className="feature-card provider-card-aliyun" style={{padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid'}}>
+  <div className="feature-card provider-card-aliyun" style={{padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid var(--sm-line)'}}>
     <div style={{color: '#FF6A00', fontWeight: 600, fontSize: '1.125rem', marginBottom: '0.5rem'}}>Aliyun KMS</div>
     <p style={{fontSize: '0.875rem', marginBottom: '0.75rem'}}>
       Alibaba Cloud's fully managed secret management with server-side encryption, automatic rotation, and global regional availability.
@@ -107,7 +107,7 @@ SecretsManager supports fifteen production-ready providers, each designed for di
     <a href="/docs/providers/aliyun-kms" style={{color: '#FF6A00', fontSize: '0.875rem'}}>Learn more &rarr;</a>
   </div>
 
-  <div className="feature-card provider-card-tencent" style={{padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid'}}>
+  <div className="feature-card provider-card-tencent" style={{padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid var(--sm-line)'}}>
     <div style={{color: '#007AFF', fontWeight: 600, fontSize: '1.125rem', marginBottom: '0.5rem'}}>Tencent Cloud</div>
     <p style={{fontSize: '0.875rem', marginBottom: '0.75rem'}}>
       Tencent Cloud's fully managed secret management with server-side encryption, automatic versioning, and regional availability.
@@ -115,7 +115,7 @@ SecretsManager supports fifteen production-ready providers, each designed for di
     <a href="/docs/providers/tencent-cloud" style={{color: '#007AFF', fontSize: '0.875rem'}}>Learn more &rarr;</a>
   </div>
 
-  <div className="feature-card provider-card-ibm" style={{padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid'}}>
+  <div className="feature-card provider-card-ibm" style={{padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid var(--sm-line)'}}>
     <div style={{color: '#000000', fontWeight: 600, fontSize: '1.125rem', marginBottom: '0.5rem'}}>IBM Cloud Secrets Manager</div>
     <p style={{fontSize: '0.875rem', marginBottom: '0.75rem'}}>
       Fully managed secret storage with IAM integration, automatic versioning, and seamless authentication.
@@ -123,7 +123,7 @@ SecretsManager supports fifteen production-ready providers, each designed for di
     <a href="/docs/providers/ibm-cloud-secrets-manager" style={{color: '#000000', fontSize: '0.875rem'}}>Learn more &rarr;</a>
   </div>
 
-  <div className="feature-card provider-card-infisical" style={{padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid'}}>
+  <div className="feature-card provider-card-infisical" style={{padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid var(--sm-line)'}}>
     <div style={{color: '#EAB308', fontWeight: 600, fontSize: '1.125rem', marginBottom: '0.5rem'}}>Infisical</div>
     <p style={{fontSize: '0.875rem', marginBottom: '0.75rem'}}>
       Open-source secrets management with self-hosting, machine identity authentication, and secret version history.
@@ -131,7 +131,7 @@ SecretsManager supports fifteen production-ready providers, each designed for di
     <a href="/docs/providers/infisical" style={{color: '#EAB308', fontSize: '0.875rem'}}>Learn more &rarr;</a>
   </div>
 
-  <div className="feature-card provider-card-vault" style={{padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid'}}>
+  <div className="feature-card provider-card-vault" style={{padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid var(--sm-line)'}}>
     <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem'}}>
       <img src="/img/vault-logo.svg" alt="Vault" style={{width: '1.25rem', height: '1.25rem'}} />
       <span style={{color: '#000000', fontWeight: 600, fontSize: '1.125rem'}}>HashiCorp Vault</span>
@@ -142,7 +142,7 @@ SecretsManager supports fifteen production-ready providers, each designed for di
     <a href="/docs/providers/vault" style={{color: '#000000', fontSize: '0.875rem'}}>Learn more &rarr;</a>
   </div>
 
-  <div className="feature-card provider-card-conjur" style={{padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid'}}>
+  <div className="feature-card provider-card-conjur" style={{padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid var(--sm-line)'}}>
     <div style={{color: '#007CFF', fontWeight: 600, fontSize: '1.125rem', marginBottom: '0.5rem'}}>CyberArk Conjur</div>
     <p style={{fontSize: '0.875rem', marginBottom: '0.75rem'}}>
       Open-source machine identity secrets management with policy-based access control and built-in versioning.

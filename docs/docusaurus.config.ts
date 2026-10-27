@@ -1,20 +1,47 @@
 import {themes as prismThemes} from 'prism-react-renderer';
+import type {PrismTheme} from 'prism-react-renderer';
 import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 
+/**
+ * One code surface in both colour modes, on the site's graphite (#11141a).
+ * The light Prism themes do not keep comments and strings readable on a light
+ * ground, so documentation samples use the same dark surface throughout.
+ */
+const codeTheme: PrismTheme = {
+  plain: {color: '#d5d9e1', backgroundColor: '#11141a'},
+  styles: [
+    ...prismThemes.oneDark.styles,
+    {types: ['comment', 'prolog', 'cdata'], style: {color: '#8a93a4', fontStyle: 'italic'}},
+  ],
+};
+
+type ThemeConfig = Preset.ThemeConfig & {
+  zoom?: {
+    selector?: string;
+    background?: {light?: string; dark?: string};
+  };
+};
+
 const config: Config = {
   title: 'SecretsManager',
-  tagline: 'Unified .NET Secret Management',
+  tagline: 'Unified .NET secret management',
   favicon: 'img/favicon.svg',
 
   url: 'https://mrhamburg.github.io',
   baseUrl: '/SecretsManager/',
 
-  organizationName: 'yourorg',
+  organizationName: 'mrhamburg',
   projectName: 'SecretsManager',
 
   onBrokenLinks: 'throw',
-  onBrokenMarkdownLinks: 'warn',
+  onBrokenAnchors: 'throw',
+  markdown: {
+    format: 'detect',
+    hooks: {
+      onBrokenMarkdownLinks: 'throw',
+    },
+  },
 
   i18n: {
     defaultLocale: 'en',
@@ -27,20 +54,43 @@ const config: Config = {
       {
         docs: {
           sidebarPath: './sidebars.ts',
+          numberPrefixParser: false,
+          editUrl: 'https://github.com/mrhamburg/SecretsManager/tree/main/docs/docs/',
         },
         blog: false,
         theme: {
-          customCss: './src/css/custom.css',
+          customCss: [
+            './src/css/custom.css',
+            './src/css/provider-logos.css',
+          ],
         },
       } satisfies Preset.Options,
     ],
   ],
 
+  clientModules: ['./src/fonts.js'],
+
+  plugins: ['docusaurus-plugin-image-zoom'],
+
+  themes: [
+    [
+      '@easyops-cn/docusaurus-search-local',
+      {
+        hashed: true,
+        docsDir: 'docs',
+        docsRouteBasePath: '/docs',
+        indexBlog: false,
+      },
+    ],
+  ],
+
   themeConfig: {
-    colorMode: {
-      defaultMode: 'dark',
-      disableSwitch: false,
-      respectPrefersColorScheme: true,
+    zoom: {
+      selector: '.markdown img:not(a img):not(.no-frame)',
+      background: {
+        light: 'rgba(248, 250, 252, 0.95)',
+        dark: 'rgba(11, 18, 32, 0.95)',
+      },
     },
     navbar: {
       title: 'SecretsManager',
@@ -62,46 +112,32 @@ const config: Config = {
         },
       ],
     },
+    colorMode: {
+      defaultMode: 'dark',
+      disableSwitch: false,
+      respectPrefersColorScheme: true,
+    },
     footer: {
-      style: 'dark',
+      style: 'light',
       links: [
         {
-          title: 'Documentation',
+          title: 'Links',
           items: [
-            {label: 'Introduction', to: '/docs/intro'},
-            {label: 'Quick Start', to: '/docs/getting-started/quick-start'},
-            {label: 'Providers', to: '/docs/providers/overview'},
-          ],
-        },
-        {
-          title: 'Resources',
-          items: [
+            {label: 'Documentation', to: '/docs/intro'},
             {label: 'GitHub', href: 'https://github.com/mrhamburg/SecretsManager'},
             {label: 'NuGet Packages', href: 'https://www.nuget.org/'},
-          ],
-        },
-        {
-          title: 'Community',
-          items: [
-            {label: 'GitHub Discussions', href: 'https://github.com/mrhamburg/SecretsManager/discussions'},
-            {label: 'Stack Overflow', href: 'https://stackoverflow.com/questions/tagged/secretsmanager'},
-          ],
-        },
-        {
-          title: 'Legal',
-          items: [
-            {label: 'MIT License', href: 'https://github.com/mrhamburg/SecretsManager/blob/main/LICENSE'},
+            {label: 'Issues', href: 'https://github.com/mrhamburg/SecretsManager/issues'},
           ],
         },
       ],
       copyright: `Copyright \u00A9 ${new Date().getFullYear()} SecretsManager. Built with Docusaurus.`,
     },
     prism: {
-      theme: prismThemes.github,
-      darkTheme: prismThemes.dracula,
+      theme: codeTheme,
+      darkTheme: codeTheme,
       additionalLanguages: ['csharp', 'bash', 'yaml', 'json'],
     },
-  } satisfies Preset.ThemeConfig,
+  } satisfies ThemeConfig,
 };
 
 export default config;

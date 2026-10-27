@@ -2,6 +2,7 @@ import React from 'react';
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 import CodeBlock from '@theme/CodeBlock';
+import styles from './landing.module.css';
 
 const fluentCode = `var provider = new SecretProviderBuilder()
     .WithFileSystem(options =>
@@ -40,7 +41,7 @@ const envCode = `export SECRETS_PROVIDER=filesystem
 export SECRETS_FILESYSTEM_PATH=/etc/secrets
 export SECRETS_FILESYSTEM_ENCRYPTION_KEY=my-key
 
-// In your C# code:
+# In your C# code:
 var provider = new SecretProviderBuilder()
     .WithFileSystem()
     .FromEnvironment()
@@ -62,14 +63,13 @@ const yamlCsharpCode = `var provider = new SecretProviderBuilder()
 
 export default function CodeShowcase(): React.JSX.Element {
   return (
-    <section className="section-main" style={{padding: '6rem 0'}}>
-      <div style={{maxWidth: '900px', margin: '0 auto', padding: '0 1.5rem'}}>
-        <div style={{textAlign: 'center', marginBottom: '3rem'}}>
-          <h2 style={{fontSize: '2.5rem', fontWeight: 700, marginBottom: '1rem'}}>
-            Configure Your Way
-          </h2>
-          <p style={{fontSize: '1.25rem', color: 'var(--ifm-color-emphasis-600)'}}>
-            Choose the configuration style that fits your workflow
+    <section className={`${styles.section} ${styles.sectionAlt}`}>
+      <div className={styles.sectionNarrow}>
+        <div className={styles.sectionHead}>
+          <h2 className={styles.sectionTitle}>Configure your way</h2>
+          <p className={styles.sectionLede}>
+            Register a provider, choose a configuration source, and build. Every
+            source produces the same settings dictionary.
           </p>
         </div>
 

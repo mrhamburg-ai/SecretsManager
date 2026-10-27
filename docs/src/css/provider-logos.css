@@ -1,0 +1,150 @@
+/* Provider logos, drawn as masks so they take the surrounding text colour and
+   follow the theme.
+
+   Sources (SVG data CC0; the marks remain their owners' trademarks and are
+   used to identify supported platforms):
+   - AWS, Oracle, Aliyun: Simple Icons
+   - Azure, Google Cloud, and the remaining marks: project assets */
+
+.sm-logo {
+  display: inline-block;
+  flex: none;
+  width: 1.1em;
+  height: 1.1em;
+  vertical-align: -0.18em;
+  background-color: currentColor;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+/* Wordmarks need a wider box to stay legible at sidebar size. */
+.sm-logo--aws {
+  width: 1.7em;
+}
+
+.sm-logo--filesystem { -webkit-mask-image: url('../../static/img/filesystem-logo.svg'); mask-image: url('../../static/img/filesystem-logo.svg'); }
+.sm-logo--azure { -webkit-mask-image: url('../../static/img/azure-logo.svg'); mask-image: url('../../static/img/azure-logo.svg'); }
+.sm-logo--scaleway { -webkit-mask-image: url('../../static/img/scaleway-logo.svg'); mask-image: url('../../static/img/scaleway-logo.svg'); }
+.sm-logo--postgresql { -webkit-mask-image: url('../../static/img/postgresql-logo.svg'); mask-image: url('../../static/img/postgresql-logo.svg'); }
+.sm-logo--ovh { -webkit-mask-image: url('../../static/img/ovh-logo.svg'); mask-image: url('../../static/img/ovh-logo.svg'); }
+.sm-logo--aws { -webkit-mask-image: url('../../static/img/logos/aws.svg'); mask-image: url('../../static/img/logos/aws.svg'); }
+.sm-logo--gcp { -webkit-mask-image: url('../../static/img/gcp-logo.svg'); mask-image: url('../../static/img/gcp-logo.svg'); }
+.sm-logo--oracle { -webkit-mask-image: url('../../static/img/logos/oracle.svg'); mask-image: url('../../static/img/logos/oracle.svg'); }
+.sm-logo--passbolt { -webkit-mask-image: url('../../static/img/passbolt-logo.svg'); mask-image: url('../../static/img/passbolt-logo.svg'); }
+.sm-logo--aliyun { -webkit-mask-image: url('../../static/img/aliyun-logo.svg'); mask-image: url('../../static/img/aliyun-logo.svg'); }
+.sm-logo--tencent { -webkit-mask-image: url('../../static/img/tencentcloud-logo.svg'); mask-image: url('../../static/img/tencentcloud-logo.svg'); }
+.sm-logo--ibm { -webkit-mask-image: url('../../static/img/ibmcloud-logo.svg'); mask-image: url('../../static/img/ibmcloud-logo.svg'); }
+.sm-logo--infisical { -webkit-mask-image: url('../../static/img/logos/infisical.svg'); mask-image: url('../../static/img/logos/infisical.svg'); }
+.sm-logo--vault { -webkit-mask-image: url('../../static/img/vault-logo.svg'); mask-image: url('../../static/img/vault-logo.svg'); }
+.sm-logo--conjur { -webkit-mask-image: url('../../static/img/conjur-logo.svg'); mask-image: url('../../static/img/conjur-logo.svg'); }
+
+/* A logo with its name. */
+.sm-provider {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  white-space: nowrap;
+}
+
+.markdown th .sm-provider {
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.markdown th .sm-logo {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+/* Sidebar: logos before the provider pages. */
+.sm-side-provider > .menu__link::before {
+  content: '';
+  flex: none;
+  width: 0.95rem;
+  height: 0.95rem;
+  margin-right: 0.55rem;
+  background-color: currentColor;
+  opacity: 0.85;
+  -webkit-mask: var(--sm-side-logo) center / contain no-repeat;
+  mask: var(--sm-side-logo) center / contain no-repeat;
+}
+
+.sm-side-provider > .menu__link {
+  display: flex;
+  align-items: center;
+}
+
+.sm-side-filesystem { --sm-side-logo: url('../../static/img/filesystem-logo.svg'); }
+.sm-side-azure { --sm-side-logo: url('../../static/img/azure-logo.svg'); }
+.sm-side-scaleway { --sm-side-logo: url('../../static/img/scaleway-logo.svg'); }
+.sm-side-postgresql { --sm-side-logo: url('../../static/img/postgresql-logo.svg'); }
+.sm-side-ovh { --sm-side-logo: url('../../static/img/ovh-logo.svg'); }
+.sm-side-aws { --sm-side-logo: url('../../static/img/logos/aws.svg'); }
+.sm-side-gcp { --sm-side-logo: url('../../static/img/gcp-logo.svg'); }
+.sm-side-oracle { --sm-side-logo: url('../../static/img/logos/oracle.svg'); }
+.sm-side-passbolt { --sm-side-logo: url('../../static/img/passbolt-logo.svg'); }
+.sm-side-aliyun { --sm-side-logo: url('../../static/img/aliyun-logo.svg'); }
+.sm-side-tencent { --sm-side-logo: url('../../static/img/tencentcloud-logo.svg'); }
+.sm-side-ibm { --sm-side-logo: url('../../static/img/ibmcloud-logo.svg'); }
+.sm-side-infisical { --sm-side-logo: url('../../static/img/logos/infisical.svg'); }
+.sm-side-vault { --sm-side-logo: url('../../static/img/vault-logo.svg'); }
+.sm-side-conjur { --sm-side-logo: url('../../static/img/conjur-logo.svg'); }
+
+/* Provider lists rendered as a grid of cards. */
+.sm-provider-grid > ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+  gap: 0.75rem;
+  padding: 0;
+  list-style: none;
+}
+
+.sm-provider-grid > ul > li {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--sm-line);
+  border-radius: 10px;
+  transition: border-color 120ms ease, background-color 120ms ease;
+}
+
+.sm-provider-grid > ul > li:hover {
+  border-color: var(--sm-line-strong);
+  background: var(--sm-surface);
+}
+
+.sm-provider-grid .sm-logo {
+  width: 1.4rem;
+  height: 1.4rem;
+  color: var(--sm-text);
+}
+
+.sm-provider-grid a {
+  color: var(--sm-text);
+  font-weight: 550;
+  text-decoration: none;
+}
+
+/* The whole card is the link target. */
+.sm-provider-grid a::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.sm-provider-grid a:focus-visible {
+  outline: none;
+}
+
+.sm-provider-grid > ul > li:has(a:focus-visible) {
+  outline: 2px solid var(--sm-accent);
+  outline-offset: 2px;
+}
