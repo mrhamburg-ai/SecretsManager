@@ -6,7 +6,7 @@ namespace SecretsManager.Infisical.Tests;
 public sealed class InfisicalConfigurationExtensionsTests
 {
     [Fact]
-    public void ConfigureInfisical_ValidConfiguration_BuildsProvider()
+    public async Task ConfigureInfisical_ValidConfiguration_BuildsProvider()
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -23,7 +23,7 @@ public sealed class InfisicalConfigurationExtensionsTests
         var builder = new SecretProviderBuilder()
             .ConfigureInfisical(configuration);
 
-        var provider = builder.Build();
+        await using var provider = builder.Build();
 
         Assert.IsType<InfisicalSecretProvider>(provider);
     }

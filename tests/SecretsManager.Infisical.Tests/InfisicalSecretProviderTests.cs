@@ -75,18 +75,20 @@ public sealed class InfisicalSecretProviderTests
         Assert.Equal("old-value", result.Value);
     }
 
-    [Fact]
-    public async Task GetSecretAsync_WithInvalidVersion_PassesNullToClient()
+    [Theory]
+    [InlineData("not-a-number")]
+    [InlineData("0")]
+    [InlineData("-1")]
+    public async Task GetSecretAsync_WithInvalidVersion_Throws(string version)
     {
-        _client.GetSecretAsync("my-secret", null, true, Arg.Any<CancellationToken>())
-            .Returns(Result("my-secret", "current-value", 3));
-
         await using var provider = CreateProvider();
-        var result = await provider.GetSecretAsync("my-secret", new SecretQuery { Version = "not-a-number" });
 
-        Assert.Equal("3", result.Version);
-        await _client.Received(1)
-            .GetSecretAsync("my-secret", null, true, Arg.Any<CancellationToken>());
+        var exception = await Assert.ThrowsAsync<SecretProviderException>(
+            () => provider.GetSecretAsync("my-secret", new SecretQuery { Version = version }));
+
+        Assert.Contains("Version must be a positive integer", exception.Message);
+        await _client.DidNotReceiveWithAnyArgs()
+            .GetSecretAsync(default!, default, default, default);
     }
 
     [Fact]
@@ -169,6 +171,20 @@ public sealed class InfisicalSecretProviderTests
             .UpdateSecretAsync("existing", "new-value", null, Arg.Any<CancellationToken>());
         await _client.DidNotReceiveWithAnyArgs()
             .CreateSecretAsync(default!, default!, default, default);
+    }
+
+    [Fact]
+    public async Task PutSecretAsync_ReturnsStoredValue()
+    {
+        _client.FindSecretAsync("trimmed", Arg.Any<CancellationToken>())
+            .Returns((InfisicalSecretResult?)null);
+        _client.CreateSecretAsync("trimmed", "  value  ", null, Arg.Any<CancellationToken>())
+            .Returns(Result("trimmed", "value", 1));
+
+        await using var provider = CreateProvider();
+        var result = await provider.PutSecretAsync("trimmed", "  value  ");
+
+        Assert.Equal("value", result.Value);
     }
 
     [Fact]
@@ -271,6 +287,21 @@ public sealed class InfisicalSecretProviderTests
         Assert.Null(versions[0].CreatedAt);
         Assert.Equal("3", versions[2].Version);
         Assert.True(versions[2].IsCurrent);
+    }
+
+    [Fact]
+    public async Task GetSecretVersionsAsync_TooManyVersions_Throws()
+    {
+        _client.FindSecretAsync("many", Arg.Any<CancellationToken>())
+            .Returns(Result("many", "", 1001));
+
+        await using var provider = CreateProvider();
+        var exception = await Assert.ThrowsAsync<SecretProviderException>(
+            () => provider.GetSecretVersionsAsync("many"));
+
+        Assert.Contains("exceeds the supported limit", exception.Message);
+        await _client.DidNotReceiveWithAnyArgs()
+            .GetSecretAsync(default!, default, default, default);
     }
 
     [Fact]

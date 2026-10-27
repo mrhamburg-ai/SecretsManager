@@ -20,7 +20,7 @@ public sealed class InfisicalSecretProviderBuilderExtensionsTests
     }
 
     [Fact]
-    public void WithInfisical_FluentConfiguration_BuildsProvider()
+    public async Task WithInfisical_FluentConfiguration_BuildsProvider()
     {
         var builder = new SecretProviderBuilder()
             .WithInfisical(options =>
@@ -31,13 +31,13 @@ public sealed class InfisicalSecretProviderBuilderExtensionsTests
                 options.ProjectId = "project-id";
             });
 
-        var provider = builder.Build();
+        await using var provider = builder.Build();
 
         Assert.IsType<InfisicalSecretProvider>(provider);
     }
 
     [Fact]
-    public void WithInfisical_NoConfiguration_RegistersFactory()
+    public async Task WithInfisical_NoConfiguration_RegistersFactory()
     {
         var builder = new SecretProviderBuilder()
             .WithInfisical()
@@ -55,7 +55,7 @@ public sealed class InfisicalSecretProviderBuilderExtensionsTests
                       id: project-id
                 """);
 
-        var provider = builder.Build();
+        await using var provider = builder.Build();
 
         Assert.IsType<InfisicalSecretProvider>(provider);
     }

@@ -21,9 +21,9 @@ public sealed class InfisicalSecretProviderFactoryTests
     }
 
     [Fact]
-    public void Create_ReturnsInfisicalSecretProvider()
+    public async Task Create_ReturnsInfisicalSecretProvider()
     {
-        var provider = new InfisicalSecretProviderFactory().Create(AllFields);
+        await using var provider = new InfisicalSecretProviderFactory().Create(AllFields);
 
         Assert.IsType<InfisicalSecretProvider>(provider);
     }

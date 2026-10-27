@@ -51,6 +51,83 @@ public sealed class InfisicalApiClientTests
     }
 
     [Fact]
+    public async Task FindSecretAsync_SendsConfiguredScopeAndFiltersByKey()
+    {
+        string? query = null;
+        await using var server = new StubHttpServer((request, _) =>
+        {
+            if (request.Url!.AbsolutePath.Contains("universal-auth/login", StringComparison.Ordinal))
+                return Response(HttpStatusCode.OK, LoginResponse);
+
+            query = request.Url.Query;
+            return Response(
+                HttpStatusCode.OK,
+                """{"secrets":[{"secretKey":"other","secretValue":"","version":1},{"secretKey":"my-secret","secretValue":"","version":2,"secretMetadata":[{"key":"env","value":"dev"}]}]}""");
+        });
+
+        await using var client = CreateClient(server.Url);
+        var result = await client.FindSecretAsync("my-secret", CancellationToken.None);
+
+        Assert.NotNull(result);
+        Assert.Equal("my-secret", result.Key);
+        Assert.NotNull(query);
+        Assert.Contains("workspaceId=project-id", query, StringComparison.Ordinal);
+        Assert.Contains("environment=dev", query, StringComparison.Ordinal);
+        Assert.Contains("secretPath=%2F", query, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("viewSecretValue=false", query, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task GetSecretAsync_WithoutValue_SendsVersionAndHidesValue()
+    {
+        string? query = null;
+        await using var server = new StubHttpServer((request, _) =>
+        {
+            if (request.Url!.AbsolutePath.Contains("universal-auth/login", StringComparison.Ordinal))
+                return Response(HttpStatusCode.OK, LoginResponse);
+
+            query = request.Url.Query;
+            return Response(HttpStatusCode.OK, SecretResponse);
+        });
+
+        await using var client = CreateClient(server.Url);
+        var result = await client.GetSecretAsync("my-secret", 2, false, CancellationToken.None);
+
+        Assert.NotNull(result);
+        Assert.NotNull(query);
+        Assert.Contains("version=2", query, StringComparison.Ordinal);
+        Assert.Contains("viewSecretValue=false", query, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task FindSecretAsync_Cancelled_ThrowsOperationCanceled()
+    {
+        await using var server = new StubHttpServer((_, _) =>
+            Response(HttpStatusCode.OK, """{"secrets":[]}"""));
+
+        await using var client = CreateClient(server.Url);
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => client.FindSecretAsync("my-secret", cancellation.Token));
+    }
+
+    [Fact]
+    public async Task DeleteSecretAsync_Exists_ReturnsTrue()
+    {
+        await using var server = new StubHttpServer((request, _) =>
+            request.Url!.AbsolutePath.Contains("universal-auth/login", StringComparison.Ordinal)
+                ? Response(HttpStatusCode.OK, LoginResponse)
+                : Response(HttpStatusCode.OK, SecretResponse));
+
+        await using var client = CreateClient(server.Url);
+        var deleted = await client.DeleteSecretAsync("my-secret", CancellationToken.None);
+
+        Assert.True(deleted);
+    }
+
+    [Fact]
     public async Task FindSecretAsync_EmptyList_ReturnsNull()
     {
         await using var server = new StubHttpServer((request, _) =>

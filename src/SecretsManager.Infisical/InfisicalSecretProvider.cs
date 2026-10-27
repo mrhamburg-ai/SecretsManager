@@ -9,6 +9,8 @@ namespace SecretsManager.Infisical;
 /// </summary>
 public sealed class InfisicalSecretProvider : ISecretProvider
 {
+    private const int MaxVersionsToProbe = 1000;
+
     private readonly IInfisicalApiClient _client;
 
     /// <summary>
@@ -48,8 +50,14 @@ public sealed class InfisicalSecretProvider : ISecretProvider
         try
         {
             int? version = null;
-            if (query?.Version is { } value && int.TryParse(value, out var parsed))
+            if (query?.Version is { } value)
+            {
+                if (!int.TryParse(value, out var parsed) || parsed < 1)
+                    throw new SecretProviderException(
+                        $"Invalid Infisical version '{value}'. Version must be a positive integer.");
+
                 version = parsed;
+            }
 
             var secret = await _client.GetSecretAsync(key, version, true, cancellationToken)
                 ?? throw new SecretNotFoundException(key);
@@ -99,7 +107,7 @@ public sealed class InfisicalSecretProvider : ISecretProvider
             return new SecretValue
             {
                 Key = key,
-                Value = value,
+                Value = result.Value,
                 Version = result.Version.ToString(),
                 Tags = result.Metadata
             };
@@ -150,6 +158,12 @@ public sealed class InfisicalSecretProvider : ISecretProvider
             var current = await _client.FindSecretAsync(key, cancellationToken);
             if (current is null)
                 return Array.Empty<SecretVersionInfo>();
+
+            if (current.Version > MaxVersionsToProbe)
+                throw new SecretProviderException(
+                    $"Infisical secret '{key}' has {current.Version} versions, which exceeds the " +
+                    $"supported limit of {MaxVersionsToProbe}. Use the Infisical UI or API to " +
+                    "inspect older versions.");
 
             var versions = new List<SecretVersionInfo>(current.Version);
             for (var version = 1; version <= current.Version; version++)

@@ -204,17 +204,25 @@ await provider.DeleteSecretAsync("old-secret");
 
 ## Behavior Notes
 
-- **Version selection:** `SecretQuery.Version` passes the numeric version to the Infisical API.
-  Invalid version strings are ignored and the current version is returned.
-- **Version listing:** Infisical has no version-list endpoint. `GetSecretVersionsAsync` reads the
-  current version and probes versions `1` through the current version, so it costs `N + 1` API
-  calls. Missing versions are skipped. `CreatedAt` is `null` because the SDK does not expose secret
-  timestamps.
+- **Version selection:** `SecretQuery.Version` must be a positive integer. A non-numeric, zero, or
+  negative version throws `SecretProviderException`.
+- **Version listing:** The .NET SDK has no version-list endpoint, and the enterprise version-history
+  endpoint is not reachable with Universal Auth. `GetSecretVersionsAsync` reads the current version
+  and probes versions `1` through the current version, so it costs `N + 1` API calls. Missing
+  versions are skipped. Histories longer than 1000 versions are rejected to bound the request count.
+  `CreatedAt` is `null` because the SDK does not expose secret timestamps.
 - **Metadata:** `SecretMetadata.Tags` is stored as Infisical per-secret metadata. Infisical project
   tags are not supported because they require pre-created tag IDs.
 - **Multi-line values:** New and updated values are written with `SkipMultilineEncoding = true` so
   values round-trip unchanged. Values written by other clients with encoding enabled may be returned
   encoded.
+- **Stored values:** `PutSecretAsync` returns the value stored by Infisical. Infisical may trim
+  leading or trailing whitespace.
+- **Approval policies:** Projects with secret approval policies may return an approval request
+  instead of a secret. The provider reports this as an empty response; approval workflows are not
+  supported.
+- **Imported secrets:** The SDK includes imported secrets in list results. An imported key can be
+  read but cannot be updated through this provider.
 - **Delete:** `DeleteSecretAsync` permanently deletes the secret and throws
   `SecretNotFoundException` when the secret does not exist.
 - **Missing secrets:** The SDK retries failed GET requests, so `GetSecretAsync` for a missing secret
