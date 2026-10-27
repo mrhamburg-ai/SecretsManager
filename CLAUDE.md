@@ -134,6 +134,22 @@ The fluent builder can be fed from three interchangeable sources, all producing 
 - **docs-build.yml:** `npm ci && npm run build` in `docs/`, then deploys to GitHub Pages.
 - **Integration tests (in ci.yml):** run the console harness against real services (PostgreSQL, Vault, Conjur, and cloud providers gated by `vars.HAS_*` repository variables) via the `.github/actions/integration-test` composite action. Each job `needs: build` and is gated to non-PR events (`if: github.event_name != 'pull_request'`), so they run on main pushes and manual dispatch only. In-progress runs are not cancelled (`cancel-in-progress` only applies to pull requests).
 - **release.yml:** packs each `src/*/*.csproj` with `/p:Version` and publishes to NuGet on release publish or manual dispatch.
+- **pr-agent.yml:** runs PR-Agent against OpenRouter on every pull request — advisory review only, not a merge gate.
+
+### AI pull request review
+
+`pr-agent.yml` runs [PR-Agent](https://github.com/The-PR-Agent/pr-agent) against OpenRouter on every
+pull request. It is **advisory only** — it posts comments and never blocks a merge, so it is not a
+required status check.
+
+It triggers on `pull_request_target`, not `pull_request`: fork pull requests get a read-only
+`GITHUB_TOKEN` and no secrets, so a `pull_request` job can neither call the model nor comment.
+PR-Agent reads the PR through the GitHub API and the workflow deliberately has no `actions/checkout`
+step, so no contributor-controlled code or configuration runs with the key.
+
+The OpenRouter key is the `OPENROUTER_API_KEY` repository secret (injected as `OPENROUTER__KEY`) and is
+never committed. Model selection lives in `.pr_agent.toml`, which contains no secrets; endpoint and
+key settings stay host-controlled there.
 
 ## Gotchas
 
