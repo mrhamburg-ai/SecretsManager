@@ -7,7 +7,7 @@ sidebar_position: 1
 
 # Providers Overview
 
-SecretsManager supports fourteen production-ready providers, each designed for different use cases and environments.
+SecretsManager supports fifteen production-ready providers, each designed for different use cases and environments.
 
 ## Available Providers
 
@@ -123,6 +123,14 @@ SecretsManager supports fourteen production-ready providers, each designed for d
     <a href="/docs/providers/ibm-cloud-secrets-manager" style={{color: '#000000', fontSize: '0.875rem'}}>Learn more &rarr;</a>
   </div>
 
+  <div className="feature-card provider-card-infisical" style={{padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid'}}>
+    <div style={{color: '#EAB308', fontWeight: 600, fontSize: '1.125rem', marginBottom: '0.5rem'}}>Infisical</div>
+    <p style={{fontSize: '0.875rem', marginBottom: '0.75rem'}}>
+      Open-source secrets management with self-hosting, machine identity authentication, and secret version history.
+    </p>
+    <a href="/docs/providers/infisical" style={{color: '#EAB308', fontSize: '0.875rem'}}>Learn more &rarr;</a>
+  </div>
+
   <div className="feature-card provider-card-vault" style={{padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid'}}>
     <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem'}}>
       <img src="/img/vault-logo.svg" alt="Vault" style={{width: '1.25rem', height: '1.25rem'}} />
@@ -147,13 +155,13 @@ SecretsManager supports fourteen production-ready providers, each designed for d
 
 All providers implement the `ISecretProvider` interface, but each has unique capabilities:
 
-| Feature | FileSystem | Azure Key Vault | Scaleway | OVH | PostgreSQL | AWS Secrets Manager | Google Cloud Secret Manager | Passbolt | Aliyun KMS | Tencent Cloud | IBM Cloud Secrets Manager | HashiCorp Vault | CyberArk Conjur |
-|---------|:----------:|:---------------:|:--------:|:---:|:----------:|:-------------------:|:---------------------------:|:--------:|:----------:|:-------------:|:-------------------------:|:--------------:|:--------------:|
-| Versioning | Yes | Yes | Yes | Yes | Yes | Yes | Yes | No | Yes | Yes | Yes | Yes | Yes |
-| Encryption | AES-256-GCM | HSM-backed | Managed | Managed | AES-256-GCM | AWS KMS | Google Cloud KMS | OpenPGP | KMS-managed | KMS-managed | Managed | Storage-backed | Managed |
-| Auth Types | File Permissions | Managed Identity, Service Principal, Azure CLI | API Key, IAM | OAuth | Connection String | IAM, Access Keys, Instance Profile | ADC, Service Account Key | JWT + PGP | AccessKey | AccessKey | IAM | Token, AppRole, OIDC, K8s | API Key |
-| Pricing | Free | $0.03 / 10K ops | Free (included) | Free (included) | Self-hosted | $0.40 / secret / month | $0.06 / 10K ops | Free (self-hosted) | Pay-per-use | Pay-per-use | $0.40 / secret / month | Free (self-hosted) | Free (self-hosted) |
-| Region Control | Local | Azure Regions | EU (fr-par, nl-ams) | EU (fr-par, nl-ams) | Your infrastructure | AWS Global Regions | Google Cloud Regions | Your server | Alibaba Cloud Global | Tencent Cloud Global | IBM Cloud Global | Your infrastructure | Your infrastructure |
+| Feature | FileSystem | Azure Key Vault | Scaleway | OVH | PostgreSQL | AWS Secrets Manager | Oracle Vault | Google Cloud Secret Manager | Passbolt | Aliyun KMS | Tencent Cloud | IBM Cloud Secrets Manager | Infisical | HashiCorp Vault | CyberArk Conjur |
+|---------|:----------:|:---------------:|:--------:|:---:|:----------:|:-------------------:|:------------:|:---------------------------:|:--------:|:----------:|:-------------:|:-------------------------:|:---------:|:--------------:|:--------------:|
+| Versioning | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes | No | Yes | Yes | Yes | Yes | Yes | Yes |
+| Encryption | AES-256-GCM | HSM-backed | Managed | Managed | AES-256-GCM | AWS KMS | OCI KMS | Google Cloud KMS | OpenPGP | KMS-managed | KMS-managed | Managed | Managed | Storage-backed | Managed |
+| Auth Types | File Permissions | Managed Identity, Service Principal, Azure CLI | API Key, IAM | OAuth | Connection String | IAM, Access Keys, Instance Profile | Config File, Instance Principal, Security Token | ADC, Service Account Key | JWT + PGP | AccessKey | AccessKey | IAM | Universal Auth | Token, AppRole, OIDC, K8s | API Key |
+| Pricing | Free | $0.03 / 10K ops | Free (included) | Free (included) | Self-hosted | $0.40 / secret / month | Pay-per-use | $0.06 / 10K ops | Free (self-hosted) | Pay-per-use | Pay-per-use | $0.40 / secret / month | Free (self-hosted) / Cloud plans | Free (self-hosted) | Free (self-hosted) |
+| Region Control | Local | Azure Regions | EU (fr-par, nl-ams) | EU (fr-par, nl-ams) | Your infrastructure | AWS Global Regions | OCI Regions | Google Cloud Regions | Your server | Alibaba Cloud Global | Tencent Cloud Global | IBM Cloud Global | Your infrastructure / Infisical Cloud | Your infrastructure | Your infrastructure |
 
 :::info[Provider Selection]
 Choose your provider based on your deployment environment, compliance requirements, and budget. You can also use multiple providers in the same application for different secret types.
@@ -242,6 +250,13 @@ Choose your provider based on your deployment environment, compliance requiremen
 - You want fully managed encryption with built-in secret lifecycle management
 - You prefer global availability across multiple regions
 - You need integration with IBM Cloud Event Notifications
+
+### Use Infisical when:
+
+- You want an open-source secrets platform that you can self-host
+- You need machine identity authentication with project-scoped roles
+- You want secret version history and per-secret metadata
+- Your team already uses Infisical for application secrets
 
 ### Use HashiCorp Vault when:
 

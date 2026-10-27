@@ -1,7 +1,7 @@
 import React, {useState} from 'react';
 import Link from '@docusaurus/Link';
 import {Copy, Check} from 'lucide-react';
-import {AzureLogo, ScalewayLogo, FileSystemLogo, PostgreSqlLogo, OVHLogo, AwsLogo, OracleLogo, GcpLogo, PassboltLogo, TencentCloudLogo, AliyunLogo, IBMCloudLogo, VaultLogo, ConjurLogo} from './ProviderLogos';
+import {AzureLogo, ScalewayLogo, FileSystemLogo, PostgreSqlLogo, OVHLogo, AwsLogo, OracleLogo, GcpLogo, PassboltLogo, TencentCloudLogo, AliyunLogo, IBMCloudLogo, InfisicalLogo, VaultLogo, ConjurLogo} from './ProviderLogos';
 
 const providers = [
   {id: 'filesystem', name: 'FileSystem', short: 'FS', package: 'SecretsManager.FileSystem'},
@@ -16,6 +16,7 @@ const providers = [
   {id: 'passbolt', name: 'Passbolt', short: 'Passbolt', package: 'SecretsManager.Passbolt'},
   {id: 'aliyun', name: 'Aliyun KMS', short: 'Aliyun', package: 'SecretsManager.AliyunKms'},
   {id: 'tencent', name: 'Tencent Cloud', short: 'Tencent', package: 'SecretsManager.TencentCloud'},
+  {id: 'infisical', name: 'Infisical', short: 'Infisical', package: 'SecretsManager.Infisical'},
   {id: 'vault', name: 'HashiCorp Vault', short: 'Vault', package: 'SecretsManager.Vault'},
   {id: 'conjur', name: 'CyberArk Conjur', short: 'Conjur', package: 'SecretsManager.Conjur'},
 ];
@@ -33,6 +34,7 @@ const providerLogos: Record<string, React.ReactNode> = {
   passbolt: <PassboltLogo style={{width: '1.5rem', height: '1.5rem'}} />,
   aliyun: <AliyunLogo style={{width: '1.5rem', height: '1.5rem'}} />,
   tencent: <TencentCloudLogo style={{width: '1.5rem', height: '1.5rem'}} />,
+  infisical: <InfisicalLogo style={{width: '1.5rem', height: '1.5rem'}} />,
   vault: <VaultLogo style={{width: '1.5rem', height: '1.5rem'}} />,
   conjur: <ConjurLogo style={{width: '1.5rem', height: '1.5rem'}} />,
 };
@@ -75,7 +77,7 @@ export default function HeroSection(): React.JSX.Element {
               </h1>
 
                 <p style={{fontSize: '1.25rem', color: 'var(--ifm-color-emphasis-700)', marginBottom: '2rem', lineHeight: 1.6}}>
-                A unified .NET 10.0 abstraction layer for 14 secret backends including Azure Key Vault, AWS, Google Cloud, Oracle Vault, PostgreSQL, Scaleway, OVH, IBM Cloud, Aliyun KMS, Passbolt, Tencent Cloud, HashiCorp Vault, CyberArk Conjur, and local encrypted storage. Inspired by Kubernetes External Secrets.
+                A unified .NET 10.0 abstraction layer for 15 secret backends including Azure Key Vault, AWS, Google Cloud, Oracle Vault, PostgreSQL, Scaleway, OVH, IBM Cloud, Aliyun KMS, Passbolt, Tencent Cloud, Infisical, HashiCorp Vault, CyberArk Conjur, and local encrypted storage. Inspired by Kubernetes External Secrets.
                 </p>
 
               <div style={{display: 'flex', flexWrap: 'wrap', gap: '1rem'}}>

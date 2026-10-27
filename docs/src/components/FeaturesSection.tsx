@@ -11,7 +11,7 @@ const features = [
   {
     icon: CloudCog,
     title: 'Multi-Provider',
-    description: 'Swap between Azure, AWS, GCP, Scaleway, PostgreSQL, OVH, Passbolt, Tencent Cloud, HashiCorp Vault, CyberArk Conjur, or encrypted local files without changing your business logic.',
+    description: 'Swap between Azure, AWS, GCP, Scaleway, PostgreSQL, OVH, Passbolt, Tencent Cloud, Infisical, HashiCorp Vault, CyberArk Conjur, or encrypted local files without changing your business logic.',
     color: '#a78bfa',
   },
   {

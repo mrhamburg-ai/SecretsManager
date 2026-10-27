@@ -137,6 +137,7 @@ Each provider has its own set of configuration options. See the individual provi
 - [FileSystem Provider](/docs/providers/filesystem)
 - [Google Secret Manager Provider](/docs/providers/google-secret-manager)
 - [IBM Cloud Secrets Manager Provider](/docs/providers/ibm-cloud-secrets-manager)
+- [Infisical Provider](/docs/providers/infisical)
 - [Oracle Vault Provider](/docs/providers/oracle-vault)
 - [OVH Provider](/docs/providers/ovh)
 - [Passbolt Provider](/docs/providers/passbolt)

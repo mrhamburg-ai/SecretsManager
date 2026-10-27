@@ -6,6 +6,7 @@ import ConjurLogoSvg from '@site/static/img/conjur-logo.svg';
 import FileSystemLogoSvg from '@site/static/img/filesystem-logo.svg';
 import GcpLogoSvg from '@site/static/img/gcp-logo.svg';
 import IBMCloudLogoSvg from '@site/static/img/ibmcloud-logo.svg';
+import InfisicalLogoSvg from '@site/static/img/infisical-logo.svg';
 import OracleLogoSvg from '@site/static/img/oracle-logo.svg';
 import OVHLogoSvg from '@site/static/img/ovh-logo.svg';
 import PassboltLogoSvg from '@site/static/img/passbolt-logo.svg';
@@ -44,6 +45,10 @@ export function GcpLogo({style}: LogoProps): React.JSX.Element {
 
 export function IBMCloudLogo({style}: LogoProps): React.JSX.Element {
   return <IBMCloudLogoSvg style={style} />;
+}
+
+export function InfisicalLogo({style}: LogoProps): React.JSX.Element {
+  return <InfisicalLogoSvg style={style} />;
 }
 
 export function OracleLogo({style}: LogoProps): React.JSX.Element {

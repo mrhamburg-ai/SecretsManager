@@ -29,6 +29,7 @@ const sidebars: SidebarsConfig = {
         'providers/aliyun-kms',
         'providers/tencent-cloud',
         'providers/ibm-cloud-secrets-manager',
+        'providers/infisical',
         'providers/vault',
         'providers/conjur',
       ],

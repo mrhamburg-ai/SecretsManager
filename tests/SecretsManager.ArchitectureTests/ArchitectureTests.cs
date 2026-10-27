@@ -16,6 +16,7 @@ public class ArchitectureTests
         typeof(SecretsManager.FileSystem.FileSystemSecretProviderFactory).Assembly,
         typeof(SecretsManager.GoogleSecretManager.GoogleSecretManagerSecretProviderFactory).Assembly,
         typeof(SecretsManager.IBMCloudSecretsManager.IBMCloudSecretsManagerSecretProviderFactory).Assembly,
+        typeof(SecretsManager.Infisical.InfisicalSecretProviderFactory).Assembly,
         typeof(SecretsManager.OVH.OVHSecretProviderFactory).Assembly,
         typeof(SecretsManager.OracleVault.OracleVaultSecretProviderFactory).Assembly,
         typeof(SecretsManager.Passbolt.PassboltSecretProviderFactory).Assembly,
