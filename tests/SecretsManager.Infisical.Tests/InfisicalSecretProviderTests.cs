@@ -212,12 +212,16 @@ public sealed class InfisicalSecretProviderTests
     [Fact]
     public async Task DeleteSecretAsync_DeletesSecret()
     {
+        var deleted = false;
+        _client.When(client => client.DeleteSecretAsync("to-delete", Arg.Any<CancellationToken>()))
+            .Do(_ => deleted = true);
         _client.DeleteSecretAsync("to-delete", Arg.Any<CancellationToken>())
             .Returns(true);
 
         await using var provider = CreateProvider();
         await provider.DeleteSecretAsync("to-delete");
 
+        Assert.True(deleted);
         await _client.Received(1)
             .DeleteSecretAsync("to-delete", Arg.Any<CancellationToken>());
     }
@@ -351,10 +355,13 @@ public sealed class InfisicalSecretProviderTests
     [Fact]
     public async Task DisposeAsync_DisposesClient()
     {
-        var provider = CreateProvider();
+        var disposed = false;
+        _client.When(client => client.DisposeAsync()).Do(_ => disposed = true);
 
+        var provider = CreateProvider();
         await provider.DisposeAsync();
 
+        Assert.True(disposed);
         await _client.Received(1).DisposeAsync();
     }
 }

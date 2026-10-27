@@ -528,7 +528,7 @@ jobs:
         image: postgres:18
         env:
           POSTGRES_USER: infisical
-          POSTGRES_PASSWORD: infisical
+          POSTGRES_PASSWORD: "infisical-test-${{ github.run_id }}"
           POSTGRES_DB: infisical
         ports:
           - 5432:5432
@@ -557,7 +557,7 @@ jobs:
         docker run -d --name infisical --network host \
           -e ENCRYPTION_KEY="$(openssl rand -hex 16)" \
           -e AUTH_SECRET="$(openssl rand -base64 32)" \
-          -e DB_CONNECTION_URI="postgres://infisical:infisical@localhost:5432/infisical" \
+          -e DB_CONNECTION_URI="postgres://infisical:infisical-test-${{ github.run_id }}@localhost:5432/infisical" \
           -e REDIS_URL="redis://localhost:6379" \
           -e SITE_URL="http://localhost:8080" \
           infisical/infisical:v0.167.4
