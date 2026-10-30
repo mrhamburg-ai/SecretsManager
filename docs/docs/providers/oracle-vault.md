@@ -10,6 +10,11 @@ sidebar_position: 7
 <span className="provider-badge provider-oracle">Oracle</span>
 <span className="badge-pill badge-dotnet">.NET 10.0</span>
 
+[![Oracle Vault integration tests](https://img.shields.io/github/check-runs/mrhamburg/SecretsManager/main?nameFilter=Integration%20tests%20%28Oracle%20Vault%29&label=oracle%20vault)](https://github.com/mrhamburg/SecretsManager/actions/workflows/ci.yml)
+
+The Oracle Vault integration test runs against a live OCI vault on `main`. A grey
+`no check runs` pill means the CI secrets are not configured, so the job is skipped.
+
 ## Overview
 
 The Oracle Vault provider integrates with Oracle Cloud Infrastructure (OCI) Vault for enterprise-grade secret management. It leverages OCI's native SDK for authentication and secret operations, supporting config file, instance principal, and security token authentication methods.

@@ -10,6 +10,11 @@ sidebar_position: 5
 <span className="provider-badge provider-postgresql">PostgreSQL</span>
 <span className="badge-pill badge-dotnet">.NET 10.0</span>
 
+[![PostgreSQL integration tests](https://img.shields.io/github/check-runs/mrhamburg/SecretsManager/main?nameFilter=Integration%20tests%20%28PostgreSQL%29&label=postgresql)](https://github.com/mrhamburg/SecretsManager/actions/workflows/ci.yml)
+
+The PostgreSQL integration test runs against a live PostgreSQL service on `main`. A grey
+`no check runs` pill means the job has not run on `main` yet.
+
 ## Overview
 
 The PostgreSQL provider stores secrets in a PostgreSQL database with optional AES-256-GCM encryption at rest. It uses Npgsql with raw SQL for lightweight, direct database access -- no ORM overhead.

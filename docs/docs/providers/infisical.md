@@ -10,6 +10,11 @@ sidebar_position: 17
 <span className="provider-badge provider-infisical">Infisical</span>
 <span className="badge-pill badge-dotnet">.NET 10.0</span>
 
+[![Infisical integration tests](https://img.shields.io/github/check-runs/mrhamburg/SecretsManager/main?nameFilter=Integration%20tests%20%28Infisical%29&label=infisical)](https://github.com/mrhamburg/SecretsManager/actions/workflows/ci.yml)
+
+The Infisical integration test runs against a live self-hosted Infisical instance on
+`main`. A grey `no check runs` pill means the job has not run on `main` yet.
+
 ## Overview
 
 The Infisical provider integrates with [Infisical](https://infisical.com/), an open-source

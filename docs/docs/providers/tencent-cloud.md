@@ -10,6 +10,11 @@ sidebar_position: 7
 <span className="provider-badge provider-tencent">Tencent Cloud</span>
 <span className="badge-pill badge-dotnet">.NET 10.0</span>
 
+[![Tencent Cloud integration tests](https://img.shields.io/github/check-runs/mrhamburg/SecretsManager/main?nameFilter=Integration%20tests%20%28Tencent%20Cloud%29&label=tencent)](https://github.com/mrhamburg/SecretsManager/actions/workflows/ci.yml)
+
+The Tencent Cloud integration test runs against a live Tencent Cloud KMS on `main`. A grey
+`no check runs` pill means the CI secrets are not configured, so the job is skipped.
+
 ## Overview
 
 The Tencent Cloud Secrets Manager provider integrates with [Tencent Cloud Key Management Service](https://cloud.tencent.com/product/kms), a fully managed secret management service. It communicates via the Tencent Cloud API using `HttpClient` with HMAC-SHA256 signature authentication.

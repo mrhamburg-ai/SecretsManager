@@ -10,6 +10,11 @@ sidebar_position: 5
 <span className="provider-badge provider-passbolt">Passbolt</span>
 <span className="badge-pill badge-dotnet">.NET 10.0</span>
 
+[![Passbolt integration tests](https://img.shields.io/github/check-runs/mrhamburg/SecretsManager/main?nameFilter=Integration%20tests%20%28Passbolt%29&label=passbolt)](https://github.com/mrhamburg/SecretsManager/actions/workflows/ci.yml)
+
+The Passbolt integration test is disabled in CI (`if: false`). Its badge stays grey until
+the job is enabled, so a missing result is expected.
+
 ## Overview
 
 The Passbolt provider integrates with [Passbolt](https://www.passbolt.com/), an open-source password and credential manager built for teams. It communicates via Passbolt's REST API using `HttpClient` with JWT-based authentication and OpenPGP end-to-end encryption.

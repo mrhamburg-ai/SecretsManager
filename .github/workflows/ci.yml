@@ -138,7 +138,7 @@ jobs:
   # real backend. The harness is not an xUnit project, so it is published and invoked directly with
   # a per-provider config.yaml via the .github/actions/integration-test composite action.
   filesystem:
-    name: Filesystem
+    name: Integration tests (FileSystem)
     runs-on: ubuntu-26.04
     needs: unit-tests
     if: github.event_name != 'pull_request'
@@ -152,7 +152,7 @@ jobs:
               path: ./secrets-integration-test
 
   azure-keyvault:
-    name: Azure Key Vault
+    name: Integration tests (Azure Key Vault)${{ vars.HAS_AZURE_SECRETS != 'true' && ' (not configured)' || '' }}
     runs-on: ubuntu-26.04
     needs: unit-tests
     if: github.event_name != 'pull_request' && vars.HAS_AZURE_SECRETS == 'true'
@@ -171,7 +171,7 @@ jobs:
                 clientSecret: "${{ secrets.AZURE_CLIENT_SECRET }}"
 
   scaleway:
-    name: Scaleway
+    name: Integration tests (Scaleway)${{ vars.HAS_SCALEWAY_SECRETS != 'true' && ' (not configured)' || '' }}
     runs-on: ubuntu-26.04
     needs: unit-tests
     if: github.event_name != 'pull_request' && vars.HAS_SCALEWAY_SECRETS == 'true'
@@ -191,7 +191,7 @@ jobs:
                 key: "${{ secrets.SCALEWAY_SECRET_KEY }}"
 
   postgresql:
-    name: PostgreSQL
+    name: Integration tests (PostgreSQL)
     runs-on: ubuntu-26.04
     needs: unit-tests
     if: github.event_name != 'pull_request'
@@ -228,7 +228,7 @@ jobs:
                 key: "YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXoxMjM0NTY="
 
   ovh:
-    name: OVH
+    name: Integration tests (OVH)${{ vars.HAS_OVH_SECRETS != 'true' && ' (not configured)' || '' }}
     runs-on: ubuntu-26.04
     needs: unit-tests
     if: github.event_name != 'pull_request' && vars.HAS_OVH_SECRETS == 'true'
@@ -249,7 +249,7 @@ jobs:
                 id: "${{ secrets.OVH_OKMS_ID }}"
 
   aws:
-    name: AWS
+    name: Integration tests (AWS)${{ vars.HAS_AWS_SECRETS != 'true' && ' (not configured)' || '' }}
     runs-on: ubuntu-26.04
     needs: unit-tests
     if: github.event_name != 'pull_request' && vars.HAS_AWS_SECRETS == 'true'
@@ -267,7 +267,7 @@ jobs:
                 key: "${{ secrets.AWS_SECRET_KEY }}"
 
   oracle-vault:
-    name: Oracle Vault
+    name: Integration tests (Oracle Vault)${{ vars.HAS_ORACLE_VAULT_SECRETS != 'true' && ' (not configured)' || '' }}
     runs-on: ubuntu-26.04
     needs: unit-tests
     if: github.event_name != 'pull_request' && vars.HAS_ORACLE_VAULT_SECRETS == 'true'
@@ -288,7 +288,7 @@ jobs:
                 id: "${{ secrets.ORACLE_COMPARTMENT_ID }}"
 
   google-secret-manager:
-    name: Google Secret Manager
+    name: Integration tests (Google Secret Manager)${{ vars.HAS_GCP_SECRETS != 'true' && ' (not configured)' || '' }}
     runs-on: ubuntu-26.04
     needs: unit-tests
     if: github.event_name != 'pull_request' && vars.HAS_GCP_SECRETS == 'true'
@@ -305,7 +305,7 @@ jobs:
                 json: "${{ secrets.GCP_SA_KEY }}"
 
   passbolt:
-    name: Passbolt
+    name: Integration tests (Passbolt) (not configured)
     runs-on: ubuntu-26.04
     needs: unit-tests
     if: false
@@ -431,7 +431,7 @@ jobs:
         echo "::endgroup::"
 
   aliyun-kms:
-    name: Aliyun KMS
+    name: Integration tests (Aliyun KMS)${{ vars.HAS_ALIYUN_SECRETS != 'true' && ' (not configured)' || '' }}
     runs-on: ubuntu-26.04
     needs: unit-tests
     if: github.event_name != 'pull_request' && vars.HAS_ALIYUN_SECRETS == 'true'
@@ -449,7 +449,7 @@ jobs:
                 key: "${{ secrets.ALIYUN_ACCESS_KEY_SECRET }}"
 
   ibm-cloud-secrets-manager:
-    name: IBM Cloud Secrets Manager
+    name: Integration tests (IBM Cloud Secrets Manager)${{ vars.HAS_IBM_CLOUD_SECRETS != 'true' && ' (not configured)' || '' }}
     runs-on: ubuntu-26.04
     needs: unit-tests
     if: github.event_name != 'pull_request' && vars.HAS_IBM_CLOUD_SECRETS == 'true'
@@ -465,7 +465,7 @@ jobs:
               api.key: "${{ secrets.IBM_CLOUD_API_KEY }}"
 
   tencent-cloud:
-    name: Tencent Cloud
+    name: Integration tests (Tencent Cloud)${{ vars.HAS_TENCENT_CLOUD_SECRETS != 'true' && ' (not configured)' || '' }}
     runs-on: ubuntu-26.04
     needs: unit-tests
     if: github.event_name != 'pull_request' && vars.HAS_TENCENT_CLOUD_SECRETS == 'true'
@@ -482,7 +482,7 @@ jobs:
                 key: "${{ secrets.TENCENT_CLOUD_SECRET_KEY }}"
 
   vault:
-    name: HashiCorp Vault
+    name: Integration tests (HashiCorp Vault)
     runs-on: ubuntu-26.04
     needs: unit-tests
     if: github.event_name != 'pull_request'
@@ -520,7 +520,7 @@ jobs:
   # Self-contained: uses only service containers and a local Infisical container, so it also runs
   # on pull requests.
   infisical:
-    name: Infisical
+    name: Integration tests (Infisical)
     runs-on: ubuntu-26.04
     needs: unit-tests
     services:
@@ -661,7 +661,7 @@ jobs:
         echo "::endgroup::"
 
   conjur:
-    name: CyberArk Conjur
+    name: Integration tests (CyberArk Conjur)
     runs-on: ubuntu-26.04
     needs: unit-tests
     if: github.event_name != 'pull_request'
@@ -738,3 +738,44 @@ jobs:
               account: myorg
               login: admin
               apiKey: "${{ steps.conjur-bootstrap.outputs.api_key }}"
+
+  # Single check that aggregates every provider job. The README and provider docs link a shields.io
+  # check-runs badge to this job, so a failing integration test turns the badge red instead of
+  # leaving the last per-provider result unnoticed. Provider jobs that are skipped (secrets not
+  # configured) do not fail this job.
+  integration-status:
+    name: Integration tests
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    needs:
+    - filesystem
+    - azure-keyvault
+    - scaleway
+    - postgresql
+    - ovh
+    - aws
+    - oracle-vault
+    - google-secret-manager
+    - passbolt
+    - aliyun-kms
+    - ibm-cloud-secrets-manager
+    - tencent-cloud
+    - vault
+    - infisical
+    - conjur
+    if: always()
+
+    steps:
+    - name: Evaluate integration test results
+      shell: bash
+      env:
+        NEEDS: ${{ toJSON(needs) }}
+      run: |
+        set -euo pipefail
+
+        jq -r 'to_entries[] | "\(.key): \(.value.result)"' <<<"$NEEDS"
+
+        if jq -e 'any(.[]; .value.result == "failure" or .value.result == "cancelled")' <<<"$NEEDS" >/dev/null; then
+          echo "At least one integration test job failed." >&2
+          exit 1
+        fi

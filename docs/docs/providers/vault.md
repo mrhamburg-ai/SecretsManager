@@ -10,6 +10,11 @@ sidebar_position: 15
 <span className="provider-badge provider-vault">HashiCorp Vault</span>
 <span className="badge-pill badge-dotnet">.NET 10.0</span>
 
+[![HashiCorp Vault integration tests](https://img.shields.io/github/check-runs/mrhamburg/SecretsManager/main?nameFilter=Integration%20tests%20%28HashiCorp%20Vault%29&label=vault)](https://github.com/mrhamburg/SecretsManager/actions/workflows/ci.yml)
+
+The HashiCorp Vault integration test runs against a live Vault server on `main`. A grey
+`no check runs` pill means the job has not run on `main` yet.
+
 ## Overview
 
 The Vault provider integrates with HashiCorp Vault KV (Key-Value) v2 secrets engine. It communicates via Vault's REST API using `HttpClient` -- no SDK dependency required.

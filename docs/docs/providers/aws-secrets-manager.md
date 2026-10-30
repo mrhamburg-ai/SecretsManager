@@ -10,6 +10,11 @@ sidebar_position: 6
 <span className="provider-badge provider-aws">AWS</span>
 <span className="badge-pill badge-dotnet">.NET 10.0</span>
 
+[![AWS integration tests](https://img.shields.io/github/check-runs/mrhamburg/SecretsManager/main?nameFilter=Integration%20tests%20%28AWS%29&label=aws)](https://github.com/mrhamburg/SecretsManager/actions/workflows/ci.yml)
+
+The AWS Secrets Manager integration test runs against a live AWS account on `main`. A grey
+`no check runs` pill means the CI secrets are not configured, so the job is skipped.
+
 ## Overview
 
 The AWS Secrets Manager provider integrates with Amazon Web Services' fully managed secret management service. It supports the AWS SDK's default credential chain as well as explicit access key authentication.

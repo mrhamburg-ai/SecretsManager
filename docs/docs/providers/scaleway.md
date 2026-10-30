@@ -10,6 +10,11 @@ sidebar_position: 4
 <span className="provider-badge provider-scaleway">Scaleway</span>
 <span className="badge-pill badge-dotnet">.NET 10.0</span>
 
+[![Scaleway integration tests](https://img.shields.io/github/check-runs/mrhamburg/SecretsManager/main?nameFilter=Integration%20tests%20%28Scaleway%29&label=scaleway)](https://github.com/mrhamburg/SecretsManager/actions/workflows/ci.yml)
+
+The Scaleway integration test runs against a live Scaleway Secret Manager on `main`. A grey
+`no check runs` pill means the CI secrets are not configured, so the job is skipped.
+
 ## Overview
 
 The Scaleway provider integrates with Scaleway Secret Manager, a European cloud-native secret storage service. It communicates via Scaleway's REST API using `HttpClient` -- no SDK dependency required.
