@@ -2,11 +2,14 @@ import React, {useCallback, useEffect, useRef, useState} from 'react';
 import Link from '@docusaurus/Link';
 import styles from './landing.module.css';
 
+// NuGet package IDs are published under the owner's reserved prefix.
+const NUGET_PACKAGE_PREFIX = 'mrhamburg.';
+
 const providers = [
   {
     id: 'filesystem',
     name: 'FileSystem',
-    package: 'mrhamburg.SecretsManager.FileSystem',
+    package: 'SecretsManager.FileSystem',
     to: '/docs/providers/filesystem',
     snippet: `var provider = new SecretProviderBuilder()
     .WithFileSystem(options =>
@@ -20,7 +23,7 @@ const providers = [
   {
     id: 'azure',
     name: 'Azure Key Vault',
-    package: 'mrhamburg.SecretsManager.AzureKeyVault',
+    package: 'SecretsManager.AzureKeyVault',
     to: '/docs/providers/azure-key-vault',
     snippet: `var provider = new SecretProviderBuilder()
     .WithAzureKeyVault(options =>
@@ -37,7 +40,7 @@ const providers = [
   {
     id: 'scaleway',
     name: 'Scaleway',
-    package: 'mrhamburg.SecretsManager.Scaleway',
+    package: 'SecretsManager.Scaleway',
     to: '/docs/providers/scaleway',
     snippet: `var provider = new SecretProviderBuilder()
     .WithScaleway(options =>
@@ -53,7 +56,7 @@ const providers = [
   {
     id: 'ovh',
     name: 'OVH',
-    package: 'mrhamburg.SecretsManager.OVH',
+    package: 'SecretsManager.OVH',
     to: '/docs/providers/ovh',
     snippet: `var provider = new SecretProviderBuilder()
     .WithOVH(options =>
@@ -70,7 +73,7 @@ const providers = [
   {
     id: 'postgresql',
     name: 'PostgreSQL',
-    package: 'mrhamburg.SecretsManager.PostgreSql',
+    package: 'SecretsManager.PostgreSql',
     to: '/docs/providers/postgresql',
     snippet: `var provider = new SecretProviderBuilder()
     .WithPostgreSql(options =>
@@ -84,7 +87,7 @@ const providers = [
   {
     id: 'aws',
     name: 'AWS Secrets Manager',
-    package: 'mrhamburg.SecretsManager.AwsSecretsManager',
+    package: 'SecretsManager.AwsSecretsManager',
     to: '/docs/providers/aws-secrets-manager',
     snippet: `var provider = new SecretProviderBuilder()
     .WithAwsSecretsManager(options =>
@@ -100,7 +103,7 @@ const providers = [
   {
     id: 'oracle',
     name: 'Oracle Vault',
-    package: 'mrhamburg.SecretsManager.OracleVault',
+    package: 'SecretsManager.OracleVault',
     to: '/docs/providers/oracle-vault',
     snippet: `var provider = new SecretProviderBuilder()
     .WithOracleVault(options =>
@@ -116,7 +119,7 @@ const providers = [
   {
     id: 'gcp',
     name: 'Google Cloud Secret Manager',
-    package: 'mrhamburg.SecretsManager.GoogleSecretManager',
+    package: 'SecretsManager.GoogleSecretManager',
     to: '/docs/providers/google-secret-manager',
     snippet: `var provider = new SecretProviderBuilder()
     .WithGoogleSecretManager(options =>
@@ -129,7 +132,7 @@ const providers = [
   {
     id: 'passbolt',
     name: 'Passbolt',
-    package: 'mrhamburg.SecretsManager.Passbolt',
+    package: 'SecretsManager.Passbolt',
     to: '/docs/providers/passbolt',
     snippet: `var provider = new SecretProviderBuilder()
     .WithPassbolt(options =>
@@ -146,7 +149,7 @@ const providers = [
   {
     id: 'aliyun',
     name: 'Aliyun KMS',
-    package: 'mrhamburg.SecretsManager.AliyunKms',
+    package: 'SecretsManager.AliyunKms',
     to: '/docs/providers/aliyun-kms',
     snippet: `var provider = new SecretProviderBuilder()
     .WithAliyunKms(options =>
@@ -161,7 +164,7 @@ const providers = [
   {
     id: 'tencent',
     name: 'Tencent Cloud',
-    package: 'mrhamburg.SecretsManager.TencentCloud',
+    package: 'SecretsManager.TencentCloud',
     to: '/docs/providers/tencent-cloud',
     snippet: `var provider = new SecretProviderBuilder()
     .WithTencentCloud(options =>
@@ -176,7 +179,7 @@ const providers = [
   {
     id: 'ibm',
     name: 'IBM Cloud Secrets Manager',
-    package: 'mrhamburg.SecretsManager.IBMCloudSecretsManager',
+    package: 'SecretsManager.IBMCloudSecretsManager',
     to: '/docs/providers/ibm-cloud-secrets-manager',
     snippet: `var provider = new SecretProviderBuilder()
     .WithIBMCloudSecretsManager(options =>
@@ -191,7 +194,7 @@ const providers = [
   {
     id: 'infisical',
     name: 'Infisical',
-    package: 'mrhamburg.SecretsManager.Infisical',
+    package: 'SecretsManager.Infisical',
     to: '/docs/providers/infisical',
     snippet: `var provider = new SecretProviderBuilder()
     .WithInfisical(options =>
@@ -209,7 +212,7 @@ const providers = [
   {
     id: 'vault',
     name: 'HashiCorp Vault',
-    package: 'mrhamburg.SecretsManager.Vault',
+    package: 'SecretsManager.Vault',
     to: '/docs/providers/vault',
     snippet: `var provider = new SecretProviderBuilder()
     .WithVault(options =>
@@ -224,7 +227,7 @@ const providers = [
   {
     id: 'conjur',
     name: 'CyberArk Conjur',
-    package: 'mrhamburg.SecretsManager.Conjur',
+    package: 'SecretsManager.Conjur',
     to: '/docs/providers/conjur',
     snippet: `var provider = new SecretProviderBuilder()
     .WithConjur(options =>
@@ -407,7 +410,10 @@ function ProviderPanel(): React.JSX.Element {
     <figure className={styles.panel} aria-label="Provider configuration example">
       <div className={styles.panelHead}>
         <span className={styles.panelTitle}>Program.cs</span>
-        <span className={styles.panelBadge}>{provider.package}</span>
+        <span className={styles.panelBadge}>
+          {NUGET_PACKAGE_PREFIX}
+          {provider.package}
+        </span>
       </div>
 
       <div
