@@ -151,6 +151,32 @@ SecretsManager supports fifteen production-ready providers, each designed for di
   </div>
 </div>
 
+## Integration test status
+
+Integration tests run each provider against a live service in CI. The table shows the
+latest result on `main`. A grey `no check runs` pill means the provider's CI secrets
+are not configured, so the job is skipped.
+
+| Provider | Latest status on `main` |
+| --- | --- |
+| FileSystem | [![FileSystem integration tests](https://img.shields.io/github/check-runs/mrhamburg/SecretsManager/main?nameFilter=Integration%20tests%20%28FileSystem%29&label=filesystem)](https://github.com/mrhamburg/SecretsManager/actions/workflows/ci.yml) |
+| Azure Key Vault | [![Azure Key Vault integration tests](https://img.shields.io/github/check-runs/mrhamburg/SecretsManager/main?nameFilter=Integration%20tests%20%28Azure%20Key%20Vault%29&label=azure)](https://github.com/mrhamburg/SecretsManager/actions/workflows/ci.yml) |
+| Scaleway | [![Scaleway integration tests](https://img.shields.io/github/check-runs/mrhamburg/SecretsManager/main?nameFilter=Integration%20tests%20%28Scaleway%29&label=scaleway)](https://github.com/mrhamburg/SecretsManager/actions/workflows/ci.yml) |
+| PostgreSQL | [![PostgreSQL integration tests](https://img.shields.io/github/check-runs/mrhamburg/SecretsManager/main?nameFilter=Integration%20tests%20%28PostgreSQL%29&label=postgresql)](https://github.com/mrhamburg/SecretsManager/actions/workflows/ci.yml) |
+| OVH | [![OVH integration tests](https://img.shields.io/github/check-runs/mrhamburg/SecretsManager/main?nameFilter=Integration%20tests%20%28OVH%29&label=ovh)](https://github.com/mrhamburg/SecretsManager/actions/workflows/ci.yml) |
+| AWS Secrets Manager | [![AWS integration tests](https://img.shields.io/github/check-runs/mrhamburg/SecretsManager/main?nameFilter=Integration%20tests%20%28AWS%29&label=aws)](https://github.com/mrhamburg/SecretsManager/actions/workflows/ci.yml) |
+| Oracle Vault | [![Oracle Vault integration tests](https://img.shields.io/github/check-runs/mrhamburg/SecretsManager/main?nameFilter=Integration%20tests%20%28Oracle%20Vault%29&label=oracle%20vault)](https://github.com/mrhamburg/SecretsManager/actions/workflows/ci.yml) |
+| Google Cloud Secret Manager | [![Google Secret Manager integration tests](https://img.shields.io/github/check-runs/mrhamburg/SecretsManager/main?nameFilter=Integration%20tests%20%28Google%20Secret%20Manager%29&label=google)](https://github.com/mrhamburg/SecretsManager/actions/workflows/ci.yml) |
+| Passbolt | [![Passbolt integration tests](https://img.shields.io/github/check-runs/mrhamburg/SecretsManager/main?nameFilter=Integration%20tests%20%28Passbolt%29&label=passbolt)](https://github.com/mrhamburg/SecretsManager/actions/workflows/ci.yml) |
+| Aliyun KMS | [![Aliyun KMS integration tests](https://img.shields.io/github/check-runs/mrhamburg/SecretsManager/main?nameFilter=Integration%20tests%20%28Aliyun%20KMS%29&label=aliyun)](https://github.com/mrhamburg/SecretsManager/actions/workflows/ci.yml) |
+| IBM Cloud Secrets Manager | [![IBM Cloud Secrets Manager integration tests](https://img.shields.io/github/check-runs/mrhamburg/SecretsManager/main?nameFilter=Integration%20tests%20%28IBM%20Cloud%20Secrets%20Manager%29&label=ibm)](https://github.com/mrhamburg/SecretsManager/actions/workflows/ci.yml) |
+| Tencent Cloud | [![Tencent Cloud integration tests](https://img.shields.io/github/check-runs/mrhamburg/SecretsManager/main?nameFilter=Integration%20tests%20%28Tencent%20Cloud%29&label=tencent)](https://github.com/mrhamburg/SecretsManager/actions/workflows/ci.yml) |
+| HashiCorp Vault | [![HashiCorp Vault integration tests](https://img.shields.io/github/check-runs/mrhamburg/SecretsManager/main?nameFilter=Integration%20tests%20%28HashiCorp%20Vault%29&label=vault)](https://github.com/mrhamburg/SecretsManager/actions/workflows/ci.yml) |
+| Infisical | [![Infisical integration tests](https://img.shields.io/github/check-runs/mrhamburg/SecretsManager/main?nameFilter=Integration%20tests%20%28Infisical%29&label=infisical)](https://github.com/mrhamburg/SecretsManager/actions/workflows/ci.yml) |
+| CyberArk Conjur | [![CyberArk Conjur integration tests](https://img.shields.io/github/check-runs/mrhamburg/SecretsManager/main?nameFilter=Integration%20tests%20%28CyberArk%20Conjur%29&label=conjur)](https://github.com/mrhamburg/SecretsManager/actions/workflows/ci.yml) |
+
+Passbolt is disabled in CI (`if: false`), so its badge stays grey until the job is enabled.
+
 ## Feature Comparison
 
 All providers implement the `ISecretProvider` interface, but each has unique capabilities:

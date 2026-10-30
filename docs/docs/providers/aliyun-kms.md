@@ -10,6 +10,11 @@ sidebar_position: 6
 <span className="provider-badge provider-aliyun">Aliyun KMS</span>
 <span className="badge-pill badge-dotnet">.NET 10.0</span>
 
+[![Aliyun KMS integration tests](https://img.shields.io/github/check-runs/mrhamburg/SecretsManager/main?nameFilter=Integration%20tests%20%28Aliyun%20KMS%29&label=aliyun)](https://github.com/mrhamburg/SecretsManager/actions/workflows/ci.yml)
+
+The Aliyun KMS integration test runs against a live Aliyun KMS service on `main`. A grey
+`no check runs` pill means the CI secrets are not configured, so the job is skipped.
+
 ## Overview
 
 The Aliyun KMS provider integrates with [Alibaba Cloud Key Management Service](https://www.alibabacloud.com/product/key-management-service), a fully managed secret management service. It communicates via the KMS RPC API using `HttpClient` with HMAC-SHA1 signature authentication.

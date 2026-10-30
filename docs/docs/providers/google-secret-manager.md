@@ -10,6 +10,12 @@ sidebar_position: 7
 <span className="provider-badge provider-gcp">Google Cloud</span>
 <span className="badge-pill badge-dotnet">.NET 10.0</span>
 
+[![Google Secret Manager integration tests](https://img.shields.io/github/check-runs/mrhamburg/SecretsManager/main?nameFilter=Integration%20tests%20%28Google%20Secret%20Manager%29&label=google)](https://github.com/mrhamburg/SecretsManager/actions/workflows/ci.yml)
+
+The Google Cloud Secret Manager integration test runs against a live Google Cloud project
+on `main`. A grey `no check runs` pill means the CI secrets are not configured, so the job
+is skipped.
+
 ## Overview
 
 The Google Cloud Secret Manager provider integrates with Google Cloud's fully managed secret storage service. It supports Application Default Credentials (ADC), service account keys, and emulator endpoints for local development.

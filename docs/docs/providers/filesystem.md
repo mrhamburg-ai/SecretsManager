@@ -10,6 +10,11 @@ sidebar_position: 2
 <span className="provider-badge provider-fs">FileSystem</span>
 <span className="badge-pill badge-dotnet">.NET 10.0</span>
 
+[![FileSystem integration tests](https://img.shields.io/github/check-runs/mrhamburg/SecretsManager/main?nameFilter=Integration%20tests%20%28FileSystem%29&label=filesystem)](https://github.com/mrhamburg/SecretsManager/actions/workflows/ci.yml)
+
+The FileSystem integration test runs on every push to `main`. A grey `no check runs`
+pill means the job has not run on `main` yet.
+
 ## Overview
 
 The FileSystem provider stores secrets locally with optional AES-256-GCM encryption. It's ideal for local development, edge deployments, and air-gapped environments where cloud connectivity isn't available.

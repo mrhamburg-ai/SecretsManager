@@ -10,6 +10,11 @@ sidebar_position: 16
 <span className="provider-badge provider-conjur">CyberArk Conjur</span>
 <span className="badge-pill badge-dotnet">.NET 10.0</span>
 
+[![CyberArk Conjur integration tests](https://img.shields.io/github/check-runs/mrhamburg/SecretsManager/main?nameFilter=Integration%20tests%20%28CyberArk%20Conjur%29&label=conjur)](https://github.com/mrhamburg/SecretsManager/actions/workflows/ci.yml)
+
+The CyberArk Conjur integration test runs against a live Conjur server on `main`. A grey
+`no check runs` pill means the job has not run on `main` yet.
+
 ## Overview
 
 The Conjur provider integrates with [CyberArk Conjur](https://www.cyberark.com/conjur/), an open-source secrets management solution for machine identity and SSH access. It communicates via Conjur's REST API using `HttpClient` — no SDK dependency required.

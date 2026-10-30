@@ -10,6 +10,11 @@ sidebar_position: 6
 <span className="provider-badge provider-ovh">OVH</span>
 <span className="badge-pill badge-dotnet">.NET 10.0</span>
 
+[![OVH integration tests](https://img.shields.io/github/check-runs/mrhamburg/SecretsManager/main?nameFilter=Integration%20tests%20%28OVH%29&label=ovh)](https://github.com/mrhamburg/SecretsManager/actions/workflows/ci.yml)
+
+The OVH integration test runs against a live OVH OKMS on `main`. A grey `no check runs`
+pill means the CI secrets are not configured, so the job is skipped.
+
 ## Overview
 
 The OVH provider integrates with OVH Keys Management Service (OKMS), a secure secret storage solution hosted in OVH's European data centers. It communicates via OVH's REST API using `HttpClient` -- no SDK dependency required.

@@ -10,6 +10,11 @@ sidebar_position: 3
 <span className="provider-badge provider-azure">Azure</span>
 <span className="badge-pill badge-dotnet">.NET 10.0</span>
 
+[![Azure Key Vault integration tests](https://img.shields.io/github/check-runs/mrhamburg/SecretsManager/main?nameFilter=Integration%20tests%20%28Azure%20Key%20Vault%29&label=azure)](https://github.com/mrhamburg/SecretsManager/actions/workflows/ci.yml)
+
+The Azure Key Vault integration test runs against a live Azure Key Vault on `main`. A grey
+`no check runs` pill means the CI secrets are not configured, so the job is skipped.
+
 ## Overview
 
 The Azure Key Vault provider integrates with Microsoft Azure's enterprise-grade secret management service. It supports all Azure authentication methods, HSM-backed secrets, and advanced access control policies.

@@ -10,6 +10,12 @@ sidebar_position: 5
 <span className="provider-badge provider-ibm">IBM Cloud Secrets Manager</span>
 <span className="badge-pill badge-dotnet">.NET 10.0</span>
 
+[![IBM Cloud Secrets Manager integration tests](https://img.shields.io/github/check-runs/mrhamburg/SecretsManager/main?nameFilter=Integration%20tests%20%28IBM%20Cloud%20Secrets%20Manager%29&label=ibm)](https://github.com/mrhamburg/SecretsManager/actions/workflows/ci.yml)
+
+The IBM Cloud Secrets Manager integration test runs against a live IBM Cloud instance on
+`main`. A grey `no check runs` pill means the CI secrets are not configured, so the job is
+skipped.
+
 ## Overview
 
 The IBM Cloud Secrets Manager provider integrates with IBM Cloud's fully managed secret storage service. It communicates via IBM Cloud's REST API using `HttpClient` -- no SDK dependency required.
