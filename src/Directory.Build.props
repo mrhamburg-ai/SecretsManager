@@ -1,0 +1,20 @@
+<Project>
+
+  <!--
+    Projects under src/ would pick up this file instead of the repository-wide
+    Directory.Build.props, so import the root one explicitly to keep the shared
+    settings (target framework, nullable, implicit usings, language version, ...).
+  -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <PropertyGroup>
+    <!--
+      NuGet package IDs use the owner's reserved "mrhamburg." prefix because the plain
+      "SecretsManager" ID is already taken on nuget.org. Deriving the ID from the project
+      name keeps every provider package aligned without repeating the prefix in each
+      .csproj, and makes new providers follow the convention automatically.
+    -->
+    <PackageId>mrhamburg.$(MSBuildProjectName)</PackageId>
+  </PropertyGroup>
+
+</Project>

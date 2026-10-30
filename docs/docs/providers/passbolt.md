@@ -29,8 +29,8 @@ The Passbolt provider integrates with [Passbolt](https://www.passbolt.com/), an 
 ## Installation
 
 ```bash title="Terminal"
-dotnet add package SecretsManager
-dotnet add package SecretsManager.Passbolt
+dotnet add package mrhamburg.SecretsManager
+dotnet add package mrhamburg.SecretsManager.Passbolt
 ```
 
 ## Configuration

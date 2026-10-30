@@ -29,8 +29,8 @@ The Aliyun KMS provider integrates with [Alibaba Cloud Key Management Service](h
 ## Installation
 
 ```bash title="Terminal"
-dotnet add package SecretsManager
-dotnet add package SecretsManager.AliyunKms
+dotnet add package mrhamburg.SecretsManager
+dotnet add package mrhamburg.SecretsManager.AliyunKms
 ```
 
 ## Configuration

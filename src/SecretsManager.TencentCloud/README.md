@@ -1,4 +1,4 @@
-# SecretsManager.TencentCloud
+# mrhamburg.SecretsManager.TencentCloud
 
 Tencent Cloud secret provider
 
@@ -17,7 +17,7 @@ var builder = new SecretProviderBuilder()
 ## Installation
 
 ```bash
-dotnet add package SecretsManager.TencentCloud
+dotnet add package mrhamburg.SecretsManager.TencentCloud
 ```
 
 ## License

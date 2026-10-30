@@ -33,8 +33,8 @@ machine identity through Universal Auth.
 ## Installation
 
 ```bash title="Terminal"
-dotnet add package SecretsManager
-dotnet add package SecretsManager.Infisical
+dotnet add package mrhamburg.SecretsManager
+dotnet add package mrhamburg.SecretsManager.Infisical
 ```
 
 ## Configuration

@@ -28,8 +28,8 @@ The Conjur provider integrates with [CyberArk Conjur](https://www.cyberark.com/c
 ## Installation
 
 ```bash title="Terminal"
-dotnet add package SecretsManager
-dotnet add package SecretsManager.Conjur
+dotnet add package mrhamburg.SecretsManager
+dotnet add package mrhamburg.SecretsManager.Conjur
 ```
 
 ## Configuration

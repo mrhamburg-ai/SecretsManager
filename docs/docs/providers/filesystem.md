@@ -28,8 +28,8 @@ The FileSystem provider stores secrets locally with optional AES-256-GCM encrypt
 ## Installation
 
 ```bash title="Terminal"
-dotnet add package SecretsManager
-dotnet add package SecretsManager.FileSystem
+dotnet add package mrhamburg.SecretsManager
+dotnet add package mrhamburg.SecretsManager.FileSystem
 ```
 
 ## Configuration

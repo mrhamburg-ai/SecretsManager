@@ -20,8 +20,8 @@ Get up and running with SecretsManager in under 5 minutes.
 First, install the core library and your chosen provider. For this example, we'll use the FileSystem provider:
 
 ```bash title="Terminal"
-dotnet add package SecretsManager
-dotnet add package SecretsManager.FileSystem
+dotnet add package mrhamburg.SecretsManager
+dotnet add package mrhamburg.SecretsManager.FileSystem
 ```
 
 ## Step 2: Configure Provider

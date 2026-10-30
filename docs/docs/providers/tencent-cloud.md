@@ -29,8 +29,8 @@ The Tencent Cloud Secrets Manager provider integrates with [Tencent Cloud Key Ma
 ## Installation
 
 ```bash title="Terminal"
-dotnet add package SecretsManager
-dotnet add package SecretsManager.TencentCloud
+dotnet add package mrhamburg.SecretsManager
+dotnet add package mrhamburg.SecretsManager.TencentCloud
 ```
 
 ## Configuration

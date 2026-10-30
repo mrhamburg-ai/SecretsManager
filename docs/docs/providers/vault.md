@@ -29,8 +29,8 @@ The Vault provider integrates with HashiCorp Vault KV (Key-Value) v2 secrets eng
 ## Installation
 
 ```bash title="Terminal"
-dotnet add package SecretsManager
-dotnet add package SecretsManager.Vault
+dotnet add package mrhamburg.SecretsManager
+dotnet add package mrhamburg.SecretsManager.Vault
 ```
 
 ## Configuration

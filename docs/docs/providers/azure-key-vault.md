@@ -28,8 +28,8 @@ The Azure Key Vault provider integrates with Microsoft Azure's enterprise-grade 
 ## Installation
 
 ```bash title="Terminal"
-dotnet add package SecretsManager
-dotnet add package SecretsManager.AzureKeyVault
+dotnet add package mrhamburg.SecretsManager
+dotnet add package mrhamburg.SecretsManager.AzureKeyVault
 ```
 
 ## Authentication

@@ -1,4 +1,4 @@
-# SecretsManager.IBMCloudSecretsManager
+# mrhamburg.SecretsManager.IBMCloudSecretsManager
 
 IBM Cloud Secrets Manager provider
 
@@ -17,7 +17,7 @@ var builder = new SecretProviderBuilder()
 ## Installation
 
 ```bash
-dotnet add package SecretsManager.IBMCloudSecretsManager
+dotnet add package mrhamburg.SecretsManager.IBMCloudSecretsManager
 ```
 
 ## License

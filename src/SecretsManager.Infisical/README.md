@@ -1,4 +1,4 @@
-# SecretsManager.Infisical
+# mrhamburg.SecretsManager.Infisical
 
 Infisical secret provider for SecretsManager.
 
@@ -25,7 +25,7 @@ for the full options reference and behavior notes.
 ## Installation
 
 ```bash
-dotnet add package SecretsManager.Infisical
+dotnet add package mrhamburg.SecretsManager.Infisical
 ```
 
 ## License

@@ -28,8 +28,8 @@ The Oracle Vault provider integrates with Oracle Cloud Infrastructure (OCI) Vaul
 ## Installation
 
 ```bash title="Terminal"
-dotnet add package SecretsManager
-dotnet add package SecretsManager.OracleVault
+dotnet add package mrhamburg.SecretsManager
+dotnet add package mrhamburg.SecretsManager.OracleVault
 ```
 
 ## Authentication

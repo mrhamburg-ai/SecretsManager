@@ -1,4 +1,4 @@
-# SecretsManager.AzureKeyVault
+# mrhamburg.SecretsManager.AzureKeyVault
 
 Azure Key Vault secret provider
 
@@ -18,7 +18,7 @@ var builder = new SecretProviderBuilder()
 ## Installation
 
 ```bash
-dotnet add package SecretsManager.AzureKeyVault
+dotnet add package mrhamburg.SecretsManager.AzureKeyVault
 ```
 
 ## License

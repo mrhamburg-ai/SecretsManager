@@ -1,4 +1,4 @@
-# SecretsManager.Vault
+# mrhamburg.SecretsManager.Vault
 
 HashiCorp Vault secret provider
 
@@ -17,7 +17,7 @@ var builder = new SecretProviderBuilder()
 ## Installation
 
 ```bash
-dotnet add package SecretsManager.Vault
+dotnet add package mrhamburg.SecretsManager.Vault
 ```
 
 ## License

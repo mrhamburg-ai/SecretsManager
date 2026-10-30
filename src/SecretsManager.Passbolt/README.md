@@ -1,4 +1,4 @@
-# SecretsManager.Passbolt
+# mrhamburg.SecretsManager.Passbolt
 
 Passbolt secret provider
 
@@ -17,7 +17,7 @@ var builder = new SecretProviderBuilder()
 ## Installation
 
 ```bash
-dotnet add package SecretsManager.Passbolt
+dotnet add package mrhamburg.SecretsManager.Passbolt
 ```
 
 ## License

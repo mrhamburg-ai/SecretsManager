@@ -1,4 +1,4 @@
-# SecretsManager.FileSystem
+# mrhamburg.SecretsManager.FileSystem
 
 File system secret provider
 
@@ -15,7 +15,7 @@ var builder = new SecretProviderBuilder()
 ## Installation
 
 ```bash
-dotnet add package SecretsManager.FileSystem
+dotnet add package mrhamburg.SecretsManager.FileSystem
 ```
 
 ## License

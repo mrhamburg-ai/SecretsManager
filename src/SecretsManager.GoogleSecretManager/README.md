@@ -1,4 +1,4 @@
-# SecretsManager.GoogleSecretManager
+# mrhamburg.SecretsManager.GoogleSecretManager
 
 Google Cloud Secret Manager provider
 
@@ -16,7 +16,7 @@ var builder = new SecretProviderBuilder()
 ## Installation
 
 ```bash
-dotnet add package SecretsManager.GoogleSecretManager
+dotnet add package mrhamburg.SecretsManager.GoogleSecretManager
 ```
 
 ## License

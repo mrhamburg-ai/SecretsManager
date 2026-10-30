@@ -187,6 +187,6 @@ var provider = new SecretProviderBuilder()
 | `ISecretAuditSink` | Destination for audit records |
 | `ISecretActorAccessor` | Ambient actor lookup, with `AmbientSecretActorAccessor.Instance` as the default |
 | `FileSecretAuditSink` | JSON Lines file sink |
-| `PostgreSqlSecretAuditSink` | PostgreSQL sink in the `SecretsManager.PostgreSql` package |
+| `PostgreSqlSecretAuditSink` | PostgreSQL sink in the `mrhamburg.SecretsManager.PostgreSql` package |
 
 See [Audit Trail](advanced/audit-trail.md) for usage.

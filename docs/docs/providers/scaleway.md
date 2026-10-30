@@ -28,8 +28,8 @@ The Scaleway provider integrates with Scaleway Secret Manager, a European cloud-
 ## Installation
 
 ```bash title="Terminal"
-dotnet add package SecretsManager
-dotnet add package SecretsManager.Scaleway
+dotnet add package mrhamburg.SecretsManager
+dotnet add package mrhamburg.SecretsManager.Scaleway
 ```
 
 ## Configuration

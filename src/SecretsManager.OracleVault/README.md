@@ -1,4 +1,4 @@
-# SecretsManager.OracleVault
+# mrhamburg.SecretsManager.OracleVault
 
 Oracle Vault secret provider
 
@@ -17,7 +17,7 @@ var builder = new SecretProviderBuilder()
 ## Installation
 
 ```bash
-dotnet add package SecretsManager.OracleVault
+dotnet add package mrhamburg.SecretsManager.OracleVault
 ```
 
 ## License

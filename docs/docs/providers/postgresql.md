@@ -29,8 +29,8 @@ The PostgreSQL provider stores secrets in a PostgreSQL database with optional AE
 ## Installation
 
 ```bash title="Terminal"
-dotnet add package SecretsManager
-dotnet add package SecretsManager.PostgreSql
+dotnet add package mrhamburg.SecretsManager
+dotnet add package mrhamburg.SecretsManager.PostgreSql
 ```
 
 ## Configuration

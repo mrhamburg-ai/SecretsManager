@@ -125,6 +125,7 @@ The fluent builder can be fed from three interchangeable sources, all producing 
 - **XML docs required** on all public properties in options classes (enforced by the build).
 - **MDX escaping:** In markdown docs, escape `IOptions<T>` as `IOptions&lt;T&gt;` — MDX parses `<T>` as a JSX tag.
 - **Provider docs:** Each provider has a doc page at `docs/docs/providers/<name>.md`. Its `## Configuration` section must contain, in order: an `### Options Reference` table listing every setting from that provider's options class with type, required status (`Yes` / `Conditional` / `No`), default and description; then the `### Fluent API`, `### Environment Variables` and `### YAML Configuration` examples; then a `### Dependency Injection (IOptions<T>)` subsection. Required-ness comes from the options class's `Validate()` method — never from prose.
+- **Package IDs:** All NuGet packages use the `mrhamburg.` prefix (`mrhamburg.SecretsManager` for the core, `mrhamburg.SecretsManager.<Provider>` for providers) because `SecretsManager` is already taken on nuget.org. `src/Directory.Build.props` derives the ID from the project name — do not set `PackageId` in individual `.csproj` files. C# namespaces remain `SecretsManager.*`.
 - **Configuration guide:** `docs/docs/getting-started/configuration.md` lists all providers — keep in sync with actual providers. The `docs/docs/providers/overview.md` provider grid and feature-comparison table must also be kept in sync.
 - **Advanced guides:** `docs/docs/advanced/` covers layering, versioning, JSON extraction, and custom providers.
 
@@ -134,7 +135,7 @@ The fluent builder can be fed from three interchangeable sources, all producing 
 - **docs-build.yml:** `npm ci && npm run build` in `docs/`, then deploys to GitHub Pages.
 - **Integration tests (in ci.yml):** run the console harness against real services (PostgreSQL, Vault, Conjur, and cloud providers gated by `vars.HAS_*` repository variables) via the `.github/actions/integration-test` composite action. Each job `needs: unit-tests` and is gated to non-PR events (`if: github.event_name != 'pull_request'`), so they run on main pushes and manual dispatch only. In-progress runs are not cancelled (`cancel-in-progress` only applies to pull requests).
 - **Integration status badges:** each job is named `Integration tests (<Provider>)`. Secret-gated jobs append ` (not configured)` when their `HAS_*` variable is not `true`, so the shields.io badge shows a grey `no check runs` pill instead of a skipped run. The `integration-status` job (name `Integration tests`) aggregates every provider job and fails when any of them failed or was cancelled. Keep job names, the aggregate `needs` list, and the badge rows in `README.md` and `docs/docs/providers/` in sync.
-- **release.yml:** packs each `src/*/*.csproj` with `/p:Version` and publishes to NuGet on release publish or manual dispatch.
+- **release.yml:** packs each `src/*/*.csproj` with `/p:Version` and publishes to NuGet on release publish or manual dispatch. Publishing uses [NuGet trusted publishing](https://learn.microsoft.com/nuget/nuget-org/trusted-publishing): the `release` GitHub environment, `id-token: write`, and `NuGet/login@v1` exchange a GitHub OIDC token for a short-lived API key. `NUGET_USER` is an environment secret holding the nuget.org profile name; no long-lived `NUGET_API_KEY` is used.
 - **pr-agent.yml:** runs PR-Agent against OpenRouter on every pull request — advisory review only, not a merge gate.
 
 ### AI pull request review
@@ -165,7 +166,7 @@ key settings stay host-controlled there.
 
 ### Add a new provider
 
-1. Create `src/SecretsManager.<Name>/` referencing the core `SecretsManager` project.
+1. Create `src/SecretsManager.<Name>/` referencing the core `SecretsManager` project. The `mrhamburg.SecretsManager.<Name>` package ID is derived automatically from the project name.
 2. Implement `ISecretProvider` and an `ISecretProviderFactory` that maps flat config dictionaries to your options.
 3. Add a `SecretProviderBuilderExtensions` class exposing `.With<Name>()` (and `.Configure<Name>(IConfiguration)`).
 4. Add `tests/SecretsManager.<Name>.Tests/`.

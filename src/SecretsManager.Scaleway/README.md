@@ -1,4 +1,4 @@
-# SecretsManager.Scaleway
+# mrhamburg.SecretsManager.Scaleway
 
 Scaleway secret provider
 
@@ -18,7 +18,7 @@ var builder = new SecretProviderBuilder()
 ## Installation
 
 ```bash
-dotnet add package SecretsManager.Scaleway
+dotnet add package mrhamburg.SecretsManager.Scaleway
 ```
 
 ## License

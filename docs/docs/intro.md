@@ -36,13 +36,13 @@ Install the core package and your chosen provider(s):
 
 ```bash title="Terminal"
 # Core library
-dotnet add package SecretsManager
+dotnet add package mrhamburg.SecretsManager
 
 # Choose your provider(s)
-dotnet add package SecretsManager.FileSystem
-dotnet add package SecretsManager.AzureKeyVault
-dotnet add package SecretsManager.Scaleway
-dotnet add package SecretsManager.PostgreSql
+dotnet add package mrhamburg.SecretsManager.FileSystem
+dotnet add package mrhamburg.SecretsManager.AzureKeyVault
+dotnet add package mrhamburg.SecretsManager.Scaleway
+dotnet add package mrhamburg.SecretsManager.PostgreSql
 ```
 
 ## Quick Example

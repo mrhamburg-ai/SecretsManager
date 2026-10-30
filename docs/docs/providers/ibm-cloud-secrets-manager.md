@@ -30,8 +30,8 @@ The IBM Cloud Secrets Manager provider integrates with IBM Cloud's fully managed
 ## Installation
 
 ```bash title="Terminal"
-dotnet add package SecretsManager
-dotnet add package SecretsManager.IBMCloudSecretsManager
+dotnet add package mrhamburg.SecretsManager
+dotnet add package mrhamburg.SecretsManager.IBMCloudSecretsManager
 ```
 
 ## Configuration

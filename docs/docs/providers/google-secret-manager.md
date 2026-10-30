@@ -29,8 +29,8 @@ The Google Cloud Secret Manager provider integrates with Google Cloud's fully ma
 ## Installation
 
 ```bash title="Terminal"
-dotnet add package SecretsManager
-dotnet add package SecretsManager.GoogleSecretManager
+dotnet add package mrhamburg.SecretsManager
+dotnet add package mrhamburg.SecretsManager.GoogleSecretManager
 ```
 
 ## Authentication

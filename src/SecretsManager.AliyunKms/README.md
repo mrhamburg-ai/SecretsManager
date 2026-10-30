@@ -1,4 +1,4 @@
-# SecretsManager.AliyunKms
+# mrhamburg.SecretsManager.AliyunKms
 
 Alibaba Cloud KMS secret provider
 
@@ -17,7 +17,7 @@ var builder = new SecretProviderBuilder()
 ## Installation
 
 ```bash
-dotnet add package SecretsManager.AliyunKms
+dotnet add package mrhamburg.SecretsManager.AliyunKms
 ```
 
 ## License

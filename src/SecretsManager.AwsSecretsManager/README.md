@@ -1,4 +1,4 @@
-# SecretsManager.AwsSecretsManager
+# mrhamburg.SecretsManager.AwsSecretsManager
 
 AWS Secrets Manager provider
 
@@ -17,7 +17,7 @@ var builder = new SecretProviderBuilder()
 ## Installation
 
 ```bash
-dotnet add package SecretsManager.AwsSecretsManager
+dotnet add package mrhamburg.SecretsManager.AwsSecretsManager
 ```
 
 ## License

@@ -28,8 +28,8 @@ The AWS Secrets Manager provider integrates with Amazon Web Services' fully mana
 ## Installation
 
 ```bash title="Terminal"
-dotnet add package SecretsManager
-dotnet add package SecretsManager.AwsSecretsManager
+dotnet add package mrhamburg.SecretsManager
+dotnet add package mrhamburg.SecretsManager.AwsSecretsManager
 ```
 
 ## Authentication

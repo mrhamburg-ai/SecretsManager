@@ -1,4 +1,4 @@
-# SecretsManager.PostgreSql
+# mrhamburg.SecretsManager.PostgreSql
 
 PostgreSQL secret provider
 
@@ -33,7 +33,7 @@ var builder = new SecretProviderBuilder()
 ## Installation
 
 ```bash
-dotnet add package SecretsManager.PostgreSql
+dotnet add package mrhamburg.SecretsManager.PostgreSql
 ```
 
 ## License

@@ -63,7 +63,7 @@ export default function FeaturesSection(): React.JSX.Element {
           <span className={styles.quickLabel}>Start with the core package</span>
           <div className={styles.quickCommand}>
             <span className={styles.prompt}>$</span>
-            <code>dotnet add package SecretsManager.Core</code>
+            <code>dotnet add package mrhamburg.SecretsManager</code>
           </div>
           <div>
             <Link to="/docs/getting-started/installation">Installation guide →</Link>

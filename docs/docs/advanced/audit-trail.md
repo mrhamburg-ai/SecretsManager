@@ -157,7 +157,7 @@ Retention is the host's responsibility: rotated files are never deleted.
 
 ## PostgreSQL sink
 
-The `SecretsManager.PostgreSql` package ships `PostgreSqlSecretAuditSink`:
+The `mrhamburg.SecretsManager.PostgreSql` package ships `PostgreSqlSecretAuditSink`:
 
 ```csharp title="Program.cs"
 var provider = new SecretProviderBuilder()
@@ -265,4 +265,4 @@ public sealed class MyAuditSink : ISecretAuditSink
 ```
 
 The interface is deliberately small so database and SIEM connectors stay consumer-provided unless a
-package ships one, as `SecretsManager.PostgreSql` does.
+package ships one, as `mrhamburg.SecretsManager.PostgreSql` does.

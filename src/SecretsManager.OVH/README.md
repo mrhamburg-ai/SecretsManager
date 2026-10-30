@@ -1,4 +1,4 @@
-# SecretsManager.OVH
+# mrhamburg.SecretsManager.OVH
 
 OVH Secrets Manager provider
 
@@ -18,7 +18,7 @@ var builder = new SecretProviderBuilder()
 ## Installation
 
 ```bash
-dotnet add package SecretsManager.OVH
+dotnet add package mrhamburg.SecretsManager.OVH
 ```
 
 ## License

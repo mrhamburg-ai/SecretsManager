@@ -18,26 +18,28 @@ A unified .NET abstraction layer over secret management backends, inspired by th
 - **JSON property extraction** — Retrieve nested values from JSON secrets via dot-path queries
 - **Zero unnecessary dependencies** — Each provider is a separate package; only pull in what you use
 
+> **NuGet package prefix:** The `SecretsManager` package ID is already taken on nuget.org by another publisher, so every package in this project is published as `mrhamburg.SecretsManager.*`. The C# namespaces remain `SecretsManager.*`.
+
 ## Providers
 
 | Provider | Package | Description |
 |----------|---------|-------------|
-| Core | `SecretsManager.Core` | Shared abstractions, builder, and runtime model types |
-| FileSystem | `SecretsManager.FileSystem` | Local encrypted file storage (AES-256-GCM) |
-| Azure Key Vault | `SecretsManager.AzureKeyVault` | Azure Key Vault via official SDK |
-| Scaleway | `SecretsManager.Scaleway` | Scaleway Secret Manager via REST API |
-| IBM Cloud Secrets Manager | `SecretsManager.IBMCloudSecretsManager` | IBM Cloud Secrets Manager via REST API |
-| PostgreSQL | `SecretsManager.PostgreSql` | PostgreSQL-backed encrypted storage with versioning |
-| OVH | `SecretsManager.OVH` | OVH Secret Manager / OKMS via REST API |
-| AWS Secrets Manager | `SecretsManager.AwsSecretsManager` | AWS Secrets Manager via AWS SDK |
-| Oracle Vault | `SecretsManager.OracleVault` | Oracle Cloud Secret Manager via OCI SDK |
-| Google Cloud Secret Manager | `SecretsManager.GoogleSecretManager` | Google Secret Manager via GCP SDK |
-| Passbolt | `SecretsManager.Passbolt` | Passbolt secret management via REST API |
-| Aliyun KMS | `SecretsManager.AliyunKms` | Aliyun KMS via REST API |
-| Tencent Cloud | `SecretsManager.TencentCloud` | Tencent Cloud Secrets Manager via REST API |
-| Infisical | `SecretsManager.Infisical` | Infisical via the official .NET SDK |
-| HashiCorp Vault | `SecretsManager.Vault` | HashiCorp Vault KV v2 engine via REST API |
-| CyberArk Conjur | `SecretsManager.Conjur` | CyberArk Conjur via REST API |
+| Core | `mrhamburg.SecretsManager` | Shared abstractions, builder, and runtime model types |
+| FileSystem | `mrhamburg.SecretsManager.FileSystem` | Local encrypted file storage (AES-256-GCM) |
+| Azure Key Vault | `mrhamburg.SecretsManager.AzureKeyVault` | Azure Key Vault via official SDK |
+| Scaleway | `mrhamburg.SecretsManager.Scaleway` | Scaleway Secret Manager via REST API |
+| IBM Cloud Secrets Manager | `mrhamburg.SecretsManager.IBMCloudSecretsManager` | IBM Cloud Secrets Manager via REST API |
+| PostgreSQL | `mrhamburg.SecretsManager.PostgreSql` | PostgreSQL-backed encrypted storage with versioning |
+| OVH | `mrhamburg.SecretsManager.OVH` | OVH Secret Manager / OKMS via REST API |
+| AWS Secrets Manager | `mrhamburg.SecretsManager.AwsSecretsManager` | AWS Secrets Manager via AWS SDK |
+| Oracle Vault | `mrhamburg.SecretsManager.OracleVault` | Oracle Cloud Secret Manager via OCI SDK |
+| Google Cloud Secret Manager | `mrhamburg.SecretsManager.GoogleSecretManager` | Google Secret Manager via GCP SDK |
+| Passbolt | `mrhamburg.SecretsManager.Passbolt` | Passbolt secret management via REST API |
+| Aliyun KMS | `mrhamburg.SecretsManager.AliyunKms` | Aliyun KMS via REST API |
+| Tencent Cloud | `mrhamburg.SecretsManager.TencentCloud` | Tencent Cloud Secrets Manager via REST API |
+| Infisical | `mrhamburg.SecretsManager.Infisical` | Infisical via the official .NET SDK |
+| HashiCorp Vault | `mrhamburg.SecretsManager.Vault` | HashiCorp Vault KV v2 engine via REST API |
+| CyberArk Conjur | `mrhamburg.SecretsManager.Conjur` | CyberArk Conjur via REST API |
 
 ## Integration tests
 
@@ -166,7 +168,7 @@ var provider = new SecretProviderBuilder()
     .Build();
 ```
 
-`SecretsManager.PostgreSql` also ships `PostgreSqlSecretAuditSink`, available through
+`mrhamburg.SecretsManager.PostgreSql` also ships `PostgreSqlSecretAuditSink`, available through
 `.WithPostgreSqlAuditSink(...)`. See [Audit Trail](docs/docs/advanced/audit-trail.md) for actor
 propagation, scopes, failure modes, and the PostgreSQL table schema.
 
@@ -286,7 +288,7 @@ dotnet test --collect:"XPlat Code Coverage"
 
 ## Adding a New Provider
 
-1. Create `src/SecretsManager.<Name>/` with a project reference to the core `SecretsManager` library
+1. Create `src/SecretsManager.<Name>/` with a project reference to the core `SecretsManager` library. Its package ID (`mrhamburg.SecretsManager.<Name>`) is derived automatically from the project name by `src/Directory.Build.props`
 2. Implement `ISecretProvider`
 3. Implement `ISecretProviderFactory` to map flat configuration dictionaries to your options
 4. Add a `SecretProviderBuilderExtensions` class with `.With<Name>()` extension method

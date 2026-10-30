@@ -28,8 +28,8 @@ The OVH provider integrates with OVH Keys Management Service (OKMS), a secure se
 ## Installation
 
 ```bash title="Terminal"
-dotnet add package SecretsManager
-dotnet add package SecretsManager.OVH
+dotnet add package mrhamburg.SecretsManager
+dotnet add package mrhamburg.SecretsManager.OVH
 ```
 
 ## Configuration

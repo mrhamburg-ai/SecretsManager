@@ -1,4 +1,4 @@
-# SecretsManager.Conjur
+# mrhamburg.SecretsManager.Conjur
 
 Conjur secret provider
 
@@ -18,7 +18,7 @@ var builder = new SecretProviderBuilder()
 ## Installation
 
 ```bash
-dotnet add package SecretsManager.Conjur
+dotnet add package mrhamburg.SecretsManager.Conjur
 ```
 
 ## License
