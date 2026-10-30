@@ -775,7 +775,7 @@ jobs:
 
         jq -r 'to_entries[] | "\(.key): \(.value.result)"' <<<"$NEEDS"
 
-        if jq -e 'any(.[]; .value.result == "failure" or .value.result == "cancelled")' <<<"$NEEDS" >/dev/null; then
+        if jq -e 'any(.[]; .result == "failure" or .result == "cancelled")' <<<"$NEEDS" >/dev/null; then
           echo "At least one integration test job failed." >&2
           exit 1
         fi
