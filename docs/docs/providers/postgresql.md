@@ -215,19 +215,73 @@ modified in transit.
 ### Least-privilege setup
 
 `AutoCreateSchema` defaults to `false` so the runtime account does not need `CREATE` on the schema.
-Create the tables from a migration role and grant the application only DML rights on the two tables:
+Create the tables from a migration role and grant the application only DML rights.
 
-```sql
-CREATE SCHEMA secrets AUTHORIZATION secrets_owner;
-REVOKE ALL ON SCHEMA secrets FROM PUBLIC;
-GRANT USAGE ON SCHEMA secrets TO secrets_app;
-GRANT SELECT, INSERT, UPDATE, DELETE ON secrets.sm_secrets, secrets.sm_secret_versions TO secrets_app;
-GRANT USAGE ON ALL SEQUENCES IN SCHEMA secrets TO secrets_app;
+First create the two roles as a superuser, if they do not exist yet. The runtime role also needs
+`CONNECT` on the database:
+
+```sql title="postgresql-secrets-roles.sql"
+CREATE ROLE secrets_owner LOGIN PASSWORD '<owner-password>';
+CREATE ROLE secrets_app   LOGIN PASSWORD '<app-password>';
+
+GRANT CONNECT ON DATABASE secrets TO secrets_app;
+
+-- PostgreSQL 15 and later require CREATE on the database to create a schema.
+GRANT CREATE ON DATABASE secrets TO secrets_owner;
 ```
 
+Then run the schema script as the migration role. It creates the same objects the provider would
+create itself, owned by `secrets_owner`, and grants `secrets_app` only what the provider needs at
+runtime:
+
+```sql title="postgresql-secrets-schema.sql"
+-- Run as a migration role (for example secrets_owner), not as the application role.
+CREATE SCHEMA IF NOT EXISTS secrets AUTHORIZATION secrets_owner;
+REVOKE ALL ON SCHEMA secrets FROM PUBLIC;
+
+CREATE TABLE IF NOT EXISTS secrets.sm_secrets (
+    id           SERIAL PRIMARY KEY,
+    key          TEXT NOT NULL UNIQUE,
+    content_type TEXT,
+    tags         JSONB,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS secrets.sm_secret_versions (
+    id         SERIAL PRIMARY KEY,
+    secret_id  INTEGER NOT NULL REFERENCES secrets.sm_secrets (id) ON DELETE CASCADE,
+    version    INTEGER NOT NULL,
+    value      TEXT NOT NULL,
+    encrypted  BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    is_current BOOLEAN NOT NULL DEFAULT false,
+    UNIQUE (secret_id, version)
+);
+
+-- At most one current version per secret, and the lookup the provider relies on.
+CREATE UNIQUE INDEX IF NOT EXISTS sm_secret_versions_current_idx
+    ON secrets.sm_secret_versions (secret_id) WHERE is_current = true;
+
+-- Runtime role: DML on the two tables only, no CREATE on the schema.
+GRANT USAGE ON SCHEMA secrets TO secrets_app;
+GRANT SELECT, INSERT, UPDATE, DELETE
+    ON secrets.sm_secrets, secrets.sm_secret_versions TO secrets_app;
+GRANT USAGE, SELECT
+    ON SEQUENCE secrets.sm_secrets_id_seq, secrets.sm_secret_versions_id_seq TO secrets_app;
+```
+
+The script uses the schema name `secrets` and the default `TablePrefix` (`sm_`). If you change
+either, substitute them in every statement: the tables are `<schema>.<prefix>secrets` and
+`<schema>.<prefix>secret_versions`, and the index is `<prefix>secret_versions_current_idx`.
+
+Once the schema exists, `GRANT CREATE ON DATABASE` can be revoked from `secrets_owner` if you do
+not run schema migrations again.
+
 ```csharp
-options.AutoCreateSchema = false;          // the migration role creates the tables
-options.SchemaOwner = "secrets_owner";     // the app connects as secrets_app
+options.Schema = "secrets";               // matches the script above
+options.AutoCreateSchema = false;         // the migration role creates the tables
+options.SchemaOwner = "secrets_owner";    // checked when AutoCreateSchema is true
 ```
 
 When `AutoCreateSchema` is `true`, the provider checks `pg_class.relowner` for both tables after the
@@ -257,7 +311,9 @@ openssl rand -base64 32
 
 ## Database Schema
 
-The provider creates two tables (auto-created when `AutoCreateSchema` is `true`):
+The provider creates two tables (auto-created when `AutoCreateSchema` is `true`). To create them
+yourself from a least-privilege migration role, use the script in
+[Least-privilege setup](#least-privilege-setup).
 
 ### Secrets Table (`sm_secrets`)
 
