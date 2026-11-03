@@ -205,8 +205,25 @@ html {
 
 .navbar {
   border-bottom: 1px solid var(--sm-line);
+  background-color: transparent;
+}
+
+/*
+ * The frosted blur sits on a pseudo-element, never on `.navbar` itself. A
+ * `backdrop-filter` (or `filter`/`transform`) on an ancestor turns it into the
+ * containing block of `position: fixed` descendants, which would trap the
+ * mobile menu (`.navbar-sidebar` plus its backdrop) inside the 3.75rem header
+ * instead of letting it cover the viewport.
+ */
+.navbar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--ifm-navbar-background-color);
   backdrop-filter: saturate(160%) blur(12px);
   -webkit-backdrop-filter: saturate(160%) blur(12px);
+  pointer-events: none;
 }
 
 .navbar__brand {
