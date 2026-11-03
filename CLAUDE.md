@@ -126,7 +126,7 @@ The fluent builder can be fed from three interchangeable sources, all producing 
 - **MDX escaping:** In markdown docs, escape `IOptions<T>` as `IOptions&lt;T&gt;` — MDX parses `<T>` as a JSX tag.
 - **Provider docs:** Each provider has a doc page at `docs/docs/providers/<name>.md`. Its `## Configuration` section must contain, in order: an `### Options Reference` table listing every setting from that provider's options class with type, required status (`Yes` / `Conditional` / `No`), default and description; then the `### Fluent API`, `### Environment Variables` and `### YAML Configuration` examples; then a `### Dependency Injection (IOptions<T>)` subsection. Required-ness comes from the options class's `Validate()` method — never from prose.
 - **Package IDs:** All NuGet packages use the `mrhamburg.` prefix (`mrhamburg.SecretsManager` for the core, `mrhamburg.SecretsManager.<Provider>` for providers) because `SecretsManager` is already taken on nuget.org. `src/Directory.Build.props` derives the ID from the project name — do not set `PackageId` in individual `.csproj` files. C# namespaces remain `SecretsManager.*`.
-- **Configuration guide:** `docs/docs/getting-started/configuration.md` lists all providers — keep in sync with actual providers. The `docs/docs/providers/overview.md` provider grid and feature-comparison table must also be kept in sync.
+- **Configuration guide:** `docs/docs/getting-started/configuration.md` lists all providers — keep in sync with actual providers. The `docs/docs/providers/overview.mdx` provider grid and feature-comparison table must also be kept in sync.
 - **Advanced guides:** `docs/docs/advanced/` covers layering, versioning, JSON extraction, and custom providers.
 
 ## CI/CD
@@ -171,7 +171,7 @@ key settings stay host-controlled there.
 3. Add a `SecretProviderBuilderExtensions` class exposing `.With<Name>()` (and `.Configure<Name>(IConfiguration)`).
 4. Add `tests/SecretsManager.<Name>.Tests/`.
 5. Register both projects in `SecretsManager.sln`.
-6. Add `docs/docs/providers/<name>.md` and link it from `docs/docs/getting-started/configuration.md` and `docs/docs/providers/overview.md`.
+6. Add `docs/docs/providers/<name>.md` and link it from `docs/docs/getting-started/configuration.md` and `docs/docs/providers/overview.mdx`.
 
 ### Add a layer
 

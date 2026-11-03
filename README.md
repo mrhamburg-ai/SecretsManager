@@ -254,7 +254,7 @@ var provider = new SecretProviderBuilder()
 See the full provider setup and configuration details in the docs:
 
 - [Getting Started](docs/docs/getting-started/quick-start.md)
-- [Provider overview](docs/docs/providers/overview.md)
+- [Provider overview](docs/docs/providers/overview.mdx)
 - [JSON extraction guide](docs/docs/advanced/json-extraction.md)
 - [Versioning guide](docs/docs/advanced/versioning.md)
 - [Audit trail guide](docs/docs/advanced/audit-trail.md)
@@ -296,7 +296,7 @@ dotnet test --collect:"XPlat Code Coverage"
 6. Register both projects in `SecretsManager.sln`
 7. Add an `integration-test` CI job named `Integration tests (<Name>)`, include it in the
    `integration-status` `needs` list, and add its badge row to `README.md` and
-   `docs/docs/providers/overview.md`
+   `docs/docs/providers/overview.mdx`
 
 ## License
 
