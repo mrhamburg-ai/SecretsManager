@@ -13,6 +13,12 @@ using System.Reflection;
 //      member looked "removed".
 // MetadataLoadContext reflects over the metadata in isolation and resolves dependencies from an
 // explicit path list, which fixes both.
+//
+// Only assemblies this repository ships are compared. A published output also contains the NuGet
+// dependencies (Google.Cloud.*, AWSSDK.*, Npgsql, ...), and comparing those reported every
+// dependency update as a breaking change in our own API surface.
+
+const string OwnedAssemblyPrefix = "SecretsManager";
 
 string[] arguments = Environment.GetCommandLineArgs();
 string baseDir = arguments.Length > 1 ? arguments[1] : "base";
@@ -45,6 +51,12 @@ if (!TryExtractAll(baseDir, baseContext, out Dictionary<string, HashSet<string>>
 
 if (!TryExtractAll(currentDir, currentContext, out Dictionary<string, HashSet<string>> currentApis))
 {
+    return 2;
+}
+
+if (baseApis.Count == 0 || currentApis.Count == 0)
+{
+    Console.WriteLine($"ERROR: no {OwnedAssemblyPrefix}* assemblies found to compare");
     return 2;
 }
 
@@ -134,7 +146,11 @@ static bool TryExtractAll(
 {
     apiSurfaces = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
 
-    foreach (var assemblyPath in Directory.GetFiles(directory, "*.dll").OrderBy(path => path, StringComparer.Ordinal))
+    var ownedAssemblies = Directory.GetFiles(directory, "*.dll")
+        .Where(path => Path.GetFileName(path).StartsWith(OwnedAssemblyPrefix, StringComparison.OrdinalIgnoreCase))
+        .OrderBy(path => path, StringComparer.Ordinal);
+
+    foreach (var assemblyPath in ownedAssemblies)
     {
         var assemblyName = Path.GetFileNameWithoutExtension(assemblyPath);
         try

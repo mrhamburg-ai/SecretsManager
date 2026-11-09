@@ -131,7 +131,7 @@ The fluent builder can be fed from three interchangeable sources, all producing 
 
 ## CI/CD
 
-- **ci.yml:** restore → format (repo-wide) → build (Release) → unit tests (filtered) → pack, plus the integration jobs. The API compatibility check step is currently commented out.
+- **ci.yml:** restore → API compatibility check → format (repo-wide) → build (Release) → unit tests (filtered) → pack, plus the integration jobs.
 - **docs-build.yml:** `npm ci && npm run build` in `docs/`, then deploys to GitHub Pages.
 - **Integration tests (in ci.yml):** run the console harness against real services (PostgreSQL, Vault, Conjur, and cloud providers gated by `vars.HAS_*` repository variables) via the `.github/actions/integration-test` composite action. Each job `needs: unit-tests` and is gated to non-PR events (`if: github.event_name != 'pull_request'`), so they run on main pushes and manual dispatch only. In-progress runs are not cancelled (`cancel-in-progress` only applies to pull requests).
 - **Integration status badges:** each job is named `Integration tests (<Provider>)`. Secret-gated jobs append ` (not configured)` when their `HAS_*` variable is not `true`, so the shields.io badge shows a grey `no check runs` pill instead of a skipped run. The `integration-status` job (name `Integration tests`) aggregates every provider job and fails when any of them failed or was cancelled. Keep job names, the aggregate `needs` list, and the badge rows in `README.md` and `docs/docs/providers/` in sync.
@@ -159,7 +159,7 @@ key settings stay host-controlled there.
 - **MDX + IOptions<T>:** `<T>` in markdown headings breaks Docusaurus builds. Always escape as `&lt;T&gt;`.
 - **CPM:** `Directory.Packages.props` with `ManagePackageVersionsCentrally=true` — no `Version` on `PackageReference`.
 - **Architecture tests:** Core project must NOT reference provider projects. Use `InternalsVisibleTo` for test access.
-- **API compatibility checker:** `tools/ApiCompatChecker/` — reflection-based tool comparing two build directories. Its CI step is currently disabled.
+- **API compatibility checker:** `tools/ApiCompatChecker/` — reflection-based tool comparing two published output directories. It compares only the `SecretsManager*` assemblies, so a NuGet dependency update is not reported as a breaking change in our own API.
 - **Integration tests are not xUnit:** don't expect them under `dotnet test`; run them via `dotnet run -- <config.yaml>`.
 
 ## Common Tasks
