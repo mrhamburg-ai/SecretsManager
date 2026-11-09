@@ -14,6 +14,11 @@ using System.Reflection;
 // MetadataLoadContext reflects over the metadata in isolation and resolves dependencies from an
 // explicit path list, which fixes both.
 
+// Only the repository's own assemblies form this library's public API surface. A published output
+// also contains NuGet dependencies such as Azure.Core. A dependency upgrade changes those
+// third-party APIs, and that must not be reported as a breaking change in this library.
+const string RepoAssemblyPrefix = "SecretsManager";
+
 string[] arguments = Environment.GetCommandLineArgs();
 string baseDir = arguments.Length > 1 ? arguments[1] : "base";
 string currentDir = arguments.Length > 2 ? arguments[2] : "current";
@@ -134,7 +139,9 @@ static bool TryExtractAll(
 {
     apiSurfaces = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
 
-    foreach (var assemblyPath in Directory.GetFiles(directory, "*.dll").OrderBy(path => path, StringComparer.Ordinal))
+    foreach (var assemblyPath in Directory.GetFiles(directory, "*.dll")
+                 .Where(IsRepoAssembly)
+                 .OrderBy(path => path, StringComparer.Ordinal))
     {
         var assemblyName = Path.GetFileNameWithoutExtension(assemblyPath);
         try
@@ -150,7 +157,20 @@ static bool TryExtractAll(
         }
     }
 
+    if (apiSurfaces.Count == 0)
+    {
+        Console.WriteLine($"  ERROR: no {RepoAssemblyPrefix} assemblies found in {directory}");
+        return false;
+    }
+
     return true;
+}
+
+static bool IsRepoAssembly(string assemblyPath)
+{
+    var assemblyName = Path.GetFileNameWithoutExtension(assemblyPath);
+    return assemblyName.Equals(RepoAssemblyPrefix, StringComparison.OrdinalIgnoreCase)
+        || assemblyName.StartsWith(RepoAssemblyPrefix + ".", StringComparison.OrdinalIgnoreCase);
 }
 
 static HashSet<string> ExtractApiSurface(string assemblyPath, MetadataLoadContext context)
