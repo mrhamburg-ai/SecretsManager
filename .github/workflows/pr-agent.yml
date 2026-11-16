@@ -33,7 +33,7 @@ jobs:
       - name: Run PR-Agent review
         # Pinned to v0.49.0: a floating ref would let upstream change the action under us, and
         # SonarCloud (githubactions:S7637) requires third-party actions to be pinned to a full SHA.
-        uses: the-pr-agent/pr-agent@efdde4afe14aa401a3889012c7f3e9ef3081a430 # v0.49.0
+        uses: the-pr-agent/pr-agent@e673a02076ce09a4726c3d0c3cc85780e59ca52b # v0.50.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OPENROUTER__KEY: ${{ secrets.OPENROUTER_API_KEY }}
