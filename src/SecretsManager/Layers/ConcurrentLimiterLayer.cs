@@ -43,6 +43,13 @@ public sealed class ConcurrentLimiterLayer : ISecretProviderLayer
     {
         private readonly SemaphoreSlim _semaphore = new(options.MaxConcurrentRequests, options.MaxConcurrentRequests);
         private readonly TimeSpan? _acquireTimeout = options.AcquireTimeout;
+        private readonly object _gate = new();
+        private readonly TaskCompletionSource _drained =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        private int _inFlight;
+        private bool _disposed;
+        private Task? _disposeTask;
 
         protected override async Task<TResult> ExecuteAsync<TResult>(
             string operation,
@@ -50,15 +57,71 @@ public sealed class ConcurrentLimiterLayer : ISecretProviderLayer
             Func<CancellationToken, Task<TResult>> operationExecutor,
             CancellationToken cancellationToken)
         {
-            await AcquireAsync(cancellationToken).ConfigureAwait(false);
+            Begin();
             try
             {
-                return await operationExecutor(cancellationToken).ConfigureAwait(false);
+                await AcquireAsync(cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    return await operationExecutor(cancellationToken).ConfigureAwait(false);
+                }
+                finally
+                {
+                    _semaphore.Release();
+                }
             }
             finally
             {
-                _semaphore.Release();
+                End();
             }
+        }
+
+        public override ValueTask DisposeAsync()
+        {
+            lock (_gate)
+            {
+                _disposeTask ??= DisposeCoreAsync();
+            }
+
+            return new ValueTask(_disposeTask);
+        }
+
+        private async Task DisposeCoreAsync()
+        {
+            Task drained;
+            lock (_gate)
+            {
+                _disposed = true;
+                drained = _inFlight == 0 ? Task.CompletedTask : _drained.Task;
+            }
+
+            await drained.ConfigureAwait(false);
+            _semaphore.Dispose();
+            await Inner.DisposeAsync().ConfigureAwait(false);
+        }
+
+        private void Begin()
+        {
+            lock (_gate)
+            {
+                if (_disposed)
+                    throw new ObjectDisposedException(nameof(ConcurrentLimiterLayer));
+
+                _inFlight++;
+            }
+        }
+
+        private void End()
+        {
+            var drained = false;
+            lock (_gate)
+            {
+                _inFlight--;
+                drained = _disposed && _inFlight == 0;
+            }
+
+            if (drained)
+                _drained.TrySetResult();
         }
 
         private async Task AcquireAsync(CancellationToken cancellationToken)

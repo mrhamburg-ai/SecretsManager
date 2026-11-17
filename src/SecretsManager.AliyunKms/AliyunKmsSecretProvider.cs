@@ -138,11 +138,8 @@ public sealed class AliyunKmsSecretProvider : ISecretProvider
     {
         try
         {
-            if (await _client.GetSecretValueAsync(
-                    key, versionStage: null, versionId: null, cancellationToken) is null)
-            {
+            if (!await SecretExistsAsync(key, cancellationToken))
                 throw new SecretNotFoundException(key);
-            }
 
             await _client.DeleteSecretAsync(key, cancellationToken);
         }

@@ -135,7 +135,7 @@ public sealed class TencentCloudSecretProvider : ISecretProvider
     {
         try
         {
-            if (await _client.GetSecretValueAsync(key, versionId: null, cancellationToken) is null)
+            if (!await SecretExistsAsync(key, cancellationToken))
                 throw new SecretNotFoundException(key);
 
             await _client.DeleteSecretAsync(key, cancellationToken);

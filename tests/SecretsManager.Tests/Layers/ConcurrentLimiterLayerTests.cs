@@ -107,4 +107,38 @@ public sealed class ConcurrentLimiterLayerTests
         blocker.SetResult();
         await first;
     }
+
+    [Fact]
+    public async Task ConcurrentLimiterLayer_DisposeWaitsForInFlightOperation()
+    {
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var baseProvider = new DelegatingSecretProvider
+        {
+            GetSecretAsyncImpl = async (_, _, _) =>
+            {
+                entered.TrySetResult();
+                await release.Task;
+                return new SecretValue { Key = "key", Value = "ok" };
+            }
+        };
+
+        var provider = new ConcurrentLimiterLayer(new ConcurrentLimiterLayerOptions
+        {
+            MaxConcurrentRequests = 1
+        }).Wrap(baseProvider);
+
+        var call = provider.GetSecretAsync("key");
+        await entered.Task;
+
+        var dispose = provider.DisposeAsync().AsTask();
+        Assert.False(dispose.IsCompleted);
+
+        release.SetResult();
+        await call;
+        await dispose;
+
+        await Assert.ThrowsAsync<ObjectDisposedException>(() => provider.GetSecretAsync("key"));
+    }
 }

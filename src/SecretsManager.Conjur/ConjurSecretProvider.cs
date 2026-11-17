@@ -138,7 +138,7 @@ public sealed class ConjurSecretProvider : ISecretProvider
     {
         try
         {
-            if (!await _client.SecretExistsAsync(key, cancellationToken))
+            if (!await SecretExistsAsync(key, cancellationToken))
                 throw new SecretNotFoundException(key);
 
             await _client.DeleteSecretAsync(key, cancellationToken);

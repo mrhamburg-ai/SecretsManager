@@ -38,9 +38,10 @@ jobs:
 
     - name: Check for vulnerable packages
       run: |
-        output=$(dotnet list package --vulnerable --include-transitive --no-restore)
-        printf '%s\n' "$output"
-        if printf '%s\n' "$output" | grep -q "has the following vulnerable packages"; then
+        dotnet list package --vulnerable --include-transitive --no-restore --format json > vulnerable.json
+        cat vulnerable.json
+        vulnerable_count=$(jq '[.projects[]?.frameworks[]? | ((.topLevelPackages // [])[], (.transitivePackages // [])[]) | select(.vulnerabilities != null)] | length' vulnerable.json)
+        if [ "$vulnerable_count" -gt 0 ]; then
           echo "::error::Vulnerable NuGet packages detected. Update or pin the affected package."
           exit 1
         fi
