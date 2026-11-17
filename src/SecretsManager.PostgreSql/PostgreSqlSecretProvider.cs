@@ -209,7 +209,7 @@ public sealed class PostgreSqlSecretProvider : ISecretProvider
         {
             return await _store.SecretExistsAsync(key, cancellationToken);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
                 $"PostgreSQL error checking existence of '{key}': {ex.Message}", ex);

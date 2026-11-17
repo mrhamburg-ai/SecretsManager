@@ -14,7 +14,7 @@ public sealed class ConcurrentLimiterLayerTests
         var maxActive = 0;
 
         var gate = new SemaphoreSlim(0);
-        var started = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var entered = new SemaphoreSlim(0);
 
         var baseProvider = new DelegatingSecretProvider
         {
@@ -22,7 +22,7 @@ public sealed class ConcurrentLimiterLayerTests
             {
                 var current = Interlocked.Increment(ref active);
                 LayerTestHelpers.RecordMax(ref maxActive, current);
-                started.TrySetResult(true);
+                entered.Release();
                 await gate.WaitAsync(token);
                 Interlocked.Decrement(ref active);
                 return new SecretValue { Key = "key", Value = "ok" };
@@ -38,15 +38,43 @@ public sealed class ConcurrentLimiterLayerTests
         for (var i = 0; i < 5; i++)
             tasks.Add(provider.GetSecretAsync($"key-{i}"));
 
-        await started.Task;
-
-        Assert.True(maxActive <= 1, "Limiter should limit to one request at a time.");
-
         for (var i = 0; i < 5; i++)
+        {
+            await entered.WaitAsync();
+            Assert.Equal(1, Volatile.Read(ref maxActive));
             gate.Release();
+        }
 
         await Task.WhenAll(tasks);
+        Assert.Equal(1, maxActive);
         Assert.Equal(0, active);
+    }
+
+    [Fact]
+    public async Task ConcurrentLimiterLayer_ReleasesSlotWhenOperationThrows()
+    {
+        var calls = 0;
+
+        var baseProvider = new DelegatingSecretProvider
+        {
+            GetSecretAsyncImpl = (_, _, _) =>
+            {
+                calls++;
+                return calls == 1
+                    ? Task.FromException<SecretValue>(new InvalidOperationException("boom"))
+                    : Task.FromResult(new SecretValue { Key = "key", Value = "ok" });
+            }
+        };
+
+        await using var provider = new ConcurrentLimiterLayer(new ConcurrentLimiterLayerOptions
+        {
+            MaxConcurrentRequests = 1
+        }).Wrap(baseProvider);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => provider.GetSecretAsync("first"));
+        var result = await provider.GetSecretAsync("second");
+
+        Assert.Equal("ok", result.Value);
     }
 
     [Fact]

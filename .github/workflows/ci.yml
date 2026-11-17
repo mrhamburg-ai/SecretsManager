@@ -36,6 +36,15 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore
 
+    - name: Check for vulnerable packages
+      run: |
+        output=$(dotnet list package --vulnerable --include-transitive --no-restore)
+        printf '%s\n' "$output"
+        if printf '%s\n' "$output" | grep -q "has the following vulnerable packages"; then
+          echo "::error::Vulnerable NuGet packages detected. Update or pin the affected package."
+          exit 1
+        fi
+
     - name: Check API compatibility
       run: |
         set -euo pipefail

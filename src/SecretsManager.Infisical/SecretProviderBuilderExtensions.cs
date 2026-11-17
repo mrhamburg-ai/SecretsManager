@@ -27,29 +27,7 @@ public static class SecretProviderBuilderExtensions
         var options = new InfisicalOptions();
         configure(options);
 
-        builder.UseProvider("infisical", settings =>
-        {
-            if (!string.IsNullOrEmpty(options.HostUri))
-                settings["host.uri"] = options.HostUri;
-
-            if (!string.IsNullOrEmpty(options.ClientId))
-                settings["auth.client.id"] = options.ClientId;
-
-            if (!string.IsNullOrEmpty(options.ClientSecret))
-                settings["auth.client.secret"] = options.ClientSecret;
-
-            if (!string.IsNullOrEmpty(options.ProjectId))
-                settings["project.id"] = options.ProjectId;
-
-            if (!string.IsNullOrEmpty(options.EnvironmentSlug))
-                settings["environment"] = options.EnvironmentSlug;
-
-            if (!string.IsNullOrEmpty(options.SecretPath))
-                settings["secret.path"] = options.SecretPath;
-
-            settings["expand.secret.references"] =
-                options.ExpandSecretReferences ? "true" : "false";
-        });
+        builder.UseProvider("infisical", () => new InfisicalSecretProvider(options));
 
         return builder;
     }

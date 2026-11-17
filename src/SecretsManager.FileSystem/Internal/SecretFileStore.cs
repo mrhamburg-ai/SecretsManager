@@ -1,5 +1,7 @@
 using System.Collections.Concurrent;
+using System.Globalization;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
@@ -130,9 +132,15 @@ internal sealed partial class SecretFileStore : IDisposable
 
     public void DeleteSecret(string key)
     {
-        var dir = GetSecretDirectory(key);
-        if (Directory.Exists(dir))
-            Directory.Delete(dir, recursive: true);
+        var resolved = GetSecretDirectory(key);
+        var encoded = EnsureUnderBase(Path.Combine(_basePath, EncodeKey(key)));
+        var legacy = EnsureUnderBase(Path.Combine(_basePath, SanitizeKey(key)));
+
+        DeleteDirectory(resolved);
+        if (!string.Equals(encoded, resolved, StringComparison.Ordinal))
+            DeleteDirectory(encoded);
+        if (!string.Equals(legacy, resolved, StringComparison.Ordinal))
+            DeleteDirectory(legacy);
     }
 
     public SemaphoreSlim GetLock(string key)
@@ -140,6 +148,7 @@ internal sealed partial class SecretFileStore : IDisposable
         if (_disposed)
             throw new ObjectDisposedException(nameof(SecretFileStore));
 
+        ValidateKey(key);
         return _locks.GetOrAdd(SanitizeKey(key), _ => new SemaphoreSlim(1, 1));
     }
 
@@ -169,16 +178,33 @@ internal sealed partial class SecretFileStore : IDisposable
 
     private string GetSecretDirectory(string key)
     {
+        ValidateKey(key);
+
+        var encoded = EnsureUnderBase(Path.Combine(_basePath, EncodeKey(key)));
+        var legacy = EnsureUnderBase(Path.Combine(_basePath, SanitizeKey(key)));
+
+        if (string.Equals(encoded, legacy, StringComparison.Ordinal) || Directory.Exists(encoded))
+            return encoded;
+
+        return Directory.Exists(legacy) ? legacy : encoded;
+    }
+
+    private static void ValidateKey(string key)
+    {
         if (string.IsNullOrEmpty(key))
             throw new ArgumentException("Secret key must not be null or empty.", nameof(key));
 
-        // '.' and '..' contain no separator, so SanitizeKey leaves them intact and Path.Combine
+        // '.' and '..' contain no separator, so encoding leaves them intact and Path.Combine
         // resolves them to the store root or its parent. Reject them explicitly.
         if (key is "." or "..")
             throw new ArgumentException(
                 $"Invalid secret key '{key}': relative path segments are not allowed.", nameof(key));
+    }
 
-        return EnsureUnderBase(Path.Combine(_basePath, SanitizeKey(key)));
+    private static void DeleteDirectory(string directory)
+    {
+        if (Directory.Exists(directory))
+            Directory.Delete(directory, recursive: true);
     }
 
     private string GetVersionPath(string key, string version)
@@ -209,6 +235,43 @@ internal sealed partial class SecretFileStore : IDisposable
             throw new ArgumentException($"Path '{full}' escapes the secret store root.");
 
         return full;
+    }
+
+    /// <summary>
+    /// Maps a secret key to a collision-free directory name. Characters that are not legal in a
+    /// path segment (and '%', the escape character) are percent-encoded, so distinct keys such as
+    /// <c>a/b</c> and <c>a\b</c> no longer share one directory. Keys that need no escaping keep
+    /// their previous directory name, and <see cref="GetSecretDirectory"/> still reads the legacy
+    /// sanitized layout for stores written by earlier versions.
+    /// </summary>
+    internal static string EncodeKey(string key)
+    {
+        var builder = new StringBuilder(key.Length);
+        foreach (var c in key)
+        {
+            if (NeedsEncoding(c))
+                builder.Append('%').Append(((int)c).ToString("X4", CultureInfo.InvariantCulture));
+            else
+                builder.Append(c);
+        }
+
+        var encoded = builder.ToString();
+        return IsReservedDeviceName(encoded) ? "%" + encoded : encoded;
+    }
+
+    private static bool NeedsEncoding(char c) =>
+        c == '%' || char.IsControl(c) || Array.IndexOf(InvalidKeyChars, c) >= 0;
+
+    private static bool IsReservedDeviceName(string name)
+    {
+        var stem = Path.GetFileNameWithoutExtension(name).ToUpperInvariant();
+        if (stem is "CON" or "PRN" or "AUX" or "NUL")
+            return true;
+
+        return stem.Length == 4
+               && (stem.StartsWith("COM", StringComparison.Ordinal)
+                   || stem.StartsWith("LPT", StringComparison.Ordinal))
+               && stem[3] is >= '1' and <= '9';
     }
 
     internal static string SanitizeKey(string key)

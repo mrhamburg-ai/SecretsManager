@@ -41,9 +41,8 @@ public sealed class OtelMetricsLayer : ISecretProviderLayer
         return new OtelMetricsSecretProvider(inner, _options);
     }
 
-    private sealed class OtelMetricsSecretProvider : ISecretProvider
+    private sealed class OtelMetricsSecretProvider : SecretProviderLayerBase
     {
-        private readonly ISecretProvider _inner;
         private readonly Meter _meter;
         private readonly Counter<long> _callCounter;
         private readonly Counter<long> _failureCounter;
@@ -55,8 +54,8 @@ public sealed class OtelMetricsLayer : ISecretProviderLayer
             new(StringComparer.Ordinal);
 
         public OtelMetricsSecretProvider(ISecretProvider inner, OtelMetricsLayerOptions options)
+            : base(inner)
         {
-            _inner = inner;
             // Meters are process-wide and must not be disposed per wrapper; reuse a single
             // instance so repeated Wrap calls do not leak duplicate meters.
             var meterKey = options.MeterName + "\u0000" + options.MeterVersion;
@@ -86,90 +85,7 @@ public sealed class OtelMetricsLayer : ISecretProviderLayer
                 description: "Number of concurrent provider operations in flight.");
         }
 
-        public async Task<SecretValue> GetSecretAsync(
-            string key,
-            SecretQuery? query = null,
-            CancellationToken cancellationToken = default)
-        {
-            return await ExecuteAsync(
-                "GetSecretAsync",
-                key,
-                token => _inner.GetSecretAsync(key, query, token),
-                cancellationToken);
-        }
-
-        public async Task<SecretValue> PutSecretAsync(
-            string key,
-            string value,
-            SecretMetadata? metadata = null,
-            CancellationToken cancellationToken = default)
-        {
-            return await ExecuteAsync(
-                "PutSecretAsync",
-                key,
-                token => _inner.PutSecretAsync(key, value, metadata, token),
-                cancellationToken);
-        }
-
-        public async Task DeleteSecretAsync(string key, CancellationToken cancellationToken = default)
-        {
-            await ExecuteAsync(
-                "DeleteSecretAsync",
-                key,
-                token => _inner.DeleteSecretAsync(key, token),
-                cancellationToken);
-        }
-
-        public async Task<IReadOnlyList<SecretVersionInfo>> GetSecretVersionsAsync(
-            string key,
-            CancellationToken cancellationToken = default)
-        {
-            return await ExecuteAsync(
-                "GetSecretVersionsAsync",
-                key,
-                token => _inner.GetSecretVersionsAsync(key, token),
-                cancellationToken);
-        }
-
-        public async Task<bool> SecretExistsAsync(string key, CancellationToken cancellationToken = default)
-        {
-            return await ExecuteAsync(
-                "SecretExistsAsync",
-                key,
-                token => _inner.SecretExistsAsync(key, token),
-                cancellationToken);
-        }
-
-        private async Task ExecuteAsync(
-            string operation,
-            string key,
-            Func<CancellationToken, Task> operationExecutor,
-            CancellationToken cancellationToken)
-        {
-            await ExecuteAsync<int>(
-                operation,
-                key,
-                async token =>
-                {
-                    await operationExecutor(token);
-                    return 0;
-                },
-                cancellationToken);
-        }
-
-        public ValueTask DisposeAsync()
-        {
-            return _inner.DisposeAsync();
-        }
-
-        private string ComposeMetricName(string metric)
-        {
-            return string.IsNullOrEmpty(_metricPrefix)
-                ? metric
-                : _metricPrefix + metric;
-        }
-
-        private async Task<TResult> ExecuteAsync<TResult>(
+        protected override async Task<TResult> ExecuteAsync<TResult>(
             string operation,
             string key,
             Func<CancellationToken, Task<TResult>> operationExecutor,
@@ -187,7 +103,7 @@ public sealed class OtelMetricsLayer : ISecretProviderLayer
 
             try
             {
-                return await operationExecutor(cancellationToken);
+                return await operationExecutor(cancellationToken).ConfigureAwait(false);
             }
             catch (Exception)
             {
@@ -201,6 +117,14 @@ public sealed class OtelMetricsLayer : ISecretProviderLayer
                 _inFlight.Add(-1, inFlight);
             }
         }
+
+        private string ComposeMetricName(string metric)
+        {
+            return string.IsNullOrEmpty(_metricPrefix)
+                ? metric
+                : _metricPrefix + metric;
+        }
+
         private static string NormalizeMetricPrefix(string metricPrefix)
         {
             if (string.IsNullOrWhiteSpace(metricPrefix))

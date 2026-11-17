@@ -102,7 +102,7 @@ public sealed class OVHSecretProvider : ISecretProvider
                 {
                     Key = key,
                     Value = value,
-                    Version = "1",
+                    Version = created.CurrentVersion > 0 ? created.CurrentVersion.ToString() : null,
                     CreatedAt = created.CreatedAt,
                     UpdatedAt = created.UpdatedAt
                 };
@@ -133,11 +133,15 @@ public sealed class OVHSecretProvider : ISecretProvider
     /// </summary>
     /// <param name="key">The name of the secret to delete.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <exception cref="SecretNotFoundException">Thrown when the secret does not exist.</exception>
     /// <exception cref="SecretProviderException">An error occurred while accessing OVHcloud.</exception>
     public async Task DeleteSecretAsync(string key, CancellationToken cancellationToken = default)
     {
         try
         {
+            if (await _client.FindSecretByNameAsync(key, cancellationToken) is null)
+                throw new SecretNotFoundException(key);
+
             await _client.DeleteSecretAsync(key, cancellationToken);
         }
         catch (Exception ex) when (ex is not SecretProviderException)
@@ -194,7 +198,7 @@ public sealed class OVHSecretProvider : ISecretProvider
             var secret = await _client.FindSecretByNameAsync(key, cancellationToken);
             return secret is not null;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
                 $"OVH error checking existence of '{key}': {ex.Message}", ex);

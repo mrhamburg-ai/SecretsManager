@@ -200,7 +200,9 @@ public sealed class PostgreSqlSecretProviderTests
     public async Task PutSecretAsync_WithMetadata_PassesContentTypeAndTags()
     {
         var tags = new Dictionary<string, string> { ["env"] = "staging" }.AsReadOnly();
-        _mockStore.PutSecretAsync("tagged", "val", false, "application/json", tags, Arg.Any<CancellationToken>())
+        _mockStore.PutSecretAsync(
+                "tagged", "val", false, "application/json",
+                Arg.Any<IReadOnlyDictionary<string, string>?>(), Arg.Any<CancellationToken>())
             .Returns((
                 MakeSecret(key: "tagged"),
                 MakeVersion(value: "val")));
@@ -210,7 +212,9 @@ public sealed class PostgreSqlSecretProviderTests
             new SecretMetadata { ContentType = "application/json", Tags = tags });
 
         await _mockStore.Received(1).PutSecretAsync(
-            "tagged", "val", false, "application/json", tags, Arg.Any<CancellationToken>());
+            "tagged", "val", false, "application/json",
+            Arg.Is<IReadOnlyDictionary<string, string>?>(t => t != null && t["env"] == "staging"),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]

@@ -10,10 +10,11 @@ public sealed class OVHSecretProviderImplementationTests
 
     private OVHSecretProvider CreateProvider() => new(_mockClient);
 
-    private static OVHSecretResult MakeSecret(string path = "my-secret") =>
+    private static OVHSecretResult MakeSecret(string path = "my-secret", int currentVersion = 1) =>
         new(path,
             DateTimeOffset.Parse("2026-01-01T00:00:00Z"),
-            DateTimeOffset.Parse("2026-01-02T00:00:00Z"));
+            DateTimeOffset.Parse("2026-01-02T00:00:00Z"),
+            currentVersion);
 
     [Fact]
     public async Task GetSecretAsync_ReturnsSecretValue()
@@ -129,6 +130,9 @@ public sealed class OVHSecretProviderImplementationTests
     [Fact]
     public async Task DeleteSecretAsync_DeletesSecret()
     {
+        _mockClient.FindSecretByNameAsync("to-delete", Arg.Any<CancellationToken>())
+            .Returns(MakeSecret("to-delete"));
+
         await using var provider = CreateProvider();
         await provider.DeleteSecretAsync("to-delete");
 
@@ -185,5 +189,32 @@ public sealed class OVHSecretProviderImplementationTests
         await using var provider = CreateProvider();
         await Assert.ThrowsAsync<SecretProviderException>(
             () => provider.SecretExistsAsync("broken"));
+    }
+
+    [Fact]
+    public async Task DeleteSecretAsync_NotFound_ThrowsSecretNotFoundException()
+    {
+        _mockClient.FindSecretByNameAsync("missing", Arg.Any<CancellationToken>())
+            .Returns((OVHSecretResult?)null);
+
+        await using var provider = CreateProvider();
+
+        await Assert.ThrowsAsync<SecretNotFoundException>(
+            () => provider.DeleteSecretAsync("missing"));
+    }
+
+    [Fact]
+    public async Task PutSecretAsync_NewSecretWithoutReportedVersion_ReturnsNullVersion()
+    {
+        _mockClient.FindSecretByNameAsync("new-secret", Arg.Any<CancellationToken>())
+            .Returns((OVHSecretResult?)null);
+
+        _mockClient.CreateSecretAsync("new-secret", "new-value", Arg.Any<CancellationToken>())
+            .Returns(MakeSecret("new-secret", currentVersion: 0));
+
+        await using var provider = CreateProvider();
+        var result = await provider.PutSecretAsync("new-secret", "new-value");
+
+        Assert.Null(result.Version);
     }
 }

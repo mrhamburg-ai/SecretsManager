@@ -38,101 +38,38 @@ public sealed class ConcurrentLimiterLayer : ISecretProviderLayer
         return new ConcurrentLimiterSecretProvider(inner, _options);
     }
 
-    private sealed class ConcurrentLimiterSecretProvider(ISecretProvider inner, ConcurrentLimiterLayerOptions options) : ISecretProvider
+    private sealed class ConcurrentLimiterSecretProvider(ISecretProvider inner, ConcurrentLimiterLayerOptions options)
+        : SecretProviderLayerBase(inner)
     {
-        private readonly ISecretProvider _inner = inner;
         private readonly SemaphoreSlim _semaphore = new(options.MaxConcurrentRequests, options.MaxConcurrentRequests);
         private readonly TimeSpan? _acquireTimeout = options.AcquireTimeout;
 
-        public async Task<SecretValue> GetSecretAsync(
+        protected override async Task<TResult> ExecuteAsync<TResult>(
+            string operation,
             string key,
-            SecretQuery? query = null,
-            CancellationToken cancellationToken = default)
+            Func<CancellationToken, Task<TResult>> operationExecutor,
+            CancellationToken cancellationToken)
         {
-            await AcquireAsync(cancellationToken);
+            await AcquireAsync(cancellationToken).ConfigureAwait(false);
             try
             {
-                return await _inner.GetSecretAsync(key, query, cancellationToken);
+                return await operationExecutor(cancellationToken).ConfigureAwait(false);
             }
             finally
             {
                 _semaphore.Release();
             }
-        }
-
-        public async Task<SecretValue> PutSecretAsync(
-            string key,
-            string value,
-            SecretMetadata? metadata = null,
-            CancellationToken cancellationToken = default)
-        {
-            await AcquireAsync(cancellationToken);
-            try
-            {
-                return await _inner.PutSecretAsync(key, value, metadata, cancellationToken);
-            }
-            finally
-            {
-                _semaphore.Release();
-            }
-        }
-
-        public async Task DeleteSecretAsync(string key, CancellationToken cancellationToken = default)
-        {
-            await AcquireAsync(cancellationToken);
-            try
-            {
-                await _inner.DeleteSecretAsync(key, cancellationToken);
-            }
-            finally
-            {
-                _semaphore.Release();
-            }
-        }
-
-        public async Task<IReadOnlyList<SecretVersionInfo>> GetSecretVersionsAsync(
-            string key,
-            CancellationToken cancellationToken = default)
-        {
-            await AcquireAsync(cancellationToken);
-            try
-            {
-                return await _inner.GetSecretVersionsAsync(key, cancellationToken);
-            }
-            finally
-            {
-                _semaphore.Release();
-            }
-        }
-
-        public async Task<bool> SecretExistsAsync(string key, CancellationToken cancellationToken = default)
-        {
-            await AcquireAsync(cancellationToken);
-            try
-            {
-                return await _inner.SecretExistsAsync(key, cancellationToken);
-            }
-            finally
-            {
-                _semaphore.Release();
-            }
-        }
-
-        public ValueTask DisposeAsync()
-        {
-            _semaphore.Dispose();
-            return _inner.DisposeAsync();
         }
 
         private async Task AcquireAsync(CancellationToken cancellationToken)
         {
             if (_acquireTimeout is null)
             {
-                await _semaphore.WaitAsync(cancellationToken);
+                await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
                 return;
             }
 
-            if (!await _semaphore.WaitAsync(_acquireTimeout.Value, cancellationToken))
+            if (!await _semaphore.WaitAsync(_acquireTimeout.Value, cancellationToken).ConfigureAwait(false))
                 throw new TimeoutException("Timed out while waiting for concurrency slot.");
         }
     }

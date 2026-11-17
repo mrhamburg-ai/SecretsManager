@@ -128,12 +128,16 @@ public sealed class TencentCloudSecretProvider : ISecretProvider
     /// </summary>
     /// <param name="key">The secret name to delete.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <exception cref="SecretNotFoundException">Thrown when the secret does not exist.</exception>
     /// <exception cref="SecretProviderException">Thrown when the Tencent Cloud API call fails.</exception>
     public async Task DeleteSecretAsync(
         string key, CancellationToken cancellationToken = default)
     {
         try
         {
+            if (await _client.GetSecretValueAsync(key, versionId: null, cancellationToken) is null)
+                throw new SecretNotFoundException(key);
+
             await _client.DeleteSecretAsync(key, cancellationToken);
         }
         catch (Exception ex) when (ex is not SecretProviderException)
@@ -191,7 +195,7 @@ public sealed class TencentCloudSecretProvider : ISecretProvider
                 key, versionId: null, cancellationToken);
             return result is not null;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
                 $"Tencent Cloud error checking existence of '{key}': {ex.Message}", ex);

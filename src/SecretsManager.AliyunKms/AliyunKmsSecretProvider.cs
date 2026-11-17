@@ -83,7 +83,8 @@ public sealed class AliyunKmsSecretProvider : ISecretProvider
     /// </summary>
     /// <param name="key">The secret key.</param>
     /// <param name="value">The secret value to store.</param>
-    /// <param name="metadata">Optional secret metadata.</param>
+    /// <param name="metadata">Optional metadata. Alibaba Cloud KMS does not persist tags or
+    /// content type through this provider, so the value is accepted but not stored.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The stored secret value with the new version ID.</returns>
     /// <exception cref="SecretProviderException">Thrown when the KMS API call fails.</exception>
@@ -130,12 +131,19 @@ public sealed class AliyunKmsSecretProvider : ISecretProvider
     /// </summary>
     /// <param name="key">The secret key to delete.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
+    /// <exception cref="SecretNotFoundException">Thrown when the secret does not exist.</exception>
     /// <exception cref="SecretProviderException">Thrown when the KMS API call fails.</exception>
     public async Task DeleteSecretAsync(
         string key, CancellationToken cancellationToken = default)
     {
         try
         {
+            if (await _client.GetSecretValueAsync(
+                    key, versionStage: null, versionId: null, cancellationToken) is null)
+            {
+                throw new SecretNotFoundException(key);
+            }
+
             await _client.DeleteSecretAsync(key, cancellationToken);
         }
         catch (Exception ex) when (ex is not SecretProviderException)
@@ -193,7 +201,7 @@ public sealed class AliyunKmsSecretProvider : ISecretProvider
                 key, versionStage: null, versionId: null, cancellationToken);
             return result is not null;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
                 $"Aliyun KMS error checking existence of '{key}': {ex.Message}", ex);
