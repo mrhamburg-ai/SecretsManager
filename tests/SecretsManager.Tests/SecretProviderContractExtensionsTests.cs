@@ -10,7 +10,10 @@ public sealed class SecretProviderContractExtensionsTests
             SecretExistsAsyncImpl = (_, _) => Task.FromResult(true)
         };
 
-        await provider.EnsureSecretExistsAsync("present");
+        var exception = await Record.ExceptionAsync(
+            () => provider.EnsureSecretExistsAsync("present"));
+
+        Assert.Null(exception);
     }
 
     [Fact]
