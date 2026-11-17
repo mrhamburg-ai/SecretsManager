@@ -131,16 +131,13 @@ public sealed class AliyunKmsSecretProvider : ISecretProvider
     /// </summary>
     /// <param name="key">The secret key to delete.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <exception cref="SecretNotFoundException">Thrown when the secret does not exist.</exception>
     /// <exception cref="SecretProviderException">Thrown when the KMS API call fails.</exception>
     public async Task DeleteSecretAsync(
         string key, CancellationToken cancellationToken = default)
     {
         try
         {
-            if (!await SecretExistsAsync(key, cancellationToken))
-                throw new SecretNotFoundException(key);
-
+            await this.EnsureSecretExistsAsync(key, cancellationToken);
             await _client.DeleteSecretAsync(key, cancellationToken);
         }
         catch (Exception ex) when (ex is not SecretProviderException)

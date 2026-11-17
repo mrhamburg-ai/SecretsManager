@@ -27,6 +27,7 @@ public interface ISecretProvider : IAsyncDisposable
     /// <summary>
     /// Deletes a secret by key.
     /// </summary>
+    /// <exception cref="SecretNotFoundException">Thrown when the secret does not exist.</exception>
     Task DeleteSecretAsync(
         string key,
         CancellationToken cancellationToken = default);

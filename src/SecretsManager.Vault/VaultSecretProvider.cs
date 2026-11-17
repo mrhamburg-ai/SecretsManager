@@ -110,15 +110,12 @@ public sealed class VaultSecretProvider : ISecretProvider
     /// </summary>
     /// <param name="key">The secret path to delete.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    /// <exception cref="SecretNotFoundException">Thrown when the secret does not exist.</exception>
     /// <exception cref="SecretProviderException">Thrown when the Vault API call fails.</exception>
     public async Task DeleteSecretAsync(string key, CancellationToken cancellationToken = default)
     {
         try
         {
-            if (!await SecretExistsAsync(key, cancellationToken))
-                throw new SecretNotFoundException(key);
-
+            await this.EnsureSecretExistsAsync(key, cancellationToken);
             await _client.DeleteSecretAsync(key, cancellationToken);
         }
         catch (Exception ex) when (ex is not SecretProviderException)

@@ -133,15 +133,12 @@ public sealed class OVHSecretProvider : ISecretProvider
     /// </summary>
     /// <param name="key">The name of the secret to delete.</param>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
-    /// <exception cref="SecretNotFoundException">Thrown when the secret does not exist.</exception>
     /// <exception cref="SecretProviderException">An error occurred while accessing OVHcloud.</exception>
     public async Task DeleteSecretAsync(string key, CancellationToken cancellationToken = default)
     {
         try
         {
-            if (!await SecretExistsAsync(key, cancellationToken))
-                throw new SecretNotFoundException(key);
-
+            await this.EnsureSecretExistsAsync(key, cancellationToken);
             await _client.DeleteSecretAsync(key, cancellationToken);
         }
         catch (Exception ex) when (ex is not SecretProviderException)
