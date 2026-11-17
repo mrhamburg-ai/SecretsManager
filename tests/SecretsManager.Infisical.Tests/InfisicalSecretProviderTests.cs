@@ -133,7 +133,9 @@ public sealed class InfisicalSecretProviderTests
         var metadata = new Dictionary<string, string> { ["env"] = "test" };
         _client.FindSecretAsync("new-secret", Arg.Any<CancellationToken>())
             .Returns((InfisicalSecretResult?)null);
-        _client.CreateSecretAsync("new-secret", "new-value", metadata, Arg.Any<CancellationToken>())
+        _client.CreateSecretAsync(
+                "new-secret", "new-value", Arg.Any<IReadOnlyDictionary<string, string>?>(),
+                Arg.Any<CancellationToken>())
             .Returns(Result("new-secret", "new-value", 1, metadata));
 
         await using var provider = CreateProvider();
@@ -148,7 +150,10 @@ public sealed class InfisicalSecretProviderTests
         Assert.Equal(metadata, result.Tags);
 
         await _client.Received(1)
-            .CreateSecretAsync("new-secret", "new-value", metadata, Arg.Any<CancellationToken>());
+            .CreateSecretAsync(
+                "new-secret", "new-value",
+                Arg.Is<IReadOnlyDictionary<string, string>?>(t => t != null && t["env"] == "test"),
+                Arg.Any<CancellationToken>());
         await _client.DidNotReceiveWithAnyArgs()
             .UpdateSecretAsync(default!, default!, default, default);
     }
@@ -220,7 +225,9 @@ public sealed class InfisicalSecretProviderTests
         var tags = new Dictionary<string, string> { ["env"] = "test" };
         _client.FindSecretAsync("new-secret", Arg.Any<CancellationToken>())
             .Returns((InfisicalSecretResult?)null);
-        _client.CreateSecretAsync("new-secret", "value", tags, Arg.Any<CancellationToken>())
+        _client.CreateSecretAsync(
+                "new-secret", "value", Arg.Any<IReadOnlyDictionary<string, string>?>(),
+                Arg.Any<CancellationToken>())
             .Returns(Result("new-secret", "value", 1));
 
         await using var provider = CreateProvider();
@@ -251,7 +258,10 @@ public sealed class InfisicalSecretProviderTests
         var empty = new Dictionary<string, string>();
         _client.FindSecretAsync("existing", Arg.Any<CancellationToken>())
             .Returns(Result("existing", "", 1, new Dictionary<string, string> { ["owner"] = "platform" }));
-        _client.UpdateSecretAsync("existing", "new-value", empty, Arg.Any<CancellationToken>())
+        _client.UpdateSecretAsync(
+                "existing", "new-value",
+                Arg.Is<IReadOnlyDictionary<string, string>?>(t => t != null && t.Count == 0),
+                Arg.Any<CancellationToken>())
             .Returns(Result("existing", "new-value", 2));
 
         await using var provider = CreateProvider();
@@ -260,7 +270,10 @@ public sealed class InfisicalSecretProviderTests
 
         Assert.Null(result.Tags);
         await _client.Received(1)
-            .UpdateSecretAsync("existing", "new-value", empty, Arg.Any<CancellationToken>());
+            .UpdateSecretAsync(
+                "existing", "new-value",
+                Arg.Is<IReadOnlyDictionary<string, string>?>(t => t != null && t.Count == 0),
+                Arg.Any<CancellationToken>());
     }
 
     [Theory]

@@ -102,7 +102,7 @@ public sealed class OVHSecretProvider : ISecretProvider
                 {
                     Key = key,
                     Value = value,
-                    Version = "1",
+                    Version = created.CurrentVersion > 0 ? created.CurrentVersion.ToString() : null,
                     CreatedAt = created.CreatedAt,
                     UpdatedAt = created.UpdatedAt
                 };
@@ -138,6 +138,7 @@ public sealed class OVHSecretProvider : ISecretProvider
     {
         try
         {
+            await this.EnsureSecretExistsAsync(key, cancellationToken);
             await _client.DeleteSecretAsync(key, cancellationToken);
         }
         catch (Exception ex) when (ex is not SecretProviderException)
@@ -194,7 +195,7 @@ public sealed class OVHSecretProvider : ISecretProvider
             var secret = await _client.FindSecretByNameAsync(key, cancellationToken);
             return secret is not null;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
                 $"OVH error checking existence of '{key}': {ex.Message}", ex);

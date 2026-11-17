@@ -125,10 +125,25 @@ public sealed class TencentCloudSecretProviderTests
     [Fact]
     public async Task DeleteSecretAsync_DeletesSecret()
     {
+        _mockClient.GetSecretValueAsync("to-delete", null, Arg.Any<CancellationToken>())
+            .Returns(MakeSecretValue(name: "to-delete"));
+
         await using var provider = CreateProvider();
         await provider.DeleteSecretAsync("to-delete");
 
         await _mockClient.Received(1).DeleteSecretAsync("to-delete", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task DeleteSecretAsync_NotFound_ThrowsSecretNotFoundException()
+    {
+        _mockClient.GetSecretValueAsync("missing", null, Arg.Any<CancellationToken>())
+            .Returns((TencentCloudSecretValueResult?)null);
+
+        await using var provider = CreateProvider();
+
+        await Assert.ThrowsAsync<SecretNotFoundException>(
+            () => provider.DeleteSecretAsync("missing"));
     }
 
     [Fact]

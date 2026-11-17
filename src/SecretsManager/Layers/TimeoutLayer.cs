@@ -39,96 +39,30 @@ public sealed class TimeoutLayer : ISecretProviderLayer
         return new TimeoutSecretProvider(inner, _options);
     }
 
-    private sealed class TimeoutSecretProvider(ISecretProvider inner, TimeoutLayerOptions options) : ISecretProvider
+    private sealed class TimeoutSecretProvider(ISecretProvider inner, TimeoutLayerOptions options)
+        : SecretProviderLayerBase(inner)
     {
-        private readonly ISecretProvider _inner = inner;
         private readonly TimeSpan _timeout = options.Timeout;
 
-        public async Task<SecretValue> GetSecretAsync(
+        protected override async Task<TResult> ExecuteAsync<TResult>(
+            string operation,
             string key,
-            SecretQuery? query = null,
-            CancellationToken cancellationToken = default)
+            Func<CancellationToken, Task<TResult>> operationExecutor,
+            CancellationToken cancellationToken)
         {
             using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             timeoutCts.CancelAfter(_timeout);
 
             try
             {
-                return await _inner.GetSecretAsync(key, query, timeoutCts.Token);
+                return await operationExecutor(timeoutCts.Token).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (IsTimeoutExpired(timeoutCts, cancellationToken))
             {
-                throw new TimeoutException($"Timeout reached while executing GetSecretAsync for key '{key}'.");
+                throw new TimeoutException(
+                    $"Timeout reached while executing {operation} for key '{key}'.");
             }
         }
-
-        public async Task<SecretValue> PutSecretAsync(
-            string key,
-            string value,
-            SecretMetadata? metadata = null,
-            CancellationToken cancellationToken = default)
-        {
-            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            timeoutCts.CancelAfter(_timeout);
-
-            try
-            {
-                return await _inner.PutSecretAsync(key, value, metadata, timeoutCts.Token);
-            }
-            catch (OperationCanceledException) when (IsTimeoutExpired(timeoutCts, cancellationToken))
-            {
-                throw new TimeoutException($"Timeout reached while executing PutSecretAsync for key '{key}'.");
-            }
-        }
-
-        public async Task DeleteSecretAsync(string key, CancellationToken cancellationToken = default)
-        {
-            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            timeoutCts.CancelAfter(_timeout);
-
-            try
-            {
-                await _inner.DeleteSecretAsync(key, timeoutCts.Token);
-            }
-            catch (OperationCanceledException) when (IsTimeoutExpired(timeoutCts, cancellationToken))
-            {
-                throw new TimeoutException($"Timeout reached while executing DeleteSecretAsync for key '{key}'.");
-            }
-        }
-
-        public async Task<IReadOnlyList<SecretVersionInfo>> GetSecretVersionsAsync(
-            string key,
-            CancellationToken cancellationToken = default)
-        {
-            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            timeoutCts.CancelAfter(_timeout);
-
-            try
-            {
-                return await _inner.GetSecretVersionsAsync(key, timeoutCts.Token);
-            }
-            catch (OperationCanceledException) when (IsTimeoutExpired(timeoutCts, cancellationToken))
-            {
-                throw new TimeoutException($"Timeout reached while executing GetSecretVersionsAsync for key '{key}'.");
-            }
-        }
-
-        public async Task<bool> SecretExistsAsync(string key, CancellationToken cancellationToken = default)
-        {
-            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            timeoutCts.CancelAfter(_timeout);
-
-            try
-            {
-                return await _inner.SecretExistsAsync(key, timeoutCts.Token);
-            }
-            catch (OperationCanceledException) when (IsTimeoutExpired(timeoutCts, cancellationToken))
-            {
-                throw new TimeoutException($"Timeout reached while executing SecretExistsAsync for key '{key}'.");
-            }
-        }
-
-        public ValueTask DisposeAsync() => _inner.DisposeAsync();
 
         private static bool IsTimeoutExpired(
             CancellationTokenSource timeoutCts,

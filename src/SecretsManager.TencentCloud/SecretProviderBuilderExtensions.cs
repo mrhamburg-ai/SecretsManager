@@ -24,20 +24,7 @@ public static class SecretProviderBuilderExtensions
         var options = new TencentCloudOptions();
         configure(options);
 
-        builder.UseProvider("tencentCloud", settings =>
-        {
-            if (!string.IsNullOrEmpty(options.Region))
-                settings["region"] = options.Region;
-
-            if (!string.IsNullOrEmpty(options.SecretId))
-                settings["secret.id"] = options.SecretId;
-
-            if (!string.IsNullOrEmpty(options.SecretKey))
-                settings["secret.key"] = options.SecretKey;
-
-            if (!string.IsNullOrEmpty(options.Endpoint))
-                settings["endpoint"] = options.Endpoint;
-        });
+        builder.UseProvider("tencentCloud", () => new TencentCloudSecretProvider(options));
 
         return builder;
     }

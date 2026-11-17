@@ -1,3 +1,5 @@
+using System.Collections.ObjectModel;
+
 namespace SecretsManager;
 
 /// <summary>
@@ -5,6 +7,8 @@ namespace SecretsManager;
 /// </summary>
 public record SecretValue
 {
+    private readonly IReadOnlyDictionary<string, string>? _tags;
+
     /// <summary>
     /// The key (name) that identifies the secret.
     /// </summary>
@@ -36,7 +40,14 @@ public record SecretValue
     public string? ContentType { get; init; }
 
     /// <summary>
-    /// Optional tags attached to the secret.
+    /// Optional tags attached to the secret. The dictionary is copied when assigned,
+    /// so later changes to the source dictionary do not alter this instance.
     /// </summary>
-    public IReadOnlyDictionary<string, string>? Tags { get; init; }
+    public IReadOnlyDictionary<string, string>? Tags
+    {
+        get => _tags;
+        init => _tags = value is null
+            ? null
+            : new ReadOnlyDictionary<string, string>(new Dictionary<string, string>(value));
+    }
 }

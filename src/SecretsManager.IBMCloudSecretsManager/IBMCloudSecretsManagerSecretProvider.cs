@@ -184,7 +184,7 @@ public sealed class IBMCloudSecretsManagerSecretProvider : ISecretProvider
             var secret = await _client.FindSecretByNameAsync(key, cancellationToken);
             return secret is not null;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
                 $"IBM Cloud Secrets Manager error checking existence of '{key}': {ex.Message}", ex);

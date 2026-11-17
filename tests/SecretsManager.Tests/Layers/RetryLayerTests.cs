@@ -118,6 +118,33 @@ public sealed class RetryLayerTests
     }
 
     [Fact]
+    public async Task RetryLayer_ExhaustsAttempts_RethrowsLastFailure()
+    {
+        var attempts = 0;
+
+        var baseProvider = new DelegatingSecretProvider
+        {
+            GetSecretAsyncImpl = (_, _, _) =>
+            {
+                attempts++;
+                return Task.FromException<SecretValue>(new TimeoutException("slow"));
+            }
+        };
+
+        await using var provider = new RetryLayer(new RetryLayerOptions
+        {
+            MaxAttempts = 3,
+            BaseDelay = TimeSpan.Zero,
+            MaxDelay = TimeSpan.Zero,
+            JitterFactor = 0
+        }).Wrap(baseProvider);
+
+        await Assert.ThrowsAsync<TimeoutException>(() => provider.GetSecretAsync("key"));
+
+        Assert.Equal(3, attempts);
+    }
+
+    [Fact]
     public async Task RetryLayer_LogsEachRetryWithAttemptAndDelay()
     {
         var logger = new RecordingLogger();

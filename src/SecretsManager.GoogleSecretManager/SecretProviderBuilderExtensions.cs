@@ -27,19 +27,7 @@ public static class SecretProviderBuilderExtensions
         var options = new GoogleSecretManagerOptions();
         configure(options);
 
-        builder.UseProvider("googlesecretmanager", settings =>
-        {
-            settings["project.id"] = options.ProjectId;
-
-            if (options.CredentialsPath is not null)
-                settings["credentials.path"] = options.CredentialsPath;
-
-            if (options.CredentialsJson is not null)
-                settings["credentials.json"] = options.CredentialsJson;
-
-            if (options.Endpoint is not null)
-                settings["endpoint"] = options.Endpoint;
-        });
+        builder.UseProvider("googlesecretmanager", () => new GoogleSecretManagerSecretProvider(options));
 
         return builder;
     }

@@ -24,19 +24,7 @@ public static class SecretProviderBuilderExtensions
         var options = new AwsSecretsManagerOptions();
         configure(options);
 
-        builder.UseProvider("awssecretsmanager", settings =>
-        {
-            settings["region"] = options.Region;
-
-            if (!string.IsNullOrEmpty(options.AccessKey))
-                settings["access.key"] = options.AccessKey;
-
-            if (!string.IsNullOrEmpty(options.SecretKey))
-                settings["secret.key"] = options.SecretKey;
-
-            if (!string.IsNullOrEmpty(options.SessionToken))
-                settings["session.token"] = options.SessionToken;
-        });
+        builder.UseProvider("awssecretsmanager", () => new AwsSecretsManagerSecretProvider(options));
 
         return builder;
     }

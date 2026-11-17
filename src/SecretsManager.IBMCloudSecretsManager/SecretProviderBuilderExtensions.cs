@@ -24,15 +24,7 @@ public static class SecretProviderBuilderExtensions
         var options = new IBMCloudSecretsManagerOptions();
         configure(options);
 
-        builder.UseProvider("ibmcloud-secrets-manager", settings =>
-        {
-            settings["region"] = options.Region;
-            settings["instance.id"] = options.InstanceId;
-            settings["api.key"] = options.ApiKey;
-
-            if (!string.IsNullOrEmpty(options.ServiceUrl))
-                settings["service.url"] = options.ServiceUrl;
-        });
+        builder.UseProvider("ibmcloud-secrets-manager", () => new IBMCloudSecretsManagerSecretProvider(options));
 
         return builder;
     }

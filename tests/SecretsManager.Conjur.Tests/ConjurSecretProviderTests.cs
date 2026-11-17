@@ -151,6 +151,8 @@ public sealed class ConjurSecretProviderTests
     [Fact]
     public async Task DeleteSecretAsync_DeletesSecret()
     {
+        _mockClient.SecretExistsAsync("to-delete", Arg.Any<CancellationToken>()).Returns(true);
+
         await using var provider = CreateProvider();
         await provider.DeleteSecretAsync("to-delete");
 
@@ -160,6 +162,7 @@ public sealed class ConjurSecretProviderTests
     [Fact]
     public async Task DeleteSecretAsync_ApiError_ThrowsSecretProviderException()
     {
+        _mockClient.SecretExistsAsync("broken", Arg.Any<CancellationToken>()).Returns(true);
         _mockClient.DeleteSecretAsync("broken", Arg.Any<CancellationToken>())
             .ThrowsAsync(new HttpRequestException("Connection refused"));
 
@@ -227,5 +230,30 @@ public sealed class ConjurSecretProviderTests
         await using var provider = CreateProvider();
         await Assert.ThrowsAsync<SecretProviderException>(
             () => provider.SecretExistsAsync("broken"));
+    }
+
+    [Theory]
+    [InlineData("abc")]
+    [InlineData("0")]
+    [InlineData("-1")]
+    public async Task GetSecretAsync_InvalidVersion_ThrowsArgumentException(string version)
+    {
+        await using var provider = CreateProvider();
+
+        var exception = await Assert.ThrowsAsync<ArgumentException>(
+            () => provider.GetSecretAsync("my-secret", new SecretQuery { Version = version }));
+
+        Assert.Contains("positive integer", exception.Message);
+    }
+
+    [Fact]
+    public async Task DeleteSecretAsync_NotFound_ThrowsSecretNotFoundException()
+    {
+        _mockClient.SecretExistsAsync("missing", Arg.Any<CancellationToken>()).Returns(false);
+
+        await using var provider = CreateProvider();
+
+        await Assert.ThrowsAsync<SecretNotFoundException>(
+            () => provider.DeleteSecretAsync("missing"));
     }
 }

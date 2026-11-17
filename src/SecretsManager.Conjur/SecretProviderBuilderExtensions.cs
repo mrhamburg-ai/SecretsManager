@@ -27,26 +27,7 @@ public static class SecretProviderBuilderExtensions
         var options = new ConjurOptions();
         configure(options);
 
-        builder.UseProvider("conjur", settings =>
-        {
-            if (!string.IsNullOrEmpty(options.Url))
-                settings["url"] = options.Url;
-
-            if (!string.IsNullOrEmpty(options.Account))
-                settings["account"] = options.Account;
-
-            if (!string.IsNullOrEmpty(options.Login))
-                settings["login"] = options.Login;
-
-            if (!string.IsNullOrEmpty(options.ApiKey))
-                settings["apikey"] = options.ApiKey;
-
-            if (!string.IsNullOrEmpty(options.PolicyPath))
-                settings["policy.path"] = options.PolicyPath;
-
-            if (options.SkipTlsVerify)
-                settings["skip.tls.verify"] = "true";
-        });
+        builder.UseProvider("conjur", () => new ConjurSecretProvider(options));
 
         return builder;
     }

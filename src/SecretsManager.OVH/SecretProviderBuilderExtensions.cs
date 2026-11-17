@@ -24,22 +24,7 @@ public static class SecretProviderBuilderExtensions
         var options = new OVHOptions();
         configure(options);
 
-        builder.UseProvider("ovh", settings =>
-        {
-            settings["endpoint"] = options.Endpoint;
-
-            if (!string.IsNullOrEmpty(options.ApplicationKey))
-                settings["application.key"] = options.ApplicationKey;
-
-            if (!string.IsNullOrEmpty(options.ApplicationSecret))
-                settings["application.secret"] = options.ApplicationSecret;
-
-            if (!string.IsNullOrEmpty(options.ConsumerKey))
-                settings["consumer.key"] = options.ConsumerKey;
-
-            if (!string.IsNullOrEmpty(options.OkmsId))
-                settings["okms.id"] = options.OkmsId;
-        });
+        builder.UseProvider("ovh", () => new OVHSecretProvider(options));
 
         return builder;
     }

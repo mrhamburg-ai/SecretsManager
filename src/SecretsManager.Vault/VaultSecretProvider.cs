@@ -115,6 +115,7 @@ public sealed class VaultSecretProvider : ISecretProvider
     {
         try
         {
+            await this.EnsureSecretExistsAsync(key, cancellationToken);
             await _client.DeleteSecretAsync(key, cancellationToken);
         }
         catch (Exception ex) when (ex is not SecretProviderException)
@@ -169,7 +170,7 @@ public sealed class VaultSecretProvider : ISecretProvider
         {
             return await _client.SecretExistsAsync(key, cancellationToken);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
                 $"Vault error checking existence of '{key}': {ex.Message}", ex);

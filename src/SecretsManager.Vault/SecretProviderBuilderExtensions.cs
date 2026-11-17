@@ -24,20 +24,7 @@ public static class SecretProviderBuilderExtensions
         var options = new VaultOptions();
         configure(options);
 
-        builder.UseProvider("vault", settings =>
-        {
-            if (!string.IsNullOrEmpty(options.Url))
-                settings["url"] = options.Url;
-
-            if (!string.IsNullOrEmpty(options.Token))
-                settings["token"] = options.Token;
-
-            if (!string.IsNullOrEmpty(options.MountPath))
-                settings["mount.path"] = options.MountPath;
-
-            if (options.SkipTlsVerify)
-                settings["skip.tls.verify"] = "true";
-        });
+        builder.UseProvider("vault", () => new VaultSecretProvider(options));
 
         return builder;
     }

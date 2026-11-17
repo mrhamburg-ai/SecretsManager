@@ -38,101 +38,101 @@ public sealed class ConcurrentLimiterLayer : ISecretProviderLayer
         return new ConcurrentLimiterSecretProvider(inner, _options);
     }
 
-    private sealed class ConcurrentLimiterSecretProvider(ISecretProvider inner, ConcurrentLimiterLayerOptions options) : ISecretProvider
+    private sealed class ConcurrentLimiterSecretProvider(ISecretProvider inner, ConcurrentLimiterLayerOptions options)
+        : SecretProviderLayerBase(inner)
     {
-        private readonly ISecretProvider _inner = inner;
         private readonly SemaphoreSlim _semaphore = new(options.MaxConcurrentRequests, options.MaxConcurrentRequests);
         private readonly TimeSpan? _acquireTimeout = options.AcquireTimeout;
+        private readonly object _gate = new();
+        private readonly TaskCompletionSource _drained =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        public async Task<SecretValue> GetSecretAsync(
+        private int _inFlight;
+        private bool _disposed;
+        private Task? _disposeTask;
+
+        protected override async Task<TResult> ExecuteAsync<TResult>(
+            string operation,
             string key,
-            SecretQuery? query = null,
-            CancellationToken cancellationToken = default)
+            Func<CancellationToken, Task<TResult>> operationExecutor,
+            CancellationToken cancellationToken)
         {
-            await AcquireAsync(cancellationToken);
+            Begin();
             try
             {
-                return await _inner.GetSecretAsync(key, query, cancellationToken);
+                await AcquireAsync(cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    return await operationExecutor(cancellationToken).ConfigureAwait(false);
+                }
+                finally
+                {
+                    _semaphore.Release();
+                }
             }
             finally
             {
-                _semaphore.Release();
+                End();
             }
         }
 
-        public async Task<SecretValue> PutSecretAsync(
-            string key,
-            string value,
-            SecretMetadata? metadata = null,
-            CancellationToken cancellationToken = default)
+        public override ValueTask DisposeAsync()
         {
-            await AcquireAsync(cancellationToken);
-            try
+            lock (_gate)
             {
-                return await _inner.PutSecretAsync(key, value, metadata, cancellationToken);
+                _disposeTask ??= DisposeCoreAsync();
             }
-            finally
-            {
-                _semaphore.Release();
-            }
+
+            return new ValueTask(_disposeTask);
         }
 
-        public async Task DeleteSecretAsync(string key, CancellationToken cancellationToken = default)
+        private async Task DisposeCoreAsync()
         {
-            await AcquireAsync(cancellationToken);
-            try
+            Task drained;
+            lock (_gate)
             {
-                await _inner.DeleteSecretAsync(key, cancellationToken);
+                _disposed = true;
+                drained = _inFlight == 0 ? Task.CompletedTask : _drained.Task;
             }
-            finally
-            {
-                _semaphore.Release();
-            }
-        }
 
-        public async Task<IReadOnlyList<SecretVersionInfo>> GetSecretVersionsAsync(
-            string key,
-            CancellationToken cancellationToken = default)
-        {
-            await AcquireAsync(cancellationToken);
-            try
-            {
-                return await _inner.GetSecretVersionsAsync(key, cancellationToken);
-            }
-            finally
-            {
-                _semaphore.Release();
-            }
-        }
-
-        public async Task<bool> SecretExistsAsync(string key, CancellationToken cancellationToken = default)
-        {
-            await AcquireAsync(cancellationToken);
-            try
-            {
-                return await _inner.SecretExistsAsync(key, cancellationToken);
-            }
-            finally
-            {
-                _semaphore.Release();
-            }
-        }
-
-        public ValueTask DisposeAsync()
-        {
+            await drained.ConfigureAwait(false);
             _semaphore.Dispose();
-            return _inner.DisposeAsync();
+            await Inner.DisposeAsync().ConfigureAwait(false);
+        }
+
+        private void Begin()
+        {
+            lock (_gate)
+            {
+                if (_disposed)
+                    throw new ObjectDisposedException(nameof(ConcurrentLimiterLayer));
+
+                _inFlight++;
+            }
+        }
+
+        private void End()
+        {
+            var drained = false;
+            lock (_gate)
+            {
+                _inFlight--;
+                drained = _disposed && _inFlight == 0;
+            }
+
+            if (drained)
+                _drained.TrySetResult();
         }
 
         private async Task AcquireAsync(CancellationToken cancellationToken)
         {
             if (_acquireTimeout is null)
             {
-                await _semaphore.WaitAsync(cancellationToken);
+                await _semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
                 return;
             }
 
-            if (!await _semaphore.WaitAsync(_acquireTimeout.Value, cancellationToken))
+            if (!await _semaphore.WaitAsync(_acquireTimeout.Value, cancellationToken).ConfigureAwait(false))
                 throw new TimeoutException("Timed out while waiting for concurrency slot.");
         }
     }
