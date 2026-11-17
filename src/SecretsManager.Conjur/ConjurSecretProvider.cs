@@ -46,17 +46,27 @@ public sealed class ConjurSecretProvider : ISecretProvider
     /// <param name="query">Optional version and/or JSON property selector.</param>
     /// <param name="cancellationToken">Token to cancel the operation.</param>
     /// <returns>The secret value, with its resolved version and creation time.</returns>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="query"/> specifies a version that is not a positive integer.</exception>
     /// <exception cref="SecretNotFoundException">Thrown when the secret does not exist.</exception>
     /// <exception cref="SecretProviderException">Thrown when the Conjur API call fails.</exception>
     public async Task<SecretValue> GetSecretAsync(
         string key, SecretQuery? query = null, CancellationToken cancellationToken = default)
     {
+        int? version = null;
+        if (query?.Version is { } requestedVersion)
+        {
+            if (!int.TryParse(requestedVersion, out var parsed) || parsed < 1)
+            {
+                throw new ArgumentException(
+                    $"Version must be a positive integer, for example '3'. Received '{requestedVersion}'.",
+                    nameof(query));
+            }
+
+            version = parsed;
+        }
+
         try
         {
-            int? version = null;
-            if (query?.Version is { } v && int.TryParse(v, out var parsed))
-                version = parsed;
-
             var value = await _client.GetSecretValueAsync(key, version, cancellationToken)
                 ?? throw new SecretNotFoundException(key);
 
@@ -127,6 +137,7 @@ public sealed class ConjurSecretProvider : ISecretProvider
     {
         try
         {
+            await this.EnsureSecretExistsAsync(key, cancellationToken);
             await _client.DeleteSecretAsync(key, cancellationToken);
         }
         catch (Exception ex) when (ex is not SecretProviderException)
@@ -180,7 +191,7 @@ public sealed class ConjurSecretProvider : ISecretProvider
         {
             return await _client.SecretExistsAsync(key, cancellationToken);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
                 $"Conjur error checking existence of '{key}': {ex.Message}", ex);

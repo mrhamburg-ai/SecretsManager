@@ -134,6 +134,7 @@ public sealed class TencentCloudSecretProvider : ISecretProvider
     {
         try
         {
+            await this.EnsureSecretExistsAsync(key, cancellationToken);
             await _client.DeleteSecretAsync(key, cancellationToken);
         }
         catch (Exception ex) when (ex is not SecretProviderException)
@@ -191,7 +192,7 @@ public sealed class TencentCloudSecretProvider : ISecretProvider
                 key, versionId: null, cancellationToken);
             return result is not null;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not SecretProviderException)
         {
             throw new SecretProviderException(
                 $"Tencent Cloud error checking existence of '{key}': {ex.Message}", ex);

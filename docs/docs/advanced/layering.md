@@ -237,38 +237,35 @@ Span tags include:
 ## Custom layers
 
 You can create your own decorator by implementing `ISecretProviderLayer` and wrapping `ISecretProvider`.
-The example below is a pass-through; the library's real audit layer is documented in
-[Audit Trail](audit-trail.md).
+Derive from `SecretProviderLayerBase` to intercept all five operations in one place instead of
+writing five delegating methods. The example below is a pass-through; the library's real audit
+layer is documented in [Audit Trail](audit-trail.md).
 
 ```csharp
 public sealed class CustomLayer : ISecretProviderLayer
 {
-    public ISecretProvider Wrap(ISecretProvider inner)
+    public ISecretProvider Wrap(ISecretProvider inner) => new CustomProvider(inner);
+
+    private sealed class CustomProvider(ISecretProvider inner) : SecretProviderLayerBase(inner)
     {
-        return new CustomProvider(inner);
-    }
-
-    private sealed class CustomProvider(ISecretProvider inner) : ISecretProvider
-    {
-        public Task<SecretValue> GetSecretAsync(string key, SecretQuery? query = null, CancellationToken cancellationToken = default)
-            => inner.GetSecretAsync(key, query, cancellationToken);
-
-        public Task<SecretValue> PutSecretAsync(string key, string value, SecretMetadata? metadata = null, CancellationToken cancellationToken = default)
-            => inner.PutSecretAsync(key, value, metadata, cancellationToken);
-
-        public Task DeleteSecretAsync(string key, CancellationToken cancellationToken = default)
-            => inner.DeleteSecretAsync(key, cancellationToken);
-
-        public Task<IReadOnlyList<SecretVersionInfo>> GetSecretVersionsAsync(string key, CancellationToken cancellationToken = default)
-            => inner.GetSecretVersionsAsync(key, cancellationToken);
-
-        public Task<bool> SecretExistsAsync(string key, CancellationToken cancellationToken = default)
-            => inner.SecretExistsAsync(key, cancellationToken);
-
-        public ValueTask DisposeAsync() => inner.DisposeAsync();
+        protected override async Task<TResult> ExecuteAsync<TResult>(
+            string operation,
+            string key,
+            Func<CancellationToken, Task<TResult>> operationExecutor,
+            CancellationToken cancellationToken)
+        {
+            // Intercept every call here: measure it, log it, or change the result.
+            return await operationExecutor(cancellationToken);
+        }
     }
 }
 ```
+
+:::note
+`SecretProviderLayerBase` forwards `GetSecretAsync`, `PutSecretAsync`, `DeleteSecretAsync`,
+`GetSecretVersionsAsync`, and `SecretExistsAsync` through `ExecuteAsync`, and disposes the wrapped
+provider by default.
+:::
 
 Then call it via `AddLayer`:
 

@@ -316,4 +316,58 @@ public sealed class FileSystemSecretProviderTests : IAsyncLifetime
 
         Assert.Contains("no encryption key is configured", ex.Message);
     }
+
+    [Fact]
+    public async Task KeysDifferingOnlyBySanitizedCharacters_AreStoredSeparately()
+    {
+        await using var provider = CreateProvider();
+
+        await provider.PutSecretAsync("team/app", "slash");
+        await provider.PutSecretAsync("team\\app", "backslash");
+        await provider.PutSecretAsync("team_app", "underscore");
+
+        Assert.Equal("slash", (await provider.GetSecretAsync("team/app")).Value);
+        Assert.Equal("backslash", (await provider.GetSecretAsync("team\\app")).Value);
+        Assert.Equal("underscore", (await provider.GetSecretAsync("team_app")).Value);
+    }
+
+    [Fact]
+    public async Task LegacySanitizedDirectory_IsStillReadable()
+    {
+        var legacyDirectory = Path.Combine(_tempDir, "team_app");
+        Directory.CreateDirectory(legacyDirectory);
+        await File.WriteAllTextAsync(
+            Path.Combine(legacyDirectory, "v1.json"),
+            """{"version":"v1","createdAt":"2026-01-01T00:00:00+00:00","encrypted":false,"value":"legacy"}""");
+        await File.WriteAllTextAsync(
+            Path.Combine(legacyDirectory, "current.json"),
+            """{"version":"v1"}""");
+
+        await using var provider = CreateProvider();
+        var result = await provider.GetSecretAsync("team/app");
+
+        Assert.Equal("legacy", result.Value);
+        Assert.Equal("v1", result.Version);
+    }
+
+    [Fact]
+    public async Task Delete_RemovesEncodedAndLegacyDirectories()
+    {
+        await using var provider = CreateProvider();
+        await provider.PutSecretAsync("team/app", "current-layout");
+
+        var legacyDirectory = Path.Combine(_tempDir, "team_app");
+        Directory.CreateDirectory(legacyDirectory);
+        await File.WriteAllTextAsync(
+            Path.Combine(legacyDirectory, "v1.json"),
+            """{"version":"v1","createdAt":"2026-01-01T00:00:00+00:00","encrypted":false,"value":"legacy"}""");
+        await File.WriteAllTextAsync(
+            Path.Combine(legacyDirectory, "current.json"),
+            """{"version":"v1"}""");
+
+        await provider.DeleteSecretAsync("team/app");
+
+        Assert.False(Directory.Exists(legacyDirectory));
+        Assert.False(await provider.SecretExistsAsync("team/app"));
+    }
 }

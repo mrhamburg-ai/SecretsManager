@@ -2,6 +2,7 @@ using SecretsManager.Builder;
 
 namespace SecretsManager.Tests.Builder;
 
+[Collection(EnvironmentVariableCollection.Name)]
 public class EnvironmentVariableConfigReaderTests
 {
     [Fact]

@@ -2,6 +2,7 @@ using SecretsManager.Builder;
 
 namespace SecretsManager.Tests.Builder;
 
+[Collection(EnvironmentVariableCollection.Name)]
 public class SecretProviderBuilderTests
 {
     [Fact]
@@ -125,6 +126,50 @@ public class SecretProviderBuilderTests
         builder.Build();
 
         Assert.Equal("yaml", factory.LastConfiguration?["key"]);
+    }
+
+    [Fact]
+    public void RegisterProvider_DuplicateProviderName_Throws()
+    {
+        var builder = new SecretProviderBuilder();
+        builder.RegisterProvider(new TestProviderFactory("test"));
+
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => builder.RegisterProvider(new TestProviderFactory("TEST")));
+
+        Assert.Contains("already registered", ex.Message);
+    }
+
+    [Fact]
+    public void UseProvider_WithProviderFactory_UsesSuppliedInstance()
+    {
+        var provider = new TestProvider();
+
+        var built = new SecretProviderBuilder()
+            .UseProvider("custom", () => provider)
+            .Build();
+
+        Assert.Same(provider, built);
+    }
+
+    [Fact]
+    public void UseProvider_WithProviderFactory_ThenYaml_UsesRegisteredFactory()
+    {
+        var factory = new TestProviderFactory("test");
+        var supplied = new TestProvider();
+
+        var provider = new SecretProviderBuilder()
+            .RegisterProvider(factory)
+            .UseProvider("custom", () => supplied)
+            .FromYaml("""
+                provider:
+                  test:
+                    key: value
+                """)
+            .Build();
+
+        Assert.NotSame(supplied, provider);
+        Assert.Equal("value", factory.LastConfiguration?["key"]);
     }
 
     private sealed class TestProviderFactory : ISecretProviderFactory

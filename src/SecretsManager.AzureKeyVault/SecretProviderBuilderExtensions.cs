@@ -27,22 +27,7 @@ public static class SecretProviderBuilderExtensions
         var options = new AzureKeyVaultOptions();
         configure(options);
 
-        builder.UseProvider("azurekeyvault", settings =>
-        {
-            settings["vaulturl"] = options.VaultUrl;
-
-            if (options.AuthenticationType is not "default")
-                settings["authentication.type"] = options.AuthenticationType;
-
-            if (options.TenantId is not null)
-                settings["authentication.tenantid"] = options.TenantId;
-
-            if (options.ClientId is not null)
-                settings["authentication.clientid"] = options.ClientId;
-
-            if (options.ClientSecret is not null)
-                settings["authentication.clientsecret"] = options.ClientSecret;
-        });
+        builder.UseProvider("azurekeyvault", () => new AzureKeyVaultSecretProvider(options));
 
         return builder;
     }

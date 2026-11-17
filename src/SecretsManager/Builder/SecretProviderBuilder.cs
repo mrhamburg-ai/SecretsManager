@@ -11,15 +11,24 @@ public sealed class SecretProviderBuilder
     private readonly Dictionary<string, ISecretProviderFactory> _factories = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<ISecretProviderLayer> _layers = [];
     private SecretProviderConfiguration? _configuration;
+    private Func<ISecretProvider>? _providerFactory;
 
     /// <summary>
     /// Registers a provider factory so its <see cref="ISecretProviderFactory.ProviderName"/>
     /// can be resolved at build time.
     /// </summary>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when a factory with the same provider name is already registered.
+    /// </exception>
     public SecretProviderBuilder RegisterProvider(ISecretProviderFactory factory)
     {
         ArgumentNullException.ThrowIfNull(factory);
-        _factories[factory.ProviderName] = factory;
+
+        if (!_factories.TryAdd(factory.ProviderName, factory))
+            throw new InvalidOperationException(
+                $"A provider factory named '{factory.ProviderName}' is already registered. " +
+                "Each provider name may be registered only once.");
+
         return this;
     }
 
@@ -54,8 +63,28 @@ public sealed class SecretProviderBuilder
     public SecretProviderBuilder UseProvider(string providerName, Action<Dictionary<string, string>>? configure = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(providerName);
+
         _configuration = new SecretProviderConfiguration { ProviderName = providerName };
+        _providerFactory = null;
         configure?.Invoke(_configuration.Settings);
+        return this;
+    }
+
+    /// <summary>
+    /// Selects a provider by name and supplies an already constructed provider.
+    /// Use this overload when the options cannot be represented as a flat settings
+    /// dictionary, for example when they contain delegates or object-valued settings.
+    /// </summary>
+    /// <param name="providerName">The provider name reported by the layer pipeline.</param>
+    /// <param name="providerFactory">Creates the provider when <see cref="Build"/> runs.</param>
+    /// <returns>The same builder for method chaining.</returns>
+    public SecretProviderBuilder UseProvider(string providerName, Func<ISecretProvider> providerFactory)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(providerName);
+        ArgumentNullException.ThrowIfNull(providerFactory);
+
+        _configuration = new SecretProviderConfiguration { ProviderName = providerName };
+        _providerFactory = providerFactory;
         return this;
     }
 
@@ -66,6 +95,7 @@ public sealed class SecretProviderBuilder
     public SecretProviderBuilder FromEnvironment(string prefix = "SECRETS")
     {
         _configuration = EnvironmentVariableConfigurationReader.Read(prefix);
+        _providerFactory = null;
         return this;
     }
 
@@ -76,6 +106,7 @@ public sealed class SecretProviderBuilder
     {
         var yaml = File.ReadAllText(path);
         _configuration = YamlConfigurationReader.Read(yaml);
+        _providerFactory = null;
         return this;
     }
 
@@ -85,6 +116,7 @@ public sealed class SecretProviderBuilder
     public SecretProviderBuilder FromYaml(string yaml)
     {
         _configuration = YamlConfigurationReader.Read(yaml);
+        _providerFactory = null;
         return this;
     }
 
@@ -100,13 +132,23 @@ public sealed class SecretProviderBuilder
             throw new InvalidOperationException(
                 "No provider configured. Call UseProvider(), FromEnvironment(), FromYaml(), or FromYamlFile() before Build().");
 
-        if (!_factories.TryGetValue(_configuration.ProviderName, out var factory))
-            throw new InvalidOperationException(
-                $"No factory registered for provider '{_configuration.ProviderName}'. " +
-                $"Registered providers: {string.Join(", ", _factories.Keys)}. " +
-                "Ensure you have called the provider's registration extension (e.g. WithFileSystem()) before Build().");
+        ISecretProvider provider;
+        if (_providerFactory is not null)
+        {
+            provider = _providerFactory()
+                ?? throw new InvalidOperationException(
+                    $"The provider factory supplied for '{_configuration.ProviderName}' returned null.");
+        }
+        else
+        {
+            if (!_factories.TryGetValue(_configuration.ProviderName, out var factory))
+                throw new InvalidOperationException(
+                    $"No factory registered for provider '{_configuration.ProviderName}'. " +
+                    $"Registered providers: {string.Join(", ", _factories.Keys)}. " +
+                    "Ensure you have called the provider's registration extension (e.g. WithFileSystem()) before Build().");
 
-        var provider = factory.Create(_configuration.Settings);
+            provider = factory.Create(_configuration.Settings);
+        }
 
         var logger = _layers
             .OfType<LoggingLayer>()

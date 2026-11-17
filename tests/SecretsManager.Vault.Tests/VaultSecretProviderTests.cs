@@ -128,6 +128,8 @@ public sealed class VaultSecretProviderTests
     [Fact]
     public async Task DeleteSecretAsync_DeletesSecret()
     {
+        _mockClient.SecretExistsAsync("to-delete", Arg.Any<CancellationToken>()).Returns(true);
+
         await using var provider = CreateProvider();
         await provider.DeleteSecretAsync("to-delete");
 
@@ -137,6 +139,7 @@ public sealed class VaultSecretProviderTests
     [Fact]
     public async Task DeleteSecretAsync_ApiError_ThrowsSecretProviderException()
     {
+        _mockClient.SecretExistsAsync("broken", Arg.Any<CancellationToken>()).Returns(true);
         _mockClient.DeleteSecretAsync("broken", Arg.Any<CancellationToken>())
             .ThrowsAsync(new HttpRequestException("Connection refused"));
 
@@ -224,5 +227,16 @@ public sealed class VaultSecretProviderTests
         await using var provider = CreateProvider();
         await Assert.ThrowsAsync<SecretProviderException>(
             () => provider.SecretExistsAsync("broken"));
+    }
+
+    [Fact]
+    public async Task DeleteSecretAsync_NotFound_ThrowsSecretNotFoundException()
+    {
+        _mockClient.SecretExistsAsync("missing", Arg.Any<CancellationToken>()).Returns(false);
+
+        await using var provider = CreateProvider();
+
+        await Assert.ThrowsAsync<SecretNotFoundException>(
+            () => provider.DeleteSecretAsync("missing"));
     }
 }
