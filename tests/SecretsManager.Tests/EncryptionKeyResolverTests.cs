@@ -270,6 +270,8 @@ public sealed class EncryptionKeyResolverTests
             .ToArray();
 
         await Task.WhenAll(tasks);
+
+        Assert.All(tasks, task => Assert.True(task.IsCompletedSuccessfully));
     }
 
     [Fact]
@@ -278,8 +280,11 @@ public sealed class EncryptionKeyResolverTests
         await using var resolver = new EncryptionKeyResolver(
             Convert.ToBase64String(Key), null, null);
 
-        await resolver.DisposeAsync();
-        await resolver.DisposeAsync();
+        Assert.Null(await Record.ExceptionAsync(async () =>
+        {
+            await resolver.DisposeAsync();
+            await resolver.DisposeAsync();
+        }));
     }
 
     [Fact]
@@ -292,7 +297,7 @@ public sealed class EncryptionKeyResolverTests
         var fetch = resolver.GetCurrentAsync();
         await started.Task;
 
-        resolver.Dispose();
+        Assert.Null(Record.Exception(resolver.Dispose));
         gate.SetResult(true);
 
         await fetch;
@@ -316,6 +321,8 @@ public sealed class EncryptionKeyResolverTests
             .ToArray();
 
         await Task.WhenAll(puts);
+
+        Assert.All(puts, task => Assert.True(task.IsCompletedSuccessfully));
     }
 
     private sealed class RotatingSource : IEncryptionKeyProvider

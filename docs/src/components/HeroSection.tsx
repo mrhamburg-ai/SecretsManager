@@ -443,6 +443,7 @@ function ProviderPanel(): React.JSX.Element {
           className={styles.tabs}
           role="tablist"
           aria-label="Provider"
+          tabIndex={-1}
           ref={tabsRef}
           onKeyDown={onTabsKeyDown}>
           {providers.map((item, index) => (

@@ -480,8 +480,11 @@ public sealed class InfisicalApiClientTests
     {
         var client = CreateClient("http://127.0.0.1:1");
 
-        await client.DisposeAsync();
-        await client.DisposeAsync();
+        Assert.Null(await Record.ExceptionAsync(async () =>
+        {
+            await client.DisposeAsync();
+            await client.DisposeAsync();
+        }));
     }
 
     private static InfisicalApiClient CreateClient(string hostUri, bool expandSecretReferences = true) =>

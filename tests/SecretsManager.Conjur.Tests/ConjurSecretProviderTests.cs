@@ -154,7 +154,7 @@ public sealed class ConjurSecretProviderTests
         _mockClient.SecretExistsAsync("to-delete", Arg.Any<CancellationToken>()).Returns(true);
 
         await using var provider = CreateProvider();
-        await provider.DeleteSecretAsync("to-delete");
+        Assert.Null(await Record.ExceptionAsync(() => provider.DeleteSecretAsync("to-delete")));
 
         await _mockClient.Received(1).DeleteSecretAsync("to-delete", Arg.Any<CancellationToken>());
     }

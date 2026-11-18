@@ -131,7 +131,7 @@ public sealed class AwsSecretsManagerSecretProviderTests
     public async Task DeleteSecretAsync_DeletesSecret()
     {
         await using var provider = CreateProvider();
-        await provider.DeleteSecretAsync("to-delete");
+        Assert.Null(await Record.ExceptionAsync(() => provider.DeleteSecretAsync("to-delete")));
 
         await _mockClient.Received(1).DeleteSecretAsync("to-delete", Arg.Any<CancellationToken>());
     }

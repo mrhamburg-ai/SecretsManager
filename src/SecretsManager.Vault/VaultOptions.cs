@@ -31,9 +31,14 @@ public sealed class VaultOptions
     /// <returns>An enumerable of validation error messages. Empty when the options are valid.</returns>
     public IEnumerable<string> Validate()
     {
-        if (string.IsNullOrWhiteSpace(Url))
+        var url = Url;
+        if (string.IsNullOrWhiteSpace(url))
+        {
             yield return "Url is required";
-        if (!Url.StartsWith("http://") && !Url.StartsWith("https://"))
-            yield return $"Url '{Url}' must start with http:// or https://";
+            yield break;
+        }
+
+        if (!url.StartsWith("http://") && !url.StartsWith("https://"))
+            yield return $"Url '{url}' must start with http:// or https://";
     }
 }

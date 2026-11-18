@@ -166,9 +166,10 @@ public sealed class ScalewaySecretProviderTests
                 DateTimeOffset.Parse("2026-03-01T00:00:00Z"), null, true));
 
         await using var provider = CreateProvider();
-        await provider.PutSecretAsync("tagged", "val",
+        var result = await provider.PutSecretAsync("tagged", "val",
             new SecretMetadata { Tags = tags.AsReadOnly() });
 
+        Assert.Equal("val", result.Value);
         await _mockClient.Received(1).CreateSecretAsync("tagged",
             Arg.Is<string[]?>(t => t != null && t.Length == 2),
             Arg.Any<CancellationToken>());
@@ -181,7 +182,7 @@ public sealed class ScalewaySecretProviderTests
             .Returns(MakeSecret(name: "to-delete"));
 
         await using var provider = CreateProvider();
-        await provider.DeleteSecretAsync("to-delete");
+        Assert.Null(await Record.ExceptionAsync(() => provider.DeleteSecretAsync("to-delete")));
 
         await _mockClient.Received(1).DeleteSecretAsync("secret-id-1", Arg.Any<CancellationToken>());
     }
