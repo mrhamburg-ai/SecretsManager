@@ -227,7 +227,8 @@ internal sealed class AliyunKmsApiClient : IAliyunKmsApiClient
         var dataBytes = Encoding.UTF8.GetBytes(stringToSign);
 
         byte[] hash;
-        using (var hmac = new HMACSHA1(keyBytes))
+        // Aliyun's RPC signature specification requires HMAC-SHA1; the algorithm is not selectable.
+        using (var hmac = new HMACSHA1(keyBytes)) // NOSONAR
         {
             hash = hmac.ComputeHash(dataBytes);
         }

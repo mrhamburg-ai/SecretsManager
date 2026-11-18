@@ -60,7 +60,7 @@ internal sealed class CachedKey
 /// that cannot be resolved throws <see cref="SecretProviderException"/> rather than silently
 /// disabling encryption.
 /// </remarks>
-public sealed class EncryptionKeyResolver : IAsyncDisposable
+public sealed class EncryptionKeyResolver : IAsyncDisposable, IDisposable
 {
     private readonly string? _base64Key;
     private readonly string? _keyFilePath;

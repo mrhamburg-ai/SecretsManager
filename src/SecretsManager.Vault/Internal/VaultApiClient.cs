@@ -24,8 +24,9 @@ internal sealed class VaultApiClient : IVaultApiClient
         _basePath = $"/v1/{_mountPath}";
 
         var handler = new HttpClientHandler();
+        // Documented opt-in for test-only self-signed backends; validation stays on by default.
         if (options.SkipTlsVerify)
-            handler.ServerCertificateCustomValidationCallback = (_, _, _, _) => true;
+            handler.ServerCertificateCustomValidationCallback = (_, _, _, _) => true; // NOSONAR
 
         _http = new HttpClient(handler)
         {

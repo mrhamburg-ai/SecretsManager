@@ -312,11 +312,11 @@ public sealed class FileSystemKeyProviderTests : IAsyncLifetime
 
         // Wait until the fetch reaches the resolver, then dispose while it is still pending.
         await started.Task;
-        await provider.DisposeAsync();
+        Assert.Null(await Record.ExceptionAsync(() => provider.DisposeAsync().AsTask()));
 
         // Release the fetch. A correct implementation neither blocks nor throws here.
         gate.SetResult(true);
-        await put;
+        Assert.Null(await Record.ExceptionAsync(() => put));
     }
 
     /// <summary>

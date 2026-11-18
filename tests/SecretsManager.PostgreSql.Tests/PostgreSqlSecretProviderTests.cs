@@ -208,9 +208,11 @@ public sealed class PostgreSqlSecretProviderTests
                 MakeVersion(value: "val")));
 
         await using var provider = CreateProvider();
-        await provider.PutSecretAsync("tagged", "val",
+        var result = await provider.PutSecretAsync("tagged", "val",
             new SecretMetadata { ContentType = "application/json", Tags = tags });
 
+        Assert.Equal("tagged", result.Key);
+        Assert.Equal("val", result.Value);
         await _mockStore.Received(1).PutSecretAsync(
             "tagged", "val", false, "application/json",
             Arg.Is<IReadOnlyDictionary<string, string>?>(t => t != null && t["env"] == "staging"),
@@ -270,7 +272,7 @@ public sealed class PostgreSqlSecretProviderTests
             .Returns(true);
 
         await using var provider = CreateProvider();
-        await provider.DeleteSecretAsync("to-delete");
+        Assert.Null(await Record.ExceptionAsync(() => provider.DeleteSecretAsync("to-delete")));
 
         await _mockStore.Received(1).DeleteSecretAsync("to-delete", Arg.Any<CancellationToken>());
     }

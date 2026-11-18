@@ -223,7 +223,8 @@ internal sealed class OVHOAuthHttpClient : IOVHApiClient
             $"{_applicationSecret}&{_consumerKey}&{method}&{_endpoint}{path}&" +
             timestamp.ToString(CultureInfo.InvariantCulture);
 
-        using var sha1 = SHA1.Create();
+        // OVH's API signature specification requires SHA-1 (the "$1$" scheme); it is not selectable.
+        using var sha1 = SHA1.Create(); // NOSONAR
         var hash = sha1.ComputeHash(Encoding.UTF8.GetBytes(signature));
         return "$1$" + Convert.ToBase64String(hash);
     }

@@ -16,6 +16,7 @@ using SecretsManager.Infisical;
 using SecretsManager.TencentCloud;
 using SecretsManager.Vault;
 using SecretsManager.Conjur;
+using SecretsManager.IntegrationTests;
 
 if (args.Length == 0)
 {
@@ -69,8 +70,7 @@ catch (Exception ex)
 await using (provider)
 {
     var testKey = $"integration-test-{Guid.NewGuid().ToString("N")[..8]}";
-    var passed = 0;
-    var failed = 0;
+    var summary = new StepSummary();
 
     // Step 1: Put a secret
     await RunStep("Put secret (v1)", async () =>
@@ -148,30 +148,30 @@ await using (provider)
     // Summary
     Console.WriteLine();
     Console.WriteLine(new string('-', 50));
-    if (failed == 0)
+    if (summary.Failed == 0)
     {
-        WriteSuccess($"All {passed} steps passed!");
+        WriteSuccess($"All {summary.Passed} steps passed!");
         return 0;
     }
     else
     {
-        WriteError($"{failed} of {passed + failed} steps failed.");
+        WriteError($"{summary.Failed} of {summary.Passed + summary.Failed} steps failed.");
         return 1;
     }
 
     async Task RunStep(string name, Func<Task> action)
     {
-        Console.Write($"  [{passed + failed + 1}] {name}... ");
+        Console.Write($"  [{summary.Passed + summary.Failed + 1}] {name}... ");
         try
         {
             await action();
             WriteSuccess("PASS");
-            passed++;
+            summary.Passed++;
         }
         catch (Exception ex)
         {
             WriteError($"FAIL - {ex.Message}");
-            failed++;
+            summary.Failed++;
         }
     }
 }
@@ -193,4 +193,14 @@ static void WriteError(string message)
     Console.ForegroundColor = ConsoleColor.Red;
     Console.WriteLine(message);
     Console.ResetColor();
+}
+
+namespace SecretsManager.IntegrationTests
+{
+    sealed class StepSummary
+    {
+        public int Passed { get; set; }
+
+        public int Failed { get; set; }
+    }
 }
