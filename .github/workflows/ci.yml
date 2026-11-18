@@ -670,6 +670,24 @@ jobs:
         docker logs infisical || true
         echo "::endgroup::"
 
+  doppler:
+    name: Integration tests (Doppler)${{ vars.HAS_DOPPLER_SECRETS != 'true' && ' (not configured)' || '' }}
+    runs-on: ubuntu-26.04
+    needs: unit-tests
+    if: github.event_name != 'pull_request' && vars.HAS_DOPPLER_SECRETS == 'true'
+    steps:
+    - uses: actions/checkout@v7
+    - uses: ./.github/actions/integration-test
+      with:
+        expect-version-history: 'false'
+        key-prefix: 'INTEGRATION_TEST_'
+        config: |
+          provider:
+            doppler:
+              token: "${{ secrets.DOPPLER_TOKEN }}"
+              project: "${{ secrets.DOPPLER_PROJECT }}"
+              config: "${{ secrets.DOPPLER_CONFIG }}"
+
   conjur:
     name: Integration tests (CyberArk Conjur)
     runs-on: ubuntu-26.04
@@ -772,6 +790,7 @@ jobs:
     - tencent-cloud
     - vault
     - infisical
+    - doppler
     - conjur
     if: always()
 

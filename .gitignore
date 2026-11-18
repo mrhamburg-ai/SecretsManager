@@ -33,3 +33,6 @@ DocumentIndex*.json
 .DS_Store
 Thumbs.db
 CLAUDE_LOCAL.md
+
+# Local agent task files
+.ai/

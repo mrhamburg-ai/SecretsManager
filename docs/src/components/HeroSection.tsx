@@ -210,6 +210,21 @@ const providers = [
     .Build();`,
   },
   {
+    id: 'doppler',
+    name: 'Doppler',
+    package: 'SecretsManager.Doppler',
+    to: '/docs/providers/doppler',
+    snippet: `var provider = new SecretProviderBuilder()
+    .WithDoppler(options =>
+    {
+        options.Token = Environment
+            .GetEnvironmentVariable("SECRETS_DOPPLER_TOKEN");
+        options.Project = "my-project";
+        options.Config = "dev";
+    })
+    .Build();`,
+  },
+  {
     id: 'vault',
     name: 'HashiCorp Vault',
     package: 'SecretsManager.Vault',
@@ -528,7 +543,7 @@ export default function HeroSection(): React.JSX.Element {
             <span className={styles.titleAccent}>Any secret backend.</span>
           </h1>
           <p className={styles.lede}>
-            A unified .NET abstraction for fifteen secret providers. Read, write,
+            A unified .NET abstraction for sixteen secret providers. Read, write,
             version, and delete secrets through one contract, then add retries,
             timeouts, logging, and telemetry without changing your application
             code.

@@ -12,9 +12,9 @@ A unified .NET abstraction layer over secret management backends, inspired by th
 ## Features
 
 - **Unified API** — Get, put, delete, version, and check secrets through one interface
-- **Multiple backends** — Filesystem, Azure Key Vault, Scaleway, AWS, Google Cloud, Oracle Vault, IBM Cloud, PostgreSQL, OVH, Passbolt, Aliyun KMS, Tencent Cloud, Infisical, HashiCorp Vault, CyberArk Conjur
+- **Multiple backends** — Filesystem, Azure Key Vault, Scaleway, AWS, Google Cloud, Oracle Vault, IBM Cloud, PostgreSQL, OVH, Passbolt, Aliyun KMS, Tencent Cloud, Infisical, Doppler, HashiCorp Vault, CyberArk Conjur
 - **Flexible configuration** — Fluent API, environment variables, or YAML (ESO-style)
-- **Secret versioning** — First-class support for secret version history across all providers
+- **Secret versioning** — First-class support for secret version history where the backend provides it
 - **JSON property extraction** — Retrieve nested values from JSON secrets via dot-path queries
 - **Zero unnecessary dependencies** — Each provider is a separate package; only pull in what you use
 
@@ -38,6 +38,7 @@ A unified .NET abstraction layer over secret management backends, inspired by th
 | Aliyun KMS | `mrhamburg.SecretsManager.AliyunKms` | Aliyun KMS via REST API |
 | Tencent Cloud | `mrhamburg.SecretsManager.TencentCloud` | Tencent Cloud Secrets Manager via REST API |
 | Infisical | `mrhamburg.SecretsManager.Infisical` | Infisical via the official .NET SDK |
+| Doppler | `mrhamburg.SecretsManager.Doppler` | Doppler via REST API |
 | HashiCorp Vault | `mrhamburg.SecretsManager.Vault` | HashiCorp Vault KV v2 engine via REST API |
 | CyberArk Conjur | `mrhamburg.SecretsManager.Conjur` | CyberArk Conjur via REST API |
 
@@ -63,6 +64,7 @@ are not configured, so the job is skipped.
 | Tencent Cloud | [`configs/tencent-cloud.yaml`](tests/SecretsManager.IntegrationTests/configs/tencent-cloud.yaml) | [![Tencent Cloud integration tests](https://img.shields.io/github/check-runs/mrhamburg/SecretsManager/main?nameFilter=Integration%20tests%20%28Tencent%20Cloud%29&label=tencent)](https://github.com/mrhamburg/SecretsManager/actions/workflows/ci.yml) |
 | HashiCorp Vault | [`configs/vault.yaml`](tests/SecretsManager.IntegrationTests/configs/vault.yaml) | [![HashiCorp Vault integration tests](https://img.shields.io/github/check-runs/mrhamburg/SecretsManager/main?nameFilter=Integration%20tests%20%28HashiCorp%20Vault%29&label=vault)](https://github.com/mrhamburg/SecretsManager/actions/workflows/ci.yml) |
 | Infisical | [`configs/infisical.yaml`](tests/SecretsManager.IntegrationTests/configs/infisical.yaml) | [![Infisical integration tests](https://img.shields.io/github/check-runs/mrhamburg/SecretsManager/main?nameFilter=Integration%20tests%20%28Infisical%29&label=infisical)](https://github.com/mrhamburg/SecretsManager/actions/workflows/ci.yml) |
+| Doppler | [`configs/doppler.yaml`](tests/SecretsManager.IntegrationTests/configs/doppler.yaml) | [![Doppler integration tests](https://img.shields.io/github/check-runs/mrhamburg/SecretsManager/main?nameFilter=Integration%20tests%20%28Doppler%29&label=doppler)](https://github.com/mrhamburg/SecretsManager/actions/workflows/ci.yml) |
 | CyberArk Conjur | [`configs/conjur.yaml`](tests/SecretsManager.IntegrationTests/configs/conjur.yaml) | [![CyberArk Conjur integration tests](https://img.shields.io/github/check-runs/mrhamburg/SecretsManager/main?nameFilter=Integration%20tests%20%28CyberArk%20Conjur%29&label=conjur)](https://github.com/mrhamburg/SecretsManager/actions/workflows/ci.yml) |
 
 Passbolt is disabled in CI (`if: false`), so its badge stays grey until the job is enabled.

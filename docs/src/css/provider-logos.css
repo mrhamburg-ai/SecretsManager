@@ -39,6 +39,7 @@
 .sm-logo--tencent { -webkit-mask-image: url('../../static/img/tencentcloud-logo.svg'); mask-image: url('../../static/img/tencentcloud-logo.svg'); }
 .sm-logo--ibm { -webkit-mask-image: url('../../static/img/ibmcloud-logo.svg'); mask-image: url('../../static/img/ibmcloud-logo.svg'); }
 .sm-logo--infisical { -webkit-mask-image: url('../../static/img/logos/infisical.svg'); mask-image: url('../../static/img/logos/infisical.svg'); }
+.sm-logo--doppler { -webkit-mask-image: url('../../static/img/logos/doppler.svg'); mask-image: url('../../static/img/logos/doppler.svg'); }
 .sm-logo--vault { -webkit-mask-image: url('../../static/img/vault-logo.svg'); mask-image: url('../../static/img/vault-logo.svg'); }
 .sm-logo--conjur { -webkit-mask-image: url('../../static/img/conjur-logo.svg'); mask-image: url('../../static/img/conjur-logo.svg'); }
 
@@ -91,6 +92,7 @@
 .sm-side-tencent { --sm-side-logo: url('../../static/img/tencentcloud-logo.svg'); }
 .sm-side-ibm { --sm-side-logo: url('../../static/img/ibmcloud-logo.svg'); }
 .sm-side-infisical { --sm-side-logo: url('../../static/img/logos/infisical.svg'); }
+.sm-side-doppler { --sm-side-logo: url('../../static/img/logos/doppler.svg'); }
 .sm-side-vault { --sm-side-logo: url('../../static/img/vault-logo.svg'); }
 .sm-side-conjur { --sm-side-logo: url('../../static/img/conjur-logo.svg'); }
 
