@@ -184,7 +184,7 @@ public sealed class OracleVaultSecretProviderTests
     public async Task DeleteSecretAsync_DeletesSecret()
     {
         await using var provider = CreateProvider();
-        await provider.DeleteSecretAsync(SecretOcid);
+        Assert.Null(await Record.ExceptionAsync(() => provider.DeleteSecretAsync(SecretOcid)));
 
         await _mockClient.Received(1).DeleteSecretAsync(SecretOcid, Arg.Any<CancellationToken>());
     }

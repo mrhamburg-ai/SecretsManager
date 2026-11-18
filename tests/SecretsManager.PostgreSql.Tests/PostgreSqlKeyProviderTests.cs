@@ -173,7 +173,7 @@ public sealed class PostgreSqlKeyProviderTests
         await using var provider = new PostgreSqlSecretProvider(
             _mockStore, new EncryptionKeyResolver(null, null, source));
 
-        await provider.WarmUpAsync();
+        Assert.Null(await Record.ExceptionAsync(() => provider.WarmUpAsync().AsTask()));
 
         await _mockStore.DidNotReceive().EnsureSchemaAsync(Arg.Any<CancellationToken>());
     }

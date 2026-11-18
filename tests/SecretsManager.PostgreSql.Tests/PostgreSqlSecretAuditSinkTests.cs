@@ -30,6 +30,8 @@ public sealed class PostgreSqlSecretAuditSinkTests
 
         await sink.WriteAsync(auditEvent);
 
+        var forwarded = Assert.Single(store.ReceivedCalls());
+        Assert.Same(auditEvent, forwarded.GetArguments()[0]);
         await store.Received(1).WriteAsync(auditEvent, Arg.Any<CancellationToken>());
     }
 
