@@ -119,7 +119,8 @@ internal sealed class DopplerApiClient : IDopplerApiClient
     {
         ValidateKey(key);
 
-        using var request = CreateRequest(HttpMethod.Get, SecretUrl(key));
+        using var request = CreateRequest(
+            HttpMethod.Get, ScopedUrl("v3/configs/config/secrets/names"));
         using var response = await _http.SendAsync(request, cancellationToken);
 
         if (response.StatusCode == HttpStatusCode.NotFound)
@@ -127,7 +128,13 @@ internal sealed class DopplerApiClient : IDopplerApiClient
 
         await EnsureSuccessAsync(
             response, $"checking existence of '{key}'", cancellationToken);
-        return true;
+
+        var body = await response.Content.ReadFromJsonAsync<SecretNamesResponse>(
+            JsonOptions, cancellationToken)
+            ?? throw new SecretProviderException(
+                $"Doppler API returned an empty response when checking existence of '{key}'.");
+
+        return body.Names?.Contains(key, StringComparer.Ordinal) == true;
     }
 
     public ValueTask DisposeAsync()
@@ -145,9 +152,9 @@ internal sealed class DopplerApiClient : IDopplerApiClient
         return request;
     }
 
-    private string SecretUrl(string key)
+    private string ScopedUrl(string path)
     {
-        var query = new List<string>(3);
+        var query = new List<string>(2);
 
         if (!string.IsNullOrWhiteSpace(_project))
             query.Add("project=" + Uri.EscapeDataString(_project));
@@ -155,9 +162,13 @@ internal sealed class DopplerApiClient : IDopplerApiClient
         if (!string.IsNullOrWhiteSpace(_config))
             query.Add("config=" + Uri.EscapeDataString(_config));
 
-        query.Add("name=" + Uri.EscapeDataString(key));
+        return query.Count == 0 ? path : path + "?" + string.Join("&", query);
+    }
 
-        return "v3/configs/config/secret?" + string.Join("&", query);
+    private string SecretUrl(string key)
+    {
+        var url = ScopedUrl("v3/configs/config/secret");
+        return url + (url.Contains('?') ? "&" : "?") + "name=" + Uri.EscapeDataString(key);
     }
 
     private string ReadValue(SecretResponse body, string key) =>
@@ -278,6 +289,11 @@ internal sealed class DopplerApiClient : IDopplerApiClient
     private sealed class SecretResponse
     {
         public SecretValueResponse? Value { get; set; }
+    }
+
+    private sealed class SecretNamesResponse
+    {
+        public List<string>? Names { get; set; }
     }
 
     private sealed class UpdateSecretsRequest
