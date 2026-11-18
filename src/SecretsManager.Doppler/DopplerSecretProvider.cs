@@ -68,7 +68,8 @@ public sealed class DopplerSecretProvider : ISecretProvider
                 Value = value
             };
         }
-        catch (Exception ex) when (ex is not SecretProviderException)
+        catch (Exception ex) when (ex is not SecretProviderException
+            and not OperationCanceledException and not ArgumentException)
         {
             throw new SecretProviderException(
                 $"Doppler error for secret '{key}': {ex.Message}", ex);
@@ -100,7 +101,8 @@ public sealed class DopplerSecretProvider : ISecretProvider
                 Value = stored.Value
             };
         }
-        catch (Exception ex) when (ex is not SecretProviderException)
+        catch (Exception ex) when (ex is not SecretProviderException
+            and not OperationCanceledException and not ArgumentException)
         {
             throw new SecretProviderException(
                 $"Doppler error putting secret '{key}': {ex.Message}", ex);
@@ -122,7 +124,8 @@ public sealed class DopplerSecretProvider : ISecretProvider
             if (!await _client.DeleteSecretAsync(key, cancellationToken))
                 throw new SecretNotFoundException(key);
         }
-        catch (Exception ex) when (ex is not SecretProviderException)
+        catch (Exception ex) when (ex is not SecretProviderException
+            and not OperationCanceledException and not ArgumentException)
         {
             throw new SecretProviderException(
                 $"Doppler error deleting secret '{key}': {ex.Message}", ex);
@@ -155,7 +158,8 @@ public sealed class DopplerSecretProvider : ISecretProvider
                 }
             };
         }
-        catch (Exception ex) when (ex is not SecretProviderException)
+        catch (Exception ex) when (ex is not SecretProviderException
+            and not OperationCanceledException and not ArgumentException)
         {
             throw new SecretProviderException(
                 $"Doppler error listing versions for '{key}': {ex.Message}", ex);
@@ -176,7 +180,8 @@ public sealed class DopplerSecretProvider : ISecretProvider
         {
             return await _client.SecretExistsAsync(key, cancellationToken);
         }
-        catch (Exception ex) when (ex is not SecretProviderException)
+        catch (Exception ex) when (ex is not SecretProviderException
+            and not OperationCanceledException and not ArgumentException)
         {
             throw new SecretProviderException(
                 $"Doppler error checking existence of '{key}': {ex.Message}", ex);

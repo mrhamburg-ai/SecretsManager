@@ -62,13 +62,13 @@ internal sealed class DopplerApiClient : IDopplerApiClient
         if (response.StatusCode == HttpStatusCode.NotFound)
             return null;
 
-        EnsureSuccess(response, $"retrieving secret '{key}'");
+        await EnsureSuccessAsync(
+            response, $"retrieving secret '{key}'", cancellationToken);
 
         var body = await response.Content.ReadFromJsonAsync<SecretResponse>(
             JsonOptions, cancellationToken)
             ?? throw new SecretProviderException(
                 $"Doppler API returned an empty response when retrieving secret '{key}'.");
-
         return new DopplerSecretResult(ReadValue(body, key));
     }
 
@@ -88,7 +88,8 @@ internal sealed class DopplerApiClient : IDopplerApiClient
         request.Content = JsonContent.Create(payload, options: JsonOptions);
 
         using var response = await _http.SendAsync(request, cancellationToken);
-        EnsureSuccess(response, $"putting secret '{key}'");
+        await EnsureSuccessAsync(
+            response, $"putting secret '{key}'", cancellationToken, value);
 
         var body = await response.Content.ReadFromJsonAsync<UpdateSecretsResponse>(
             JsonOptions, cancellationToken);
@@ -109,7 +110,8 @@ internal sealed class DopplerApiClient : IDopplerApiClient
         if (response.StatusCode == HttpStatusCode.NotFound)
             return false;
 
-        EnsureSuccess(response, $"deleting secret '{key}'");
+        await EnsureSuccessAsync(
+            response, $"deleting secret '{key}'", cancellationToken);
         return true;
     }
 
@@ -123,7 +125,8 @@ internal sealed class DopplerApiClient : IDopplerApiClient
         if (response.StatusCode == HttpStatusCode.NotFound)
             return false;
 
-        EnsureSuccess(response, $"checking existence of '{key}'");
+        await EnsureSuccessAsync(
+            response, $"checking existence of '{key}'", cancellationToken);
         return true;
     }
 
@@ -177,21 +180,99 @@ internal sealed class DopplerApiClient : IDopplerApiClient
             throw new ArgumentException("Secret key is required.", nameof(key));
     }
 
-    private static void EnsureSuccess(HttpResponseMessage response, string operation)
+    private async Task EnsureSuccessAsync(
+        HttpResponseMessage response,
+        string operation,
+        CancellationToken cancellationToken,
+        params string?[] sensitiveValues)
     {
         if (response.IsSuccessStatusCode)
             return;
 
+        var detail = await ReadErrorDetailAsync(response, cancellationToken, sensitiveValues);
         var wait = response.Headers.RetryAfter?.Delta
             ?? (response.Headers.RetryAfter?.Date is { } date ? date - DateTimeOffset.UtcNow : null);
         var retry = wait is { } value && value > TimeSpan.Zero
             ? $"; retry after {(int)value.TotalSeconds}s"
             : "";
 
-        // Never include the response body: backends can echo submitted secret values in error payloads.
-        throw new SecretProviderException(
-            $"Doppler API error {operation}: HTTP {(int)response.StatusCode} " +
-            $"{response.ReasonPhrase}{retry}");
+        var message = $"Doppler API error {operation}: HTTP {(int)response.StatusCode} " +
+                      $"{response.ReasonPhrase}{retry}";
+        if (detail.Length > 0)
+            message += $": {detail}";
+
+        throw new SecretProviderException(message);
+    }
+
+    private async Task<string> ReadErrorDetailAsync(
+        HttpResponseMessage response,
+        CancellationToken cancellationToken,
+        IEnumerable<string?> sensitiveValues)
+    {
+        try
+        {
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
+            if (string.IsNullOrWhiteSpace(body))
+                return "";
+
+            using var document = JsonDocument.Parse(body);
+            var messages = ReadMessages(document.RootElement);
+            if (messages.Count == 0)
+                return "";
+
+            var detail = string.Join("; ", messages);
+
+            foreach (var sensitive in sensitiveValues)
+            {
+                if (!string.IsNullOrEmpty(sensitive))
+                    detail = detail.Replace(sensitive, "[redacted]", StringComparison.Ordinal);
+            }
+
+            if (!string.IsNullOrEmpty(_token))
+                detail = detail.Replace(_token, "[redacted]", StringComparison.Ordinal);
+
+            const int maxLength = 500;
+            return detail.Length <= maxLength ? detail : detail[..maxLength] + "...";
+        }
+        catch (Exception ex) when (ex is JsonException
+            or NotSupportedException
+            or IOException
+            or HttpRequestException
+            or ObjectDisposedException
+            or InvalidOperationException)
+        {
+            return "";
+        }
+    }
+
+    private static List<string> ReadMessages(JsonElement root)
+    {
+        var messages = new List<string>();
+
+        if (root.ValueKind != JsonValueKind.Object)
+            return messages;
+
+        if (root.TryGetProperty("messages", out var array)
+            && array.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in array.EnumerateArray())
+            {
+                if (item.ValueKind == JsonValueKind.String
+                    && item.GetString() is { Length: > 0 } text)
+                    messages.Add(text);
+            }
+
+            return messages;
+        }
+
+        if (root.TryGetProperty("message", out var message)
+            && message.ValueKind == JsonValueKind.String
+            && message.GetString() is { Length: > 0 } messageText)
+        {
+            messages.Add(messageText);
+        }
+
+        return messages;
     }
 
     private sealed class SecretResponse

@@ -174,6 +174,8 @@ await provider.DeleteSecretAsync("OLD_SECRET");
   `SecretNotFoundException` when the secret does not exist.
 - **Restricted values:** A secret with restricted visibility has no readable value. The provider
   throws `SecretProviderException` with a clear message.
+- **Errors:** `SecretProviderException` includes Doppler's `messages` text when the API returns it.
+  The provider redacts the token and the submitted value from that text.
 - **Empty values:** The provider sends the value as-is. If Doppler rejects an empty value, the API
   error is reported as `SecretProviderException`.
 - **Secret names:** Doppler has Classic and Permissive naming modes. The provider accepts any

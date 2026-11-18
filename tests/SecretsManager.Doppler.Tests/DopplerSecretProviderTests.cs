@@ -127,6 +127,30 @@ public sealed class DopplerSecretProviderTests
     }
 
     [Fact]
+    public async Task GetSecretAsync_Cancellation_Propagates()
+    {
+        _client.GetSecretAsync("cancelled", Arg.Any<CancellationToken>())
+            .ThrowsAsync(new OperationCanceledException());
+
+        await using var provider = CreateProvider();
+
+        await Assert.ThrowsAsync<OperationCanceledException>(
+            () => provider.GetSecretAsync("cancelled"));
+    }
+
+    [Fact]
+    public async Task GetSecretAsync_ArgumentException_Propagates()
+    {
+        _client.GetSecretAsync("bad-key", Arg.Any<CancellationToken>())
+            .ThrowsAsync(new ArgumentException("Secret key is required.", "key"));
+
+        await using var provider = CreateProvider();
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => provider.GetSecretAsync("bad-key"));
+    }
+
+    [Fact]
     public async Task PutSecretAsync_ReturnsStoredValue()
     {
         _client.PutSecretAsync("my-secret", "new-value", Arg.Any<CancellationToken>())
@@ -181,9 +205,23 @@ public sealed class DopplerSecretProviderTests
             .Returns(true);
 
         await using var provider = CreateProvider();
-        await provider.DeleteSecretAsync("my-secret");
+        var exception = await Record.ExceptionAsync(
+            () => provider.DeleteSecretAsync("my-secret"));
 
+        Assert.Null(exception);
         await _client.Received(1).DeleteSecretAsync("my-secret", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task DeleteSecretAsync_Cancellation_Propagates()
+    {
+        _client.DeleteSecretAsync("cancelled", Arg.Any<CancellationToken>())
+            .ThrowsAsync(new OperationCanceledException());
+
+        await using var provider = CreateProvider();
+
+        await Assert.ThrowsAsync<OperationCanceledException>(
+            () => provider.DeleteSecretAsync("cancelled"));
     }
 
     [Fact]
@@ -271,10 +309,11 @@ public sealed class DopplerSecretProviderTests
     [Fact]
     public async Task DisposeAsync_DisposesClient()
     {
-        await using var provider = CreateProvider();
+        var provider = CreateProvider();
 
-        await provider.DisposeAsync();
+        var exception = await Record.ExceptionAsync(async () => await provider.DisposeAsync());
 
+        Assert.Null(exception);
         await _client.Received(1).DisposeAsync();
     }
 }

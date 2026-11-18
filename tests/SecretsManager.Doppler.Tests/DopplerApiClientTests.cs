@@ -107,6 +107,63 @@ public sealed class DopplerApiClientTests
     }
 
     [Fact]
+    public async Task GetSecretAsync_ApiError_IncludesServerMessages()
+    {
+        var handler = new StubHandler(
+            HttpStatusCode.Unauthorized,
+            """{"messages":["Invalid token scope","Project not found"]}""");
+        await using var client = CreateClient(handler, ServiceToken);
+
+        var exception = await Assert.ThrowsAsync<SecretProviderException>(
+            () => client.GetSecretAsync("MY_SECRET", CancellationToken.None));
+
+        Assert.Contains("Invalid token scope", exception.Message);
+        Assert.Contains("Project not found", exception.Message);
+    }
+
+    [Fact]
+    public async Task GetSecretAsync_ApiError_RedactsTokenFromServerMessage()
+    {
+        var handler = new StubHandler(
+            HttpStatusCode.Unauthorized,
+            $$"""{"messages":["Token {{ServiceToken}} is invalid"]}""");
+        await using var client = CreateClient(handler, ServiceToken);
+
+        var exception = await Assert.ThrowsAsync<SecretProviderException>(
+            () => client.GetSecretAsync("MY_SECRET", CancellationToken.None));
+
+        Assert.DoesNotContain(ServiceToken, exception.Message);
+        Assert.Contains("[redacted]", exception.Message);
+    }
+
+    [Fact]
+    public async Task GetSecretAsync_ApiError_MalformedBody_FallsBackToStatus()
+    {
+        var handler = new StubHandler(HttpStatusCode.InternalServerError, "not-json");
+        await using var client = CreateClient(handler, ServiceToken);
+
+        var exception = await Assert.ThrowsAsync<SecretProviderException>(
+            () => client.GetSecretAsync("MY_SECRET", CancellationToken.None));
+
+        Assert.Contains("500", exception.Message);
+    }
+
+    [Fact]
+    public async Task PutSecretAsync_ApiError_RedactsSubmittedValue()
+    {
+        var handler = new StubHandler(
+            HttpStatusCode.BadRequest,
+            """{"messages":["Value new-secret-value is not allowed"]}""");
+        await using var client = CreateClient(handler, ServiceToken);
+
+        var exception = await Assert.ThrowsAsync<SecretProviderException>(
+            () => client.PutSecretAsync("MY_SECRET", "new-secret-value", CancellationToken.None));
+
+        Assert.DoesNotContain("new-secret-value", exception.Message);
+        Assert.Contains("[redacted]", exception.Message);
+    }
+
+    [Fact]
     public async Task GetSecretAsync_RateLimited_IncludesRetryAfter()
     {
         var handler = new StubHandler(
@@ -162,6 +219,20 @@ public sealed class DopplerApiClientTests
         var result = await client.PutSecretAsync("MY_SECRET", "new-value", CancellationToken.None);
 
         Assert.Equal("new-value", result.Value);
+    }
+
+    [Fact]
+    public async Task DeleteSecretAsync_ApiError_IncludesSingularMessage()
+    {
+        var handler = new StubHandler(
+            HttpStatusCode.Forbidden,
+            """{"message":"Token is not allowed to delete secrets"}""");
+        await using var client = CreateClient(handler, ServiceToken);
+
+        var exception = await Assert.ThrowsAsync<SecretProviderException>(
+            () => client.DeleteSecretAsync("MY_SECRET", CancellationToken.None));
+
+        Assert.Contains("Token is not allowed to delete secrets", exception.Message);
     }
 
     [Fact]
