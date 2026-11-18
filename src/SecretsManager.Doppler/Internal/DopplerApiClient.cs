@@ -123,9 +123,6 @@ internal sealed class DopplerApiClient : IDopplerApiClient
             HttpMethod.Get, ScopedUrl("v3/configs/config/secrets/names"));
         using var response = await _http.SendAsync(request, cancellationToken);
 
-        if (response.StatusCode == HttpStatusCode.NotFound)
-            return false;
-
         await EnsureSuccessAsync(
             response, $"checking existence of '{key}'", cancellationToken);
 

@@ -267,12 +267,18 @@ public sealed class DopplerApiClientTests
     }
 
     [Fact]
-    public async Task SecretExistsAsync_NotFound_ReturnsFalse()
+    public async Task SecretExistsAsync_NotFound_Throws()
     {
-        var handler = new StubHandler(HttpStatusCode.NotFound);
+        var handler = new StubHandler(
+            HttpStatusCode.NotFound,
+            """{"messages":["Project or config not found"]}""");
         await using var client = CreateClient(handler, ServiceToken);
 
-        Assert.False(await client.SecretExistsAsync("missing", CancellationToken.None));
+        var exception = await Assert.ThrowsAsync<SecretProviderException>(
+            () => client.SecretExistsAsync("missing", CancellationToken.None));
+
+        Assert.Contains("404", exception.Message);
+        Assert.Contains("Project or config not found", exception.Message);
     }
 
     [Fact]
