@@ -16,6 +16,7 @@ using SecretsManager.Infisical;
 using SecretsManager.TencentCloud;
 using SecretsManager.Vault;
 using SecretsManager.Conjur;
+using SecretsManager.IntegrationTests;
 
 if (args.Length == 0)
 {
@@ -194,9 +195,12 @@ static void WriteError(string message)
     Console.ResetColor();
 }
 
-sealed class StepSummary
+namespace SecretsManager.IntegrationTests
 {
-    public int Passed { get; set; }
+    sealed class StepSummary
+    {
+        public int Passed { get; set; }
 
-    public int Failed { get; set; }
+        public int Failed { get; set; }
+    }
 }
