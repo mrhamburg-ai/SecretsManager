@@ -134,6 +134,7 @@ Each provider has its own set of configuration options. See the individual provi
 - [AWS Secrets Manager Provider](/docs/providers/aws-secrets-manager)
 - [Azure Key Vault Provider](/docs/providers/azure-key-vault)
 - [CyberArk Conjur Provider](/docs/providers/conjur)
+- [Doppler Provider](/docs/providers/doppler)
 - [FileSystem Provider](/docs/providers/filesystem)
 - [Google Secret Manager Provider](/docs/providers/google-secret-manager)
 - [IBM Cloud Secrets Manager Provider](/docs/providers/ibm-cloud-secrets-manager)

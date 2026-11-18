@@ -1,0 +1,8 @@
+# Fill in your Doppler token, project and config before running.
+# A service token (dp.st.*) is scoped to one config. A personal token (dp.pt.*)
+# needs both project and config.
+provider:
+  doppler:
+    token: dp.st.dev.your-service-token
+    project: your-project
+    config: dev

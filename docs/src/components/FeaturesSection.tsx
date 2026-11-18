@@ -9,7 +9,7 @@ const features = [
       'Read, write, version, and delete secrets through one contract, whichever backend holds the value.',
   },
   {
-    title: 'Fifteen providers',
+    title: 'Sixteen providers',
     description:
       'Use Azure, AWS, Google Cloud, Vault, PostgreSQL, or encrypted local files without changing your application logic.',
   },

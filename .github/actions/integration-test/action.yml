@@ -8,6 +8,12 @@ inputs:
   config:
     description: YAML config content for the provider
     required: true
+  expect-version-history:
+    description: Whether the provider reports more than one secret version
+    default: 'true'
+  key-prefix:
+    description: Prefix for the generated test secret key
+    default: 'integration-test-'
 
 runs:
   using: composite
@@ -43,7 +49,7 @@ runs:
   - name: Run integration tests
     shell: bash
     working-directory: ./integration-publish
-    run: ./SecretsManager.IntegrationTests config.yaml
+    run: ./SecretsManager.IntegrationTests config.yaml "${{ inputs.expect-version-history }}" "${{ inputs.key-prefix }}"
 
   - name: Clean up
     if: always()

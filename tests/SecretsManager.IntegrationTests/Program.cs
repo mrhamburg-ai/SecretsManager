@@ -13,6 +13,7 @@ using SecretsManager.Passbolt;
 using SecretsManager.AliyunKms;
 using SecretsManager.IBMCloudSecretsManager;
 using SecretsManager.Infisical;
+using SecretsManager.Doppler;
 using SecretsManager.TencentCloud;
 using SecretsManager.Vault;
 using SecretsManager.Conjur;
@@ -30,6 +31,20 @@ if (args.Length == 0)
 }
 
 var configPath = args[0];
+var expectVersionHistory = true;
+if (args.Length > 1 && !bool.TryParse(args[1], out expectVersionHistory))
+{
+    WriteError($"Invalid value '{args[1]}' for expect-version-history. Use 'true' or 'false'.");
+    return 1;
+}
+
+var keyPrefix = args.Length > 2 ? args[2] : "integration-test-";
+if (string.IsNullOrWhiteSpace(keyPrefix))
+{
+    WriteError("The key prefix must not be empty.");
+    return 1;
+}
+
 if (!File.Exists(configPath))
 {
     WriteError($"Config file not found: {configPath}");
@@ -56,6 +71,7 @@ try
         .WithTencentCloud()
         .WithIBMCloudSecretsManager()
         .WithInfisical()
+        .WithDoppler()
         .WithVault()
         .WithConjur()
         .FromYamlFile(configPath)
@@ -69,7 +85,7 @@ catch (Exception ex)
 
 await using (provider)
 {
-    var testKey = $"integration-test-{Guid.NewGuid().ToString("N")[..8]}";
+    var testKey = $"{keyPrefix}{Guid.NewGuid().ToString("N")[..8].ToUpperInvariant()}";
     var summary = new StepSummary();
 
     // Step 1: Put a secret
@@ -114,7 +130,9 @@ await using (provider)
     await RunStep("List versions", async () =>
     {
         var versions = await provider.GetSecretVersionsAsync(testKey);
-        Assert(versions.Count >= 2, $"Expected at least 2 versions, got {versions.Count}");
+        var minimumVersions = expectVersionHistory ? 2 : 1;
+        Assert(versions.Count >= minimumVersions,
+            $"Expected at least {minimumVersions} versions, got {versions.Count}");
         Console.WriteLine($"  Found {versions.Count} version(s):");
         foreach (var v in versions)
             Console.WriteLine($"    - {v.Version} (current: {v.IsCurrent}, created: {v.CreatedAt})");

@@ -9,7 +9,7 @@ import Link from '@docusaurus/Link';
 
 # Providers Overview
 
-SecretsManager supports fifteen production-ready providers, each designed for different use cases and environments.
+SecretsManager supports sixteen production-ready providers, each designed for different use cases and environments.
 
 ## Available Providers
 
@@ -107,6 +107,12 @@ SecretsManager supports fifteen production-ready providers, each designed for di
     <Link to="/docs/providers/infisical" style={{color: '#EAB308', fontSize: '0.875rem'}}>Learn more &rarr;</Link>
   </div>
 
+  <div className="feature-card provider-card-doppler" style={{padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid var(--sm-line)'}}>
+    <div style={{color: '#1B3A57', fontWeight: 600, fontSize: '1.125rem', marginBottom: '0.5rem'}}>Doppler</div>
+    <p style={{fontSize: '0.875rem', marginBottom: '0.75rem'}}>SaaS secrets management with service tokens, config-scoped access, and computed secret references.</p>
+    <Link to="/docs/providers/doppler" style={{color: '#1B3A57', fontSize: '0.875rem'}}>Learn more &rarr;</Link>
+  </div>
+
   <div className="feature-card provider-card-vault" style={{padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid var(--sm-line)'}}>
     <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem'}}>
       <span className="sm-logo sm-logo--vault" role="img" aria-label="Vault"></span>
@@ -145,6 +151,7 @@ are not configured, so the job is skipped.
 | Tencent Cloud | [![Tencent Cloud integration tests](https://img.shields.io/github/check-runs/mrhamburg/SecretsManager/main?nameFilter=Integration%20tests%20%28Tencent%20Cloud%29&label=tencent)](https://github.com/mrhamburg/SecretsManager/actions/workflows/ci.yml) |
 | HashiCorp Vault | [![HashiCorp Vault integration tests](https://img.shields.io/github/check-runs/mrhamburg/SecretsManager/main?nameFilter=Integration%20tests%20%28HashiCorp%20Vault%29&label=vault)](https://github.com/mrhamburg/SecretsManager/actions/workflows/ci.yml) |
 | Infisical | [![Infisical integration tests](https://img.shields.io/github/check-runs/mrhamburg/SecretsManager/main?nameFilter=Integration%20tests%20%28Infisical%29&label=infisical)](https://github.com/mrhamburg/SecretsManager/actions/workflows/ci.yml) |
+| Doppler | [![Doppler integration tests](https://img.shields.io/github/check-runs/mrhamburg/SecretsManager/main?nameFilter=Integration%20tests%20%28Doppler%29&label=doppler)](https://github.com/mrhamburg/SecretsManager/actions/workflows/ci.yml) |
 | CyberArk Conjur | [![CyberArk Conjur integration tests](https://img.shields.io/github/check-runs/mrhamburg/SecretsManager/main?nameFilter=Integration%20tests%20%28CyberArk%20Conjur%29&label=conjur)](https://github.com/mrhamburg/SecretsManager/actions/workflows/ci.yml) |
 
 Passbolt is disabled in CI (`if: false`), so its badge stays grey until the job is enabled.
@@ -153,13 +160,13 @@ Passbolt is disabled in CI (`if: false`), so its badge stays grey until the job 
 
 All providers implement the `ISecretProvider` interface, but each has unique capabilities:
 
-| Feature | FileSystem | Azure Key Vault | Scaleway | OVH | PostgreSQL | AWS Secrets Manager | Oracle Vault | Google Cloud Secret Manager | Passbolt | Aliyun KMS | Tencent Cloud | IBM Cloud Secrets Manager | Infisical | HashiCorp Vault | CyberArk Conjur |
-|---------|:----------:|:---------------:|:--------:|:---:|:----------:|:-------------------:|:------------:|:---------------------------:|:--------:|:----------:|:-------------:|:-------------------------:|:---------:|:--------------:|:--------------:|
-| Versioning | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes | No | Yes | Yes | Yes | Yes | Yes | Yes |
-| Encryption | AES-256-GCM | HSM-backed | Managed | Managed | AES-256-GCM | AWS KMS | OCI KMS | Google Cloud KMS | OpenPGP | KMS-managed | KMS-managed | Managed | Managed | Storage-backed | Managed |
-| Auth Types | File Permissions | Managed Identity, Service Principal, Azure CLI | API Key, IAM | OAuth | Connection String | IAM, Access Keys, Instance Profile | Config File, Instance Principal, Security Token | ADC, Service Account Key | JWT + PGP | AccessKey | AccessKey | IAM | Universal Auth | Token, AppRole, OIDC, K8s | API Key |
-| Pricing | Free | $0.03 / 10K ops | Free (included) | Free (included) | Self-hosted | $0.40 / secret / month | Pay-per-use | $0.06 / 10K ops | Free (self-hosted) | Pay-per-use | Pay-per-use | $0.40 / secret / month | Free (self-hosted) / Cloud plans | Free (self-hosted) | Free (self-hosted) |
-| Region Control | Local | Azure Regions | EU (fr-par, nl-ams) | EU (fr-par, nl-ams) | Your infrastructure | AWS Global Regions | OCI Regions | Google Cloud Regions | Your server | Alibaba Cloud Global | Tencent Cloud Global | IBM Cloud Global | Your infrastructure / Infisical Cloud | Your infrastructure | Your infrastructure |
+| Feature | FileSystem | Azure Key Vault | Scaleway | OVH | PostgreSQL | AWS Secrets Manager | Oracle Vault | Google Cloud Secret Manager | Passbolt | Aliyun KMS | Tencent Cloud | IBM Cloud Secrets Manager | Infisical | Doppler | HashiCorp Vault | CyberArk Conjur |
+|---------|:----------:|:---------------:|:--------:|:---:|:----------:|:-------------------:|:------------:|:---------------------------:|:--------:|:----------:|:-------------:|:-------------------------:|:---------:|:-------:|:--------------:|:--------------:|
+| Versioning | Yes | Yes | Yes | Yes | Yes | Yes | Yes | Yes | No | Yes | Yes | Yes | Yes | No | Yes | Yes |
+| Encryption | AES-256-GCM | HSM-backed | Managed | Managed | AES-256-GCM | AWS KMS | OCI KMS | Google Cloud KMS | OpenPGP | KMS-managed | KMS-managed | Managed | Managed | Managed | Storage-backed | Managed |
+| Auth Types | File Permissions | Managed Identity, Service Principal, Azure CLI | API Key, IAM | OAuth | Connection String | IAM, Access Keys, Instance Profile | Config File, Instance Principal, Security Token | ADC, Service Account Key | JWT + PGP | AccessKey | AccessKey | IAM | Universal Auth | Service Token | Token, AppRole, OIDC, K8s | API Key |
+| Pricing | Free | $0.03 / 10K ops | Free (included) | Free (included) | Self-hosted | $0.40 / secret / month | Pay-per-use | $0.06 / 10K ops | Free (self-hosted) | Pay-per-use | Pay-per-use | $0.40 / secret / month | Free (self-hosted) / Cloud plans | Free tier / paid plans | Free (self-hosted) | Free (self-hosted) |
+| Region Control | Local | Azure Regions | EU (fr-par, nl-ams) | EU (fr-par, nl-ams) | Your infrastructure | AWS Global Regions | OCI Regions | Google Cloud Regions | Your server | Alibaba Cloud Global | Tencent Cloud Global | IBM Cloud Global | Your infrastructure / Infisical Cloud | Doppler Cloud | Your infrastructure | Your infrastructure |
 
 :::info[Provider Selection]
 Choose your provider based on your deployment environment, compliance requirements, and budget. You can also use multiple providers in the same application for different secret types.
@@ -255,6 +262,13 @@ Choose your provider based on your deployment environment, compliance requiremen
 - You need machine identity authentication with project-scoped roles
 - You want secret version history and per-secret metadata
 - Your team already uses Infisical for application secrets
+
+### Use Doppler when:
+
+- You want a hosted secrets manager with no self-hosted infrastructure
+- You need config-scoped service tokens for different environments
+- You want computed values that resolve secret references at read time
+- Your team already uses Doppler for application secrets
 
 ### Use HashiCorp Vault when:
 
