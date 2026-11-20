@@ -257,13 +257,42 @@ public sealed class DopplerApiClientTests
     [Fact]
     public async Task SecretExistsAsync_ReturnsTrueAndFalse()
     {
-        var found = new StubHandler(HttpStatusCode.OK);
+        var found = new StubHandler(HttpStatusCode.OK, """{"names":["my-secret","OTHER"]}""");
         await using (var client = CreateClient(found, ServiceToken))
             Assert.True(await client.SecretExistsAsync("my-secret", CancellationToken.None));
 
-        var missing = new StubHandler(HttpStatusCode.NotFound);
+        var missing = new StubHandler(HttpStatusCode.OK, """{"names":["OTHER"]}""");
         await using (var client = CreateClient(missing, ServiceToken))
             Assert.False(await client.SecretExistsAsync("missing", CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task SecretExistsAsync_NotFound_Throws()
+    {
+        var handler = new StubHandler(
+            HttpStatusCode.NotFound,
+            """{"messages":["Project or config not found"]}""");
+        await using var client = CreateClient(handler, ServiceToken);
+
+        var exception = await Assert.ThrowsAsync<SecretProviderException>(
+            () => client.SecretExistsAsync("missing", CancellationToken.None));
+
+        Assert.Contains("404", exception.Message);
+        Assert.Contains("Project or config not found", exception.Message);
+    }
+
+    [Fact]
+    public async Task SecretExistsAsync_UsesNamesEndpointAndScope()
+    {
+        var handler = new StubHandler(HttpStatusCode.OK, """{"names":["MY_SECRET"]}""");
+        await using var client = CreateClient(
+            handler, "dp.pt.abcdefghijklmnopqrstuvwxyz0123456789",
+            project: "my-project", config: "dev");
+
+        Assert.True(await client.SecretExistsAsync("MY_SECRET", CancellationToken.None));
+        Assert.Equal("/v3/configs/config/secrets/names", handler.Request!.RequestUri!.AbsolutePath);
+        Assert.Contains("project=my-project", handler.Request.RequestUri.Query);
+        Assert.Contains("config=dev", handler.Request.RequestUri.Query);
     }
 
     [Fact]

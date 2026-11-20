@@ -172,6 +172,10 @@ await provider.DeleteSecretAsync("OLD_SECRET");
   The provider ignores `Tags` and `ContentType`.
 - **Delete:** `DeleteSecretAsync` permanently deletes the secret and throws
   `SecretNotFoundException` when the secret does not exist.
+- **Existence checks:** `SecretExistsAsync` uses `GET /v3/configs/config/secrets/names`. The
+  single-secret endpoint can return a deleted secret for a short time, so it is not used for this
+  check. A `404` from the names endpoint means the project or config is missing, so the provider
+  throws `SecretProviderException` instead of reporting a missing secret.
 - **Restricted values:** A secret with restricted visibility has no readable value. The provider
   throws `SecretProviderException` with a clear message.
 - **Errors:** `SecretProviderException` includes Doppler's `messages` text when the API returns it.
