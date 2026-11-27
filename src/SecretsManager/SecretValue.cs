@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Text;
 
 namespace SecretsManager;
 
@@ -49,5 +50,24 @@ public record SecretValue
         init => _tags = value is null
             ? null
             : new ReadOnlyDictionary<string, string>(new Dictionary<string, string>(value));
+    }
+
+    /// <summary>
+    /// Writes the members used by the generated <c>ToString()</c>, with <see cref="Value"/> redacted
+    /// so that logging or string-formatting a <see cref="SecretValue"/> cannot leak the secret.
+    /// </summary>
+    /// <param name="builder">The builder that receives the member list.</param>
+    /// <returns><see langword="true"/> because at least one member is always written.</returns>
+    protected virtual bool PrintMembers(StringBuilder builder)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        builder.Append("Key = ").Append(Key)
+            .Append(", Value = [redacted]")
+            .Append(", Version = ").Append(Version)
+            .Append(", CreatedAt = ").Append(CreatedAt)
+            .Append(", UpdatedAt = ").Append(UpdatedAt)
+            .Append(", ContentType = ").Append(ContentType);
+        return true;
     }
 }
