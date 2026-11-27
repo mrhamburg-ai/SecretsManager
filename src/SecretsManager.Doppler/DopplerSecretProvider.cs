@@ -55,7 +55,7 @@ public sealed class DopplerSecretProvider : ISecretProvider
                     "Doppler does not expose per-secret versions. " +
                     "Do not set SecretQuery.Version.");
 
-            var secret = await _client.GetSecretAsync(key, cancellationToken)
+            var secret = await _client.GetSecretAsync(key, cancellationToken).ConfigureAwait(false)
                 ?? throw new SecretNotFoundException(key);
 
             var value = secret.Value;
@@ -93,7 +93,7 @@ public sealed class DopplerSecretProvider : ISecretProvider
     {
         try
         {
-            var stored = await _client.PutSecretAsync(key, value, cancellationToken);
+            var stored = await _client.PutSecretAsync(key, value, cancellationToken).ConfigureAwait(false);
 
             return new SecretValue
             {
@@ -121,7 +121,7 @@ public sealed class DopplerSecretProvider : ISecretProvider
     {
         try
         {
-            if (!await _client.DeleteSecretAsync(key, cancellationToken))
+            if (!await _client.DeleteSecretAsync(key, cancellationToken).ConfigureAwait(false))
                 throw new SecretNotFoundException(key);
         }
         catch (Exception ex) when (ex is not SecretProviderException
@@ -146,7 +146,7 @@ public sealed class DopplerSecretProvider : ISecretProvider
     {
         try
         {
-            if (!await _client.SecretExistsAsync(key, cancellationToken))
+            if (!await _client.SecretExistsAsync(key, cancellationToken).ConfigureAwait(false))
                 throw new SecretNotFoundException(key);
 
             return new[]
@@ -178,7 +178,7 @@ public sealed class DopplerSecretProvider : ISecretProvider
     {
         try
         {
-            return await _client.SecretExistsAsync(key, cancellationToken);
+            return await _client.SecretExistsAsync(key, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not SecretProviderException
             and not OperationCanceledException and not ArgumentException)

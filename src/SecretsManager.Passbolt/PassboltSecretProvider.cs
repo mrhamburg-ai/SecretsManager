@@ -59,10 +59,10 @@ public sealed class PassboltSecretProvider : ISecretProvider
     {
         try
         {
-            var resource = await FindResourceByNameAsync(key, cancellationToken)
+            var resource = await FindResourceByNameAsync(key, cancellationToken).ConfigureAwait(false)
                 ?? throw new SecretNotFoundException(key);
 
-            var secretValue = await GetSecretValueAsync(resource, cancellationToken);
+            var secretValue = await GetSecretValueAsync(resource, cancellationToken).ConfigureAwait(false);
 
             if (query?.Property is { } property)
                 secretValue = JsonPropertyExtractor.Extract(secretValue, property);
@@ -99,24 +99,24 @@ public sealed class PassboltSecretProvider : ISecretProvider
         try
         {
             var resourceTypeId = _defaultResourceTypeId
-                ?? await GetDefaultResourceTypeIdAsync(cancellationToken);
+                ?? await GetDefaultResourceTypeIdAsync(cancellationToken).ConfigureAwait(false);
 
             var secretJson = JsonSerializer.Serialize(new { password = value });
-            var encryptedSecret = await EncryptSecretAsync(secretJson, cancellationToken);
+            var encryptedSecret = await EncryptSecretAsync(secretJson, cancellationToken).ConfigureAwait(false);
 
-            var resource = await FindResourceByNameAsync(key, cancellationToken);
+            var resource = await FindResourceByNameAsync(key, cancellationToken).ConfigureAwait(false);
 
             if (resource is null)
             {
                 resource = await _client.CreateResourceAsync(
                     key, encryptedSecret, resourceTypeId,
-                    username: null, uri: null, cancellationToken);
+                    username: null, uri: null, cancellationToken).ConfigureAwait(false);
             }
             else
             {
                 resource = await _client.UpdateResourceAsync(
                     resource.Id, key, encryptedSecret, resourceTypeId,
-                    username: null, uri: null, cancellationToken);
+                    username: null, uri: null, cancellationToken).ConfigureAwait(false);
             }
 
             return new SecretValue
@@ -146,10 +146,10 @@ public sealed class PassboltSecretProvider : ISecretProvider
     {
         try
         {
-            var resource = await FindResourceByNameAsync(key, cancellationToken)
+            var resource = await FindResourceByNameAsync(key, cancellationToken).ConfigureAwait(false)
                 ?? throw new SecretNotFoundException(key);
 
-            await _client.DeleteResourceAsync(resource.Id, cancellationToken);
+            await _client.DeleteResourceAsync(resource.Id, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
@@ -171,7 +171,7 @@ public sealed class PassboltSecretProvider : ISecretProvider
     {
         try
         {
-            var resource = await FindResourceByNameAsync(key, cancellationToken)
+            var resource = await FindResourceByNameAsync(key, cancellationToken).ConfigureAwait(false)
                 ?? throw new SecretNotFoundException(key);
 
             return new[]
@@ -202,7 +202,7 @@ public sealed class PassboltSecretProvider : ISecretProvider
     {
         try
         {
-            var resource = await FindResourceByNameAsync(key, cancellationToken);
+            var resource = await FindResourceByNameAsync(key, cancellationToken).ConfigureAwait(false);
             return resource is not null;
         }
         catch (Exception ex)
@@ -217,13 +217,13 @@ public sealed class PassboltSecretProvider : ISecretProvider
     /// </summary>
     public async ValueTask DisposeAsync()
     {
-        await _client.DisposeAsync();
+        await _client.DisposeAsync().ConfigureAwait(false);
     }
 
     private async Task<PassboltResourceResult?> FindResourceByNameAsync(
         string name, CancellationToken cancellationToken)
     {
-        var resources = await _client.ListResourcesAsync(name, cancellationToken);
+        var resources = await _client.ListResourcesAsync(name, cancellationToken).ConfigureAwait(false);
         return resources.FirstOrDefault(r => string.Equals(r.Name, name, StringComparison.OrdinalIgnoreCase));
     }
 
@@ -232,22 +232,22 @@ public sealed class PassboltSecretProvider : ISecretProvider
     {
         if (resource.EncryptedSecret is null)
         {
-            var fullResource = await _client.GetResourceAsync(resource.Id, cancellationToken)
+            var fullResource = await _client.GetResourceAsync(resource.Id, cancellationToken).ConfigureAwait(false)
                 ?? throw new SecretProviderException($"Secret data not available for resource '{resource.Name}'.");
 
             if (fullResource.EncryptedSecret is null)
                 throw new SecretProviderException($"No secret data found for resource '{resource.Name}'.");
 
-            return await DecryptSecretAsync(fullResource.EncryptedSecret, cancellationToken);
+            return await DecryptSecretAsync(fullResource.EncryptedSecret, cancellationToken).ConfigureAwait(false);
         }
 
-        return await DecryptSecretAsync(resource.EncryptedSecret, cancellationToken);
+        return await DecryptSecretAsync(resource.EncryptedSecret, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<string> DecryptSecretAsync(
         string encryptedSecret, CancellationToken cancellationToken)
     {
-        await _client.EnsureAuthenticatedAsync(cancellationToken);
+        await _client.EnsureAuthenticatedAsync(cancellationToken).ConfigureAwait(false);
 
         var secretJson = encryptedSecret;
         var secretObj = JsonSerializer.Deserialize<JsonElement>(secretJson);
@@ -261,14 +261,14 @@ public sealed class PassboltSecretProvider : ISecretProvider
     private async Task<string> EncryptSecretAsync(
         string secretJson, CancellationToken cancellationToken)
     {
-        await _client.EnsureAuthenticatedAsync(cancellationToken);
+        await _client.EnsureAuthenticatedAsync(cancellationToken).ConfigureAwait(false);
         return secretJson;
     }
 
     private async Task<string> GetDefaultResourceTypeIdAsync(
         CancellationToken cancellationToken)
     {
-        var types = await _client.GetResourceTypesAsync(cancellationToken);
+        var types = await _client.GetResourceTypesAsync(cancellationToken).ConfigureAwait(false);
         var passwordType = types.FirstOrDefault(t => t.Slug == "password-and-description")
             ?? types.FirstOrDefault()
             ?? throw new SecretProviderException("No resource types available on the Passbolt server.");

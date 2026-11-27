@@ -12,7 +12,7 @@ internal sealed class SecretClientWrapper : ISecretClientWrapper
     public async Task<KeyVaultSecretResult> GetSecretAsync(
         string name, string? version, CancellationToken cancellationToken)
     {
-        var response = await _client.GetSecretAsync(name, version, cancellationToken);
+        var response = await _client.GetSecretAsync(name, version, cancellationToken).ConfigureAwait(false);
         var secret = response.Value;
         return MapToResult(secret);
     }
@@ -32,20 +32,20 @@ internal sealed class SecretClientWrapper : ISecretClientWrapper
                 kvSecret.Properties.Tags[kvp.Key] = kvp.Value;
         }
 
-        var response = await _client.SetSecretAsync(kvSecret, cancellationToken);
+        var response = await _client.SetSecretAsync(kvSecret, cancellationToken).ConfigureAwait(false);
         return MapToResult(response.Value);
     }
 
     public async Task DeleteSecretAsync(string name, CancellationToken cancellationToken)
     {
-        var operation = await _client.StartDeleteSecretAsync(name, cancellationToken);
-        await operation.WaitForCompletionAsync(cancellationToken);
+        var operation = await _client.StartDeleteSecretAsync(name, cancellationToken).ConfigureAwait(false);
+        await operation.WaitForCompletionAsync(cancellationToken).ConfigureAwait(false);
     }
 
     public async IAsyncEnumerable<SecretVersionProperties> GetSecretVersionsAsync(
         string name, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        await foreach (var sp in _client.GetPropertiesOfSecretVersionsAsync(name, cancellationToken))
+        await foreach (var sp in _client.GetPropertiesOfSecretVersionsAsync(name, cancellationToken).ConfigureAwait(false))
         {
             yield return new SecretVersionProperties(sp.Version, sp.CreatedOn, sp.Enabled);
         }

@@ -57,16 +57,16 @@ internal sealed class DopplerApiClient : IDopplerApiClient
         ValidateKey(key);
 
         using var request = CreateRequest(HttpMethod.Get, SecretUrl(key));
-        using var response = await _http.SendAsync(request, cancellationToken);
+        using var response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
         if (response.StatusCode == HttpStatusCode.NotFound)
             return null;
 
         await EnsureSuccessAsync(
-            response, $"retrieving secret '{key}'", cancellationToken);
+            response, $"retrieving secret '{key}'", cancellationToken).ConfigureAwait(false);
 
         var body = await response.Content.ReadFromJsonAsync<SecretResponse>(
-            JsonOptions, cancellationToken)
+            JsonOptions, cancellationToken).ConfigureAwait(false)
             ?? throw new SecretProviderException(
                 $"Doppler API returned an empty response when retrieving secret '{key}'.");
         return new DopplerSecretResult(ReadValue(body, key));
@@ -87,12 +87,12 @@ internal sealed class DopplerApiClient : IDopplerApiClient
         using var request = CreateRequest(HttpMethod.Post, "v3/configs/config/secrets");
         request.Content = JsonContent.Create(payload, options: JsonOptions);
 
-        using var response = await _http.SendAsync(request, cancellationToken);
+        using var response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
         await EnsureSuccessAsync(
-            response, $"putting secret '{key}'", cancellationToken, value);
+            response, $"putting secret '{key}'", cancellationToken, value).ConfigureAwait(false);
 
         var body = await response.Content.ReadFromJsonAsync<UpdateSecretsResponse>(
-            JsonOptions, cancellationToken);
+            JsonOptions, cancellationToken).ConfigureAwait(false);
 
         if (body?.Secrets is not null && body.Secrets.TryGetValue(key, out var stored))
             return new DopplerSecretResult(ReadValue(stored, key, value));
@@ -105,13 +105,13 @@ internal sealed class DopplerApiClient : IDopplerApiClient
         ValidateKey(key);
 
         using var request = CreateRequest(HttpMethod.Delete, SecretUrl(key));
-        using var response = await _http.SendAsync(request, cancellationToken);
+        using var response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
         if (response.StatusCode == HttpStatusCode.NotFound)
             return false;
 
         await EnsureSuccessAsync(
-            response, $"deleting secret '{key}'", cancellationToken);
+            response, $"deleting secret '{key}'", cancellationToken).ConfigureAwait(false);
         return true;
     }
 
@@ -121,13 +121,13 @@ internal sealed class DopplerApiClient : IDopplerApiClient
 
         using var request = CreateRequest(
             HttpMethod.Get, ScopedUrl("v3/configs/config/secrets/names"));
-        using var response = await _http.SendAsync(request, cancellationToken);
+        using var response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
         await EnsureSuccessAsync(
-            response, $"checking existence of '{key}'", cancellationToken);
+            response, $"checking existence of '{key}'", cancellationToken).ConfigureAwait(false);
 
         var body = await response.Content.ReadFromJsonAsync<SecretNamesResponse>(
-            JsonOptions, cancellationToken)
+            JsonOptions, cancellationToken).ConfigureAwait(false)
             ?? throw new SecretProviderException(
                 $"Doppler API returned an empty response when checking existence of '{key}'.");
 
@@ -197,7 +197,7 @@ internal sealed class DopplerApiClient : IDopplerApiClient
         if (response.IsSuccessStatusCode)
             return;
 
-        var detail = await ReadErrorDetailAsync(response, cancellationToken, sensitiveValues);
+        var detail = await ReadErrorDetailAsync(response, cancellationToken, sensitiveValues).ConfigureAwait(false);
         var wait = response.Headers.RetryAfter?.Delta
             ?? (response.Headers.RetryAfter?.Date is { } date ? date - DateTimeOffset.UtcNow : null);
         var retry = wait is { } value && value > TimeSpan.Zero
@@ -219,7 +219,7 @@ internal sealed class DopplerApiClient : IDopplerApiClient
     {
         try
         {
-            var body = await response.Content.ReadAsStringAsync(cancellationToken);
+            var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
             if (string.IsNullOrWhiteSpace(body))
                 return "";
 

@@ -67,7 +67,7 @@ public sealed class InfisicalSecretProvider : ISecretProvider
                 version = parsed;
             }
 
-            var secret = await _client.GetSecretAsync(key, version, includeValue: true, cancellationToken)
+            var secret = await _client.GetSecretAsync(key, version, includeValue: true, cancellationToken).ConfigureAwait(false)
                 ?? throw new SecretNotFoundException(key);
 
             var secretValue = secret.Value;
@@ -112,12 +112,12 @@ public sealed class InfisicalSecretProvider : ISecretProvider
         {
             ValidateKey(key);
 
-            var existing = await _client.FindSecretAsync(key, cancellationToken);
+            var existing = await _client.FindSecretAsync(key, cancellationToken).ConfigureAwait(false);
             var tags = metadata?.Tags;
 
             var result = existing is null
-                ? await _client.CreateSecretAsync(key, value, tags, cancellationToken)
-                : await _client.UpdateSecretAsync(key, value, tags, cancellationToken);
+                ? await _client.CreateSecretAsync(key, value, tags, cancellationToken).ConfigureAwait(false)
+                : await _client.UpdateSecretAsync(key, value, tags, cancellationToken).ConfigureAwait(false);
 
             return new SecretValue
             {
@@ -151,7 +151,7 @@ public sealed class InfisicalSecretProvider : ISecretProvider
         {
             ValidateKey(key);
 
-            if (!await _client.DeleteSecretAsync(key, cancellationToken))
+            if (!await _client.DeleteSecretAsync(key, cancellationToken).ConfigureAwait(false))
                 throw new SecretNotFoundException(key);
         }
         catch (Exception ex) when (ex is not SecretProviderException)
@@ -175,7 +175,7 @@ public sealed class InfisicalSecretProvider : ISecretProvider
     {
         try
         {
-            var current = await _client.FindSecretAsync(key, cancellationToken);
+            var current = await _client.FindSecretAsync(key, cancellationToken).ConfigureAwait(false);
             if (current is null)
                 return Array.Empty<SecretVersionInfo>();
 
@@ -189,7 +189,7 @@ public sealed class InfisicalSecretProvider : ISecretProvider
             for (var version = 1; version <= current.Version; version++)
             {
                 var secret = await _client.GetSecretAsync(
-                    key, version, includeValue: false, cancellationToken);
+                    key, version, includeValue: false, cancellationToken).ConfigureAwait(false);
 
                 if (secret is null)
                     continue;
@@ -222,7 +222,7 @@ public sealed class InfisicalSecretProvider : ISecretProvider
     {
         try
         {
-            return await _client.FindSecretAsync(key, cancellationToken) is not null;
+            return await _client.FindSecretAsync(key, cancellationToken).ConfigureAwait(false) is not null;
         }
         catch (Exception ex) when (ex is not SecretProviderException)
         {

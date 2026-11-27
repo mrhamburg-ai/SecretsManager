@@ -45,7 +45,7 @@ public sealed class AwsSecretsManagerSecretProvider : ISecretProvider
         try
         {
             var result = await _client.GetSecretValueAsync(
-                key, query?.Version, null, cancellationToken);
+                key, query?.Version, null, cancellationToken).ConfigureAwait(false);
 
             var value = result.Value;
 
@@ -91,7 +91,7 @@ public sealed class AwsSecretsManagerSecretProvider : ISecretProvider
         try
         {
             var result = await _client.PutSecretValueAsync(
-                key, value, metadata?.ContentType, cancellationToken);
+                key, value, metadata?.ContentType, cancellationToken).ConfigureAwait(false);
 
             return new SecretValue
             {
@@ -120,7 +120,7 @@ public sealed class AwsSecretsManagerSecretProvider : ISecretProvider
     {
         try
         {
-            await _client.DeleteSecretAsync(key, cancellationToken);
+            await _client.DeleteSecretAsync(key, cancellationToken).ConfigureAwait(false);
         }
         catch (ResourceNotFoundException ex)
         {
@@ -147,7 +147,7 @@ public sealed class AwsSecretsManagerSecretProvider : ISecretProvider
         try
         {
             var versions = new List<SecretVersionInfo>();
-            await foreach (var v in _client.ListSecretVersionsAsync(key, cancellationToken))
+            await foreach (var v in _client.ListSecretVersionsAsync(key, cancellationToken).ConfigureAwait(false))
             {
                 versions.Add(new SecretVersionInfo
                 {
@@ -181,7 +181,7 @@ public sealed class AwsSecretsManagerSecretProvider : ISecretProvider
     {
         try
         {
-            return await _client.SecretExistsAsync(key, cancellationToken);
+            return await _client.SecretExistsAsync(key, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
@@ -195,6 +195,6 @@ public sealed class AwsSecretsManagerSecretProvider : ISecretProvider
     /// </summary>
     public async ValueTask DisposeAsync()
     {
-        await _client.DisposeAsync();
+        await _client.DisposeAsync().ConfigureAwait(false);
     }
 }

@@ -60,7 +60,7 @@ public sealed class PostgreSqlSecretProvider : ISecretProvider
     {
         try
         {
-            var secret = await _store.GetSecretByKeyAsync(key, cancellationToken)
+            var secret = await _store.GetSecretByKeyAsync(key, cancellationToken).ConfigureAwait(false)
                 ?? throw new SecretNotFoundException(key);
 
             int? versionNumber = null;
@@ -72,10 +72,10 @@ public sealed class PostgreSqlSecretProvider : ISecretProvider
                 versionNumber = parsed;
             }
 
-            var version = await _store.GetVersionAsync(secret.Id, versionNumber, cancellationToken)
+            var version = await _store.GetVersionAsync(secret.Id, versionNumber, cancellationToken).ConfigureAwait(false)
                 ?? throw new SecretNotFoundException(key);
 
-            var value = await DecryptValueAsync(key, version, cancellationToken);
+            var value = await DecryptValueAsync(key, version, cancellationToken).ConfigureAwait(false);
 
             if (query?.Property is { } property)
                 value = JsonPropertyExtractor.Extract(value, property);
@@ -115,11 +115,11 @@ public sealed class PostgreSqlSecretProvider : ISecretProvider
     {
         try
         {
-            var (storedValue, encrypted) = await EncryptValueAsync(key, value, cancellationToken);
+            var (storedValue, encrypted) = await EncryptValueAsync(key, value, cancellationToken).ConfigureAwait(false);
 
             var (secret, version) = await _store.PutSecretAsync(
                 key, storedValue, encrypted,
-                metadata?.ContentType, metadata?.Tags, cancellationToken);
+                metadata?.ContentType, metadata?.Tags, cancellationToken).ConfigureAwait(false);
 
             return new SecretValue
             {
@@ -150,7 +150,7 @@ public sealed class PostgreSqlSecretProvider : ISecretProvider
     {
         try
         {
-            var deleted = await _store.DeleteSecretAsync(key, cancellationToken);
+            var deleted = await _store.DeleteSecretAsync(key, cancellationToken).ConfigureAwait(false);
             if (!deleted)
                 throw new SecretNotFoundException(key);
         }
@@ -174,10 +174,10 @@ public sealed class PostgreSqlSecretProvider : ISecretProvider
     {
         try
         {
-            var secret = await _store.GetSecretByKeyAsync(key, cancellationToken)
+            var secret = await _store.GetSecretByKeyAsync(key, cancellationToken).ConfigureAwait(false)
                 ?? throw new SecretNotFoundException(key);
 
-            var versions = await _store.ListVersionsAsync(secret.Id, cancellationToken);
+            var versions = await _store.ListVersionsAsync(secret.Id, cancellationToken).ConfigureAwait(false);
 
             return versions
                 .Select(v => new SecretVersionInfo
@@ -207,7 +207,7 @@ public sealed class PostgreSqlSecretProvider : ISecretProvider
     {
         try
         {
-            return await _store.SecretExistsAsync(key, cancellationToken);
+            return await _store.SecretExistsAsync(key, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
@@ -222,7 +222,7 @@ public sealed class PostgreSqlSecretProvider : ISecretProvider
     public async ValueTask DisposeAsync()
     {
         await _keys.DisposeAsync().ConfigureAwait(false);
-        await _store.DisposeAsync();
+        await _store.DisposeAsync().ConfigureAwait(false);
     }
 
     /// <summary>

@@ -52,7 +52,7 @@ internal sealed partial class SecretFileStore : IDisposable
         if (!File.Exists(path))
             throw new SecretNotFoundException(key);
 
-        var json = await File.ReadAllTextAsync(path, ct);
+        var json = await File.ReadAllTextAsync(path, ct).ConfigureAwait(false);
         return JsonSerializer.Deserialize<VersionedSecretEnvelope>(json, JsonOptions)
             ?? throw new SecretProviderException($"Corrupt envelope for secret '{key}' version '{version}'.");
     }
@@ -66,7 +66,7 @@ internal sealed partial class SecretFileStore : IDisposable
         var tempPath = targetPath + ".tmp";
 
         var json = JsonSerializer.Serialize(envelope, JsonOptions);
-        await File.WriteAllTextAsync(tempPath, json, ct);
+        await File.WriteAllTextAsync(tempPath, json, ct).ConfigureAwait(false);
         File.Move(tempPath, targetPath, overwrite: true);
     }
 
@@ -76,7 +76,7 @@ internal sealed partial class SecretFileStore : IDisposable
         if (!File.Exists(path))
             throw new SecretNotFoundException(key);
 
-        var json = await File.ReadAllTextAsync(path, ct);
+        var json = await File.ReadAllTextAsync(path, ct).ConfigureAwait(false);
         using var doc = JsonDocument.Parse(json);
         return doc.RootElement.GetProperty("version").GetString()
             ?? throw new SecretProviderException($"Invalid current pointer for secret '{key}'.");
@@ -91,7 +91,7 @@ internal sealed partial class SecretFileStore : IDisposable
         var tempPath = targetPath + ".tmp";
 
         var json = JsonSerializer.Serialize(new { version }, JsonOptions);
-        await File.WriteAllTextAsync(tempPath, json, ct);
+        await File.WriteAllTextAsync(tempPath, json, ct).ConfigureAwait(false);
         File.Move(tempPath, targetPath, overwrite: true);
     }
 

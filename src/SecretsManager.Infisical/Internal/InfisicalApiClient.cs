@@ -69,7 +69,7 @@ internal sealed class InfisicalApiClient : IInfisicalApiClient
             }),
             $"listing secrets for '{key}'",
             allowNotFound: false,
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
 
         var secretList = secrets
             ?? throw new SecretProviderException("Infisical returned an empty secret list.");
@@ -96,7 +96,7 @@ internal sealed class InfisicalApiClient : IInfisicalApiClient
             }),
             $"retrieving secret '{key}'",
             allowNotFound: true,
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
 
         return secret is null ? null : Map(secret);
     }
@@ -121,7 +121,7 @@ internal sealed class InfisicalApiClient : IInfisicalApiClient
             }),
             $"creating secret '{key}'",
             allowNotFound: false,
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
 
         return Map(secret
             ?? throw new SecretProviderException("Infisical returned an empty create response."));
@@ -147,7 +147,7 @@ internal sealed class InfisicalApiClient : IInfisicalApiClient
             }),
             $"updating secret '{key}'",
             allowNotFound: false,
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
 
         return Map(secret
             ?? throw new SecretProviderException("Infisical returned an empty update response."));
@@ -166,7 +166,7 @@ internal sealed class InfisicalApiClient : IInfisicalApiClient
             }),
             $"deleting secret '{key}'",
             allowNotFound: true,
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
 
         return secret is not null;
     }
@@ -188,11 +188,11 @@ internal sealed class InfisicalApiClient : IInfisicalApiClient
     {
         for (var attempt = 0; ; attempt++)
         {
-            await EnsureAuthenticatedAsync(cancellationToken);
+            await EnsureAuthenticatedAsync(cancellationToken).ConfigureAwait(false);
 
             try
             {
-                return await action().WaitAsync(cancellationToken);
+                return await action().WaitAsync(cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -219,7 +219,7 @@ internal sealed class InfisicalApiClient : IInfisicalApiClient
         if (HasValidToken())
             return;
 
-        await _authLock.WaitAsync(cancellationToken);
+        await _authLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             if (HasValidToken())
@@ -227,7 +227,7 @@ internal sealed class InfisicalApiClient : IInfisicalApiClient
 
             var credential = await _authClient.UniversalAuth()
                 .LoginAsync(_clientId, _clientSecret)
-                .WaitAsync(cancellationToken);
+                .WaitAsync(cancellationToken).ConfigureAwait(false);
 
             var seconds = Math.Clamp((double)credential.ExpiresIn, 0, MaxTokenLifetimeSeconds);
             if (seconds > TokenRefreshMarginSeconds * 2)

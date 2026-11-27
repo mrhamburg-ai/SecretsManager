@@ -57,11 +57,11 @@ internal sealed class PassboltApiClient : IPassboltApiClient
         if (_isAuthenticated)
             return;
 
-        await _authLock.WaitAsync(cancellationToken);
+        await _authLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             if (!_isAuthenticated)
-                await AuthenticateAsync(cancellationToken);
+                await AuthenticateAsync(cancellationToken).ConfigureAwait(false);
         }
         finally
         {
@@ -71,7 +71,7 @@ internal sealed class PassboltApiClient : IPassboltApiClient
 
     private async Task AuthenticateAsync(CancellationToken cancellationToken)
     {
-        await FetchServerPublicKeyAsync(cancellationToken);
+        await FetchServerPublicKeyAsync(cancellationToken).ConfigureAwait(false);
 
         var verifyToken = Guid.NewGuid().ToString();
         var verifyTokenExpiry = DateTimeOffset.UtcNow.AddMinutes(5).ToUnixTimeSeconds();
@@ -101,10 +101,10 @@ internal sealed class PassboltApiClient : IPassboltApiClient
             JsonSerializer.Serialize(loginPayload, JsonOptions),
             Encoding.UTF8, "application/json");
 
-        using var response = await _http.PostAsync("/auth/login.json?api-version=v2", content, cancellationToken);
+        using var response = await _http.PostAsync("/auth/login.json?api-version=v2", content, cancellationToken).ConfigureAwait(false);
         EnsureSuccess(response, "authenticating");
 
-        var loginResponse = await response.Content.ReadFromJsonAsync<LoginResponse>(JsonOptions, cancellationToken)
+        var loginResponse = await response.Content.ReadFromJsonAsync<LoginResponse>(JsonOptions, cancellationToken).ConfigureAwait(false)
             ?? throw new SecretProviderException("Empty response during authentication.");
 
         if (loginResponse.Header.Status != "success")
@@ -130,10 +130,10 @@ internal sealed class PassboltApiClient : IPassboltApiClient
 
     private async Task FetchServerPublicKeyAsync(CancellationToken cancellationToken)
     {
-        using var response = await _http.GetAsync("/auth/verify.json", cancellationToken);
+        using var response = await _http.GetAsync("/auth/verify.json", cancellationToken).ConfigureAwait(false);
         EnsureSuccess(response, "fetching server public key");
 
-        var verifyResponse = await response.Content.ReadFromJsonAsync<VerifyResponse>(JsonOptions, cancellationToken)
+        var verifyResponse = await response.Content.ReadFromJsonAsync<VerifyResponse>(JsonOptions, cancellationToken).ConfigureAwait(false)
             ?? throw new SecretProviderException("Empty response when fetching server public key.");
 
         _serverEncryptionKey = PassboltPgpHelper.ReadPublicKey(verifyResponse.Body.ServerKey);
@@ -151,16 +151,16 @@ internal sealed class PassboltApiClient : IPassboltApiClient
     public async Task<List<PassboltResourceResult>> ListResourcesAsync(
         string? search = null, CancellationToken cancellationToken = default)
     {
-        await EnsureAuthenticatedAsync(cancellationToken);
+        await EnsureAuthenticatedAsync(cancellationToken).ConfigureAwait(false);
 
         var url = "/resources.json?api-version=v2&contain[secret]=1";
         if (!string.IsNullOrEmpty(search))
             url += $"&filter[has]={Uri.EscapeDataString(search)}";
 
-        using var response = await _http.GetAsync(url, cancellationToken);
+        using var response = await _http.GetAsync(url, cancellationToken).ConfigureAwait(false);
         EnsureSuccess(response, "listing resources");
 
-        var apiResponse = await response.Content.ReadFromJsonAsync<PassboltApiResponse<List<ResourceDto>>>(JsonOptions, cancellationToken)
+        var apiResponse = await response.Content.ReadFromJsonAsync<PassboltApiResponse<List<ResourceDto>>>(JsonOptions, cancellationToken).ConfigureAwait(false)
             ?? throw new SecretProviderException("Empty response when listing resources.");
 
         if (apiResponse.Header.Status != "success")
@@ -173,17 +173,17 @@ internal sealed class PassboltApiClient : IPassboltApiClient
     public async Task<PassboltResourceResult?> GetResourceAsync(
         string resourceId, CancellationToken cancellationToken = default)
     {
-        await EnsureAuthenticatedAsync(cancellationToken);
+        await EnsureAuthenticatedAsync(cancellationToken).ConfigureAwait(false);
 
         var url = $"/resources/{Uri.EscapeDataString(resourceId)}.json?api-version=v2&contain[secret]=1";
-        using var response = await _http.GetAsync(url, cancellationToken);
+        using var response = await _http.GetAsync(url, cancellationToken).ConfigureAwait(false);
 
         if (response.StatusCode == HttpStatusCode.NotFound)
             return null;
 
         EnsureSuccess(response, $"getting resource '{resourceId}'");
 
-        var apiResponse = await response.Content.ReadFromJsonAsync<PassboltApiResponse<ResourceDto>>(JsonOptions, cancellationToken)
+        var apiResponse = await response.Content.ReadFromJsonAsync<PassboltApiResponse<ResourceDto>>(JsonOptions, cancellationToken).ConfigureAwait(false)
             ?? throw new SecretProviderException("Empty response when getting resource.");
 
         if (apiResponse.Header.Status != "success")
@@ -196,7 +196,7 @@ internal sealed class PassboltApiClient : IPassboltApiClient
         string name, string encryptedSecret, string resourceTypeId,
         string? username, string? uri, CancellationToken cancellationToken = default)
     {
-        await EnsureAuthenticatedAsync(cancellationToken);
+        await EnsureAuthenticatedAsync(cancellationToken).ConfigureAwait(false);
 
         var payload = new CreateResourceRequest
         {
@@ -211,10 +211,10 @@ internal sealed class PassboltApiClient : IPassboltApiClient
             JsonSerializer.Serialize(payload, JsonOptions),
             Encoding.UTF8, "application/json");
 
-        using var response = await _http.PostAsync("/resources.json?api-version=v2", content, cancellationToken);
+        using var response = await _http.PostAsync("/resources.json?api-version=v2", content, cancellationToken).ConfigureAwait(false);
         EnsureSuccess(response, $"creating resource '{name}'");
 
-        var apiResponse = await response.Content.ReadFromJsonAsync<PassboltApiResponse<ResourceDto>>(JsonOptions, cancellationToken)
+        var apiResponse = await response.Content.ReadFromJsonAsync<PassboltApiResponse<ResourceDto>>(JsonOptions, cancellationToken).ConfigureAwait(false)
             ?? throw new SecretProviderException("Empty response when creating resource.");
 
         if (apiResponse.Header.Status != "success")
@@ -229,7 +229,7 @@ internal sealed class PassboltApiClient : IPassboltApiClient
         string resourceId, string name, string encryptedSecret, string resourceTypeId,
         string? username, string? uri, CancellationToken cancellationToken = default)
     {
-        await EnsureAuthenticatedAsync(cancellationToken);
+        await EnsureAuthenticatedAsync(cancellationToken).ConfigureAwait(false);
 
         var payload = new UpdateResourceRequest
         {
@@ -249,10 +249,10 @@ internal sealed class PassboltApiClient : IPassboltApiClient
             Content = content
         };
 
-        using var response = await _http.SendAsync(request, cancellationToken);
+        using var response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
         EnsureSuccess(response, $"updating resource '{resourceId}'");
 
-        var apiResponse = await response.Content.ReadFromJsonAsync<PassboltApiResponse<ResourceDto>>(JsonOptions, cancellationToken)
+        var apiResponse = await response.Content.ReadFromJsonAsync<PassboltApiResponse<ResourceDto>>(JsonOptions, cancellationToken).ConfigureAwait(false)
             ?? throw new SecretProviderException("Empty response when updating resource.");
 
         if (apiResponse.Header.Status != "success")
@@ -266,21 +266,21 @@ internal sealed class PassboltApiClient : IPassboltApiClient
     public async Task DeleteResourceAsync(
         string resourceId, CancellationToken cancellationToken = default)
     {
-        await EnsureAuthenticatedAsync(cancellationToken);
+        await EnsureAuthenticatedAsync(cancellationToken).ConfigureAwait(false);
 
-        using var response = await _http.DeleteAsync($"/resources/{Uri.EscapeDataString(resourceId)}.json?api-version=v2", cancellationToken);
+        using var response = await _http.DeleteAsync($"/resources/{Uri.EscapeDataString(resourceId)}.json?api-version=v2", cancellationToken).ConfigureAwait(false);
         EnsureSuccess(response, $"deleting resource '{resourceId}'");
     }
 
     public async Task<List<PassboltResourceTypeResult>> GetResourceTypesAsync(
         CancellationToken cancellationToken = default)
     {
-        await EnsureAuthenticatedAsync(cancellationToken);
+        await EnsureAuthenticatedAsync(cancellationToken).ConfigureAwait(false);
 
-        using var response = await _http.GetAsync("/resource-types.json?api-version=v2", cancellationToken);
+        using var response = await _http.GetAsync("/resource-types.json?api-version=v2", cancellationToken).ConfigureAwait(false);
         EnsureSuccess(response, "getting resource types");
 
-        var apiResponse = await response.Content.ReadFromJsonAsync<PassboltApiResponse<List<ResourceTypeDto>>>(JsonOptions, cancellationToken)
+        var apiResponse = await response.Content.ReadFromJsonAsync<PassboltApiResponse<List<ResourceTypeDto>>>(JsonOptions, cancellationToken).ConfigureAwait(false)
             ?? throw new SecretProviderException("Empty response when getting resource types.");
 
         if (apiResponse.Header.Status != "success")

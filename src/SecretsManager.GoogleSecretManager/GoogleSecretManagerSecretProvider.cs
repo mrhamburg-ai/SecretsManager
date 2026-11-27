@@ -46,7 +46,7 @@ public sealed class GoogleSecretManagerSecretProvider : ISecretProvider
     {
         try
         {
-            var result = await _client.AccessSecretVersionAsync(key, query?.Version, cancellationToken);
+            var result = await _client.AccessSecretVersionAsync(key, query?.Version, cancellationToken).ConfigureAwait(false);
             var value = result.Value;
 
             if (query?.Property is { } property)
@@ -98,7 +98,7 @@ public sealed class GoogleSecretManagerSecretProvider : ISecretProvider
             try
             {
                 var result = await _client.AddSecretVersionAsync(
-                    key, value, metadata?.ContentType, labels, cancellationToken);
+                    key, value, metadata?.ContentType, labels, cancellationToken).ConfigureAwait(false);
 
                 return new SecretValue
                 {
@@ -112,9 +112,9 @@ public sealed class GoogleSecretManagerSecretProvider : ISecretProvider
             }
             catch (RpcException ex) when (ex.StatusCode == StatusCode.NotFound)
             {
-                await _client.CreateSecretAsync(key, metadata?.ContentType, labels, cancellationToken);
+                await _client.CreateSecretAsync(key, metadata?.ContentType, labels, cancellationToken).ConfigureAwait(false);
                 var result = await _client.AddSecretVersionAsync(
-                    key, value, metadata?.ContentType, labels, cancellationToken);
+                    key, value, metadata?.ContentType, labels, cancellationToken).ConfigureAwait(false);
 
                 return new SecretValue
                 {
@@ -153,7 +153,7 @@ public sealed class GoogleSecretManagerSecretProvider : ISecretProvider
     {
         try
         {
-            await _client.DeleteSecretAsync(key, cancellationToken);
+            await _client.DeleteSecretAsync(key, cancellationToken).ConfigureAwait(false);
         }
         catch (RpcException ex) when (ex.StatusCode == StatusCode.NotFound)
         {
@@ -186,7 +186,7 @@ public sealed class GoogleSecretManagerSecretProvider : ISecretProvider
             string? currentVersion;
             try
             {
-                var current = await _client.AccessSecretVersionAsync(key, "latest", cancellationToken);
+                var current = await _client.AccessSecretVersionAsync(key, "latest", cancellationToken).ConfigureAwait(false);
                 currentVersion = current.Version;
             }
             catch (RpcException ex) when (ex.StatusCode == StatusCode.NotFound)
@@ -195,7 +195,7 @@ public sealed class GoogleSecretManagerSecretProvider : ISecretProvider
             }
 
             var versions = new List<SecretVersionInfo>();
-            await foreach (var v in _client.ListSecretVersionsAsync(key, cancellationToken))
+            await foreach (var v in _client.ListSecretVersionsAsync(key, cancellationToken).ConfigureAwait(false))
             {
                 if (v.State == "ENABLED")
                 {
@@ -232,7 +232,7 @@ public sealed class GoogleSecretManagerSecretProvider : ISecretProvider
     {
         try
         {
-            return await _client.SecretExistsAsync(key, cancellationToken);
+            return await _client.SecretExistsAsync(key, cancellationToken).ConfigureAwait(false);
         }
         catch (RpcException ex) when (ex.StatusCode == StatusCode.Cancelled && cancellationToken.IsCancellationRequested)
         {
@@ -250,7 +250,7 @@ public sealed class GoogleSecretManagerSecretProvider : ISecretProvider
     /// </summary>
     public async ValueTask DisposeAsync()
     {
-        await _client.DisposeAsync();
+        await _client.DisposeAsync().ConfigureAwait(false);
     }
 
     private static SecretManagerServiceClient CreateClient(GoogleSecretManagerOptions options)

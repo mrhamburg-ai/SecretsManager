@@ -48,7 +48,7 @@ public sealed class VaultSecretProvider : ISecretProvider
             if (query?.Version is { } v && int.TryParse(v, out var parsed))
                 version = parsed;
 
-            var secret = await _client.GetSecretAsync(key, version, cancellationToken)
+            var secret = await _client.GetSecretAsync(key, version, cancellationToken).ConfigureAwait(false)
                 ?? throw new SecretNotFoundException(key);
 
             var value = secret.Value;
@@ -87,7 +87,7 @@ public sealed class VaultSecretProvider : ISecretProvider
     {
         try
         {
-            var result = await _client.PutSecretAsync(key, value, cancellationToken);
+            var result = await _client.PutSecretAsync(key, value, cancellationToken).ConfigureAwait(false);
 
             return new SecretValue
             {
@@ -115,8 +115,8 @@ public sealed class VaultSecretProvider : ISecretProvider
     {
         try
         {
-            await this.EnsureSecretExistsAsync(key, cancellationToken);
-            await _client.DeleteSecretAsync(key, cancellationToken);
+            await this.EnsureSecretExistsAsync(key, cancellationToken).ConfigureAwait(false);
+            await _client.DeleteSecretAsync(key, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
@@ -137,7 +137,7 @@ public sealed class VaultSecretProvider : ISecretProvider
     {
         try
         {
-            var versions = await _client.ListVersionsAsync(key, cancellationToken);
+            var versions = await _client.ListVersionsAsync(key, cancellationToken).ConfigureAwait(false);
 
             return versions
                 .Where(v => !v.Destroyed)
@@ -168,7 +168,7 @@ public sealed class VaultSecretProvider : ISecretProvider
     {
         try
         {
-            return await _client.SecretExistsAsync(key, cancellationToken);
+            return await _client.SecretExistsAsync(key, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
@@ -182,6 +182,6 @@ public sealed class VaultSecretProvider : ISecretProvider
     /// </summary>
     public async ValueTask DisposeAsync()
     {
-        await _client.DisposeAsync();
+        await _client.DisposeAsync().ConfigureAwait(false);
     }
 }

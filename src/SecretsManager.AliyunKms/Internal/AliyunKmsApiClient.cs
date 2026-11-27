@@ -60,18 +60,18 @@ internal sealed class AliyunKmsApiClient : IAliyunKmsApiClient
         if (!string.IsNullOrEmpty(versionId))
             parameters["VersionId"] = versionId;
 
-        using var response = await PostAsync(parameters, cancellationToken);
+        using var response = await PostAsync(parameters, cancellationToken).ConfigureAwait(false);
 
         if (response.StatusCode == HttpStatusCode.NotFound)
             return null;
 
-        var error = await TryParseErrorAsync(response, cancellationToken);
+        var error = await TryParseErrorAsync(response, cancellationToken).ConfigureAwait(false);
         if (error?.Code == "Forbidden.ResourceNotFound")
             return null;
 
         EnsureSuccess(response, "getting secret value");
 
-        var body = await response.Content.ReadFromJsonAsync<GetSecretValueResponse>(JsonOptions, cancellationToken)
+        var body = await response.Content.ReadFromJsonAsync<GetSecretValueResponse>(JsonOptions, cancellationToken).ConfigureAwait(false)
             ?? throw new SecretProviderException("Empty response when getting secret value.");
 
         return new AliyunSecretValueResult(
@@ -96,9 +96,9 @@ internal sealed class AliyunKmsApiClient : IAliyunKmsApiClient
             ["SecretType"] = "Generic"
         };
 
-        using var response = await PostAsync(parameters, cancellationToken);
+        using var response = await PostAsync(parameters, cancellationToken).ConfigureAwait(false);
 
-        var error = await TryParseErrorAsync(response, cancellationToken);
+        var error = await TryParseErrorAsync(response, cancellationToken).ConfigureAwait(false);
         if (error?.Code == "Rejected.ResourceExist")
         {
             throw new SecretProviderException($"Secret '{secretName}' already exists.");
@@ -106,7 +106,7 @@ internal sealed class AliyunKmsApiClient : IAliyunKmsApiClient
 
         EnsureSuccess(response, $"creating secret '{secretName}'");
 
-        var body = await response.Content.ReadFromJsonAsync<CreateSecretResponse>(JsonOptions, cancellationToken)
+        var body = await response.Content.ReadFromJsonAsync<CreateSecretResponse>(JsonOptions, cancellationToken).ConfigureAwait(false)
             ?? throw new SecretProviderException("Empty response when creating secret.");
 
         return new AliyunSecretResult(body.SecretName, body.VersionId, body.SecretType);
@@ -124,10 +124,10 @@ internal sealed class AliyunKmsApiClient : IAliyunKmsApiClient
             ["VersionId"] = versionId
         };
 
-        using var response = await PostAsync(parameters, cancellationToken);
+        using var response = await PostAsync(parameters, cancellationToken).ConfigureAwait(false);
         EnsureSuccess(response, $"putting secret value for '{secretName}'");
 
-        var body = await response.Content.ReadFromJsonAsync<PutSecretValueResponse>(JsonOptions, cancellationToken)
+        var body = await response.Content.ReadFromJsonAsync<PutSecretValueResponse>(JsonOptions, cancellationToken).ConfigureAwait(false)
             ?? throw new SecretProviderException("Empty response when putting secret value.");
 
         return new AliyunSecretResult(body.SecretName, body.VersionId, "Generic");
@@ -142,9 +142,9 @@ internal sealed class AliyunKmsApiClient : IAliyunKmsApiClient
             ["SecretName"] = secretName
         };
 
-        using var response = await PostAsync(parameters, cancellationToken);
+        using var response = await PostAsync(parameters, cancellationToken).ConfigureAwait(false);
 
-        var error = await TryParseErrorAsync(response, cancellationToken);
+        var error = await TryParseErrorAsync(response, cancellationToken).ConfigureAwait(false);
         if (error?.Code == "Forbidden.ResourceNotFound")
             return;
 
@@ -169,10 +169,10 @@ internal sealed class AliyunKmsApiClient : IAliyunKmsApiClient
                 ["PageSize"] = pageSize.ToString(CultureInfo.InvariantCulture)
             };
 
-            using var response = await PostAsync(parameters, cancellationToken);
+            using var response = await PostAsync(parameters, cancellationToken).ConfigureAwait(false);
             EnsureSuccess(response, $"listing versions for '{secretName}'");
 
-            var body = await response.Content.ReadFromJsonAsync<ListSecretVersionIdsResponse>(JsonOptions, cancellationToken)
+            var body = await response.Content.ReadFromJsonAsync<ListSecretVersionIdsResponse>(JsonOptions, cancellationToken).ConfigureAwait(false)
                 ?? throw new SecretProviderException("Empty response when listing versions.");
 
             if (body.VersionIds is not null)
@@ -204,7 +204,7 @@ internal sealed class AliyunKmsApiClient : IAliyunKmsApiClient
         Dictionary<string, string> parameters, CancellationToken cancellationToken)
     {
         var signedUrl = BuildSignedUrl(parameters);
-        return await _http.PostAsync(signedUrl, null, cancellationToken);
+        return await _http.PostAsync(signedUrl, null, cancellationToken).ConfigureAwait(false);
     }
 
     private string BuildSignedUrl(Dictionary<string, string> parameters)
@@ -299,9 +299,9 @@ internal sealed class AliyunKmsApiClient : IAliyunKmsApiClient
 
         try
         {
-            return await response.Content.ReadFromJsonAsync<AliyunErrorResponse>(JsonOptions, cancellationToken);
+            return await response.Content.ReadFromJsonAsync<AliyunErrorResponse>(JsonOptions, cancellationToken).ConfigureAwait(false);
         }
-        catch
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             return null;
         }

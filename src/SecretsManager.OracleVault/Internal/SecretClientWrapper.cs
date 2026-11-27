@@ -61,11 +61,11 @@ internal sealed class SecretClientWrapper : ISecretClientWrapper
             VersionNumber = versionNumber
         };
 
-        var response = await _secretsClient.GetSecretBundle(request, cancellationToken: cancellationToken);
+        var response = await _secretsClient.GetSecretBundle(request, cancellationToken: cancellationToken).ConfigureAwait(false);
         var bundle = response.SecretBundle;
 
         var content = bundle.SecretBundleContent as Base64SecretBundleContentDetails;
-        var value = content?.Content != null
+        var value = content?.Content is not null
             ? Encoding.UTF8.GetString(Convert.FromBase64String(content.Content))
             : string.Empty;
 
@@ -108,7 +108,7 @@ internal sealed class SecretClientWrapper : ISecretClientWrapper
             CreateSecretDetails = createSecretDetails
         };
 
-        var response = await _vaultsClient.CreateSecret(request, cancellationToken: cancellationToken);
+        var response = await _vaultsClient.CreateSecret(request, cancellationToken: cancellationToken).ConfigureAwait(false);
         var secret = response.Secret;
 
         return new OracleSecretResult(
@@ -147,7 +147,7 @@ internal sealed class SecretClientWrapper : ISecretClientWrapper
             UpdateSecretDetails = updateSecretDetails
         };
 
-        var response = await _vaultsClient.UpdateSecret(request, cancellationToken: cancellationToken);
+        var response = await _vaultsClient.UpdateSecret(request, cancellationToken: cancellationToken).ConfigureAwait(false);
         var secret = response.Secret;
 
         return new OracleSecretResult(
@@ -168,7 +168,7 @@ internal sealed class SecretClientWrapper : ISecretClientWrapper
             ScheduleSecretDeletionDetails = new ScheduleSecretDeletionDetails()
         };
 
-        await _vaultsClient.ScheduleSecretDeletion(request, cancellationToken: cancellationToken);
+        await _vaultsClient.ScheduleSecretDeletion(request, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
     public async IAsyncEnumerable<OracleSecretVersionInfo> GetSecretVersionsAsync(
@@ -181,10 +181,10 @@ internal sealed class SecretClientWrapper : ISecretClientWrapper
             SortOrder = ListSecretBundleVersionsRequest.SortOrderEnum.Desc
         };
 
-        var response = await _secretsClient.ListSecretBundleVersions(request, cancellationToken: cancellationToken);
+        var response = await _secretsClient.ListSecretBundleVersions(request, cancellationToken: cancellationToken).ConfigureAwait(false);
 
         var currentVersionNumber = response.Items.FirstOrDefault(v =>
-            v.Stages != null && v.Stages.Contains(SecretBundleVersionSummary.StagesEnum.Current))?.VersionNumber;
+            v.Stages is not null && v.Stages.Contains(SecretBundleVersionSummary.StagesEnum.Current))?.VersionNumber;
 
         foreach (var version in response.Items)
         {
@@ -205,7 +205,7 @@ internal sealed class SecretClientWrapper : ISecretClientWrapper
                 SecretId = secretId
             };
 
-            var response = await _secretsClient.GetSecretBundle(request, cancellationToken: cancellationToken);
+            var response = await _secretsClient.GetSecretBundle(request, cancellationToken: cancellationToken).ConfigureAwait(false);
             var bundle = response.SecretBundle;
 
             return new OracleSecretSummary(bundle.SecretId, bundle.VersionName);
@@ -220,6 +220,6 @@ internal sealed class SecretClientWrapper : ISecretClientWrapper
     {
         _secretsClient?.Dispose();
         _vaultsClient?.Dispose();
-        await ValueTask.CompletedTask;
+        await ValueTask.CompletedTask.ConfigureAwait(false);
     }
 }

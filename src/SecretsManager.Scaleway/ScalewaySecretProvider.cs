@@ -47,11 +47,11 @@ public sealed class ScalewaySecretProvider : ISecretProvider
     {
         try
         {
-            var secret = await _client.FindSecretByNameAsync(key, cancellationToken)
+            var secret = await _client.FindSecretByNameAsync(key, cancellationToken).ConfigureAwait(false)
                 ?? throw new SecretNotFoundException(key);
 
             var revision = query?.Version ?? "latest_enabled";
-            var access = await _client.AccessVersionAsync(secret.Id, revision, cancellationToken);
+            var access = await _client.AccessVersionAsync(secret.Id, revision, cancellationToken).ConfigureAwait(false);
             var value = access.Data;
 
             if (query?.Property is { } property)
@@ -89,15 +89,15 @@ public sealed class ScalewaySecretProvider : ISecretProvider
     {
         try
         {
-            var secret = await _client.FindSecretByNameAsync(key, cancellationToken);
+            var secret = await _client.FindSecretByNameAsync(key, cancellationToken).ConfigureAwait(false);
 
             if (secret is null)
             {
                 var tags = metadata?.Tags?.Keys.ToArray();
-                secret = await _client.CreateSecretAsync(key, tags, cancellationToken);
+                secret = await _client.CreateSecretAsync(key, tags, cancellationToken).ConfigureAwait(false);
             }
 
-            var version = await _client.CreateVersionAsync(secret.Id, value, cancellationToken);
+            var version = await _client.CreateVersionAsync(secret.Id, value, cancellationToken).ConfigureAwait(false);
 
             return new SecretValue
             {
@@ -126,10 +126,10 @@ public sealed class ScalewaySecretProvider : ISecretProvider
     {
         try
         {
-            var secret = await _client.FindSecretByNameAsync(key, cancellationToken)
+            var secret = await _client.FindSecretByNameAsync(key, cancellationToken).ConfigureAwait(false)
                 ?? throw new SecretNotFoundException(key);
 
-            await _client.DeleteSecretAsync(secret.Id, cancellationToken);
+            await _client.DeleteSecretAsync(secret.Id, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
@@ -151,10 +151,10 @@ public sealed class ScalewaySecretProvider : ISecretProvider
     {
         try
         {
-            var secret = await _client.FindSecretByNameAsync(key, cancellationToken)
+            var secret = await _client.FindSecretByNameAsync(key, cancellationToken).ConfigureAwait(false)
                 ?? throw new SecretNotFoundException(key);
 
-            var versions = await _client.ListVersionsAsync(secret.Id, cancellationToken);
+            var versions = await _client.ListVersionsAsync(secret.Id, cancellationToken).ConfigureAwait(false);
 
             return versions
                 .Select(v => new SecretVersionInfo
@@ -184,7 +184,7 @@ public sealed class ScalewaySecretProvider : ISecretProvider
     {
         try
         {
-            var secret = await _client.FindSecretByNameAsync(key, cancellationToken);
+            var secret = await _client.FindSecretByNameAsync(key, cancellationToken).ConfigureAwait(false);
             return secret is not null;
         }
         catch (Exception ex) when (ex is not SecretProviderException)
@@ -199,6 +199,6 @@ public sealed class ScalewaySecretProvider : ISecretProvider
     /// </summary>
     public async ValueTask DisposeAsync()
     {
-        await _client.DisposeAsync();
+        await _client.DisposeAsync().ConfigureAwait(false);
     }
 }

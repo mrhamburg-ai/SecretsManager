@@ -67,15 +67,15 @@ public sealed class ConjurSecretProvider : ISecretProvider
 
         try
         {
-            var value = await _client.GetSecretValueAsync(key, version, cancellationToken)
+            var value = await _client.GetSecretValueAsync(key, version, cancellationToken).ConfigureAwait(false)
                 ?? throw new SecretNotFoundException(key);
 
             if (query?.Property is { } property)
                 value = JsonPropertyExtractor.Extract(value, property);
 
             var resolved = version.HasValue
-                ? await FindVersionAsync(key, version.Value, cancellationToken)
-                : await LatestVersionAsync(key, cancellationToken);
+                ? await FindVersionAsync(key, version.Value, cancellationToken).ConfigureAwait(false)
+                : await LatestVersionAsync(key, cancellationToken).ConfigureAwait(false);
 
             return new SecretValue
             {
@@ -107,9 +107,9 @@ public sealed class ConjurSecretProvider : ISecretProvider
     {
         try
         {
-            await _client.PutSecretAsync(key, value, cancellationToken);
+            await _client.PutSecretAsync(key, value, cancellationToken).ConfigureAwait(false);
 
-            var latest = await LatestVersionAsync(key, cancellationToken);
+            var latest = await LatestVersionAsync(key, cancellationToken).ConfigureAwait(false);
 
             return new SecretValue
             {
@@ -137,8 +137,8 @@ public sealed class ConjurSecretProvider : ISecretProvider
     {
         try
         {
-            await this.EnsureSecretExistsAsync(key, cancellationToken);
-            await _client.DeleteSecretAsync(key, cancellationToken);
+            await this.EnsureSecretExistsAsync(key, cancellationToken).ConfigureAwait(false);
+            await _client.DeleteSecretAsync(key, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
@@ -159,7 +159,7 @@ public sealed class ConjurSecretProvider : ISecretProvider
     {
         try
         {
-            var versions = await _client.ListVersionsAsync(key, cancellationToken);
+            var versions = await _client.ListVersionsAsync(key, cancellationToken).ConfigureAwait(false);
 
             return versions
                 .Select(v => new SecretVersionInfo
@@ -189,7 +189,7 @@ public sealed class ConjurSecretProvider : ISecretProvider
     {
         try
         {
-            return await _client.SecretExistsAsync(key, cancellationToken);
+            return await _client.SecretExistsAsync(key, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
@@ -200,14 +200,14 @@ public sealed class ConjurSecretProvider : ISecretProvider
 
     private async Task<ConjurVersionResult?> LatestVersionAsync(string key, CancellationToken cancellationToken)
     {
-        var versions = await _client.ListVersionsAsync(key, cancellationToken);
+        var versions = await _client.ListVersionsAsync(key, cancellationToken).ConfigureAwait(false);
         return versions.OrderByDescending(v => v.Version).FirstOrDefault();
     }
 
     private async Task<ConjurVersionResult?> FindVersionAsync(
         string key, int version, CancellationToken cancellationToken)
     {
-        var versions = await _client.ListVersionsAsync(key, cancellationToken);
+        var versions = await _client.ListVersionsAsync(key, cancellationToken).ConfigureAwait(false);
         return versions.FirstOrDefault(v => v.Version == version);
     }
 
@@ -215,5 +215,5 @@ public sealed class ConjurSecretProvider : ISecretProvider
     /// Disposes the underlying Conjur API client.
     /// </summary>
     public async ValueTask DisposeAsync() =>
-        await _client.DisposeAsync();
+        await _client.DisposeAsync().ConfigureAwait(false);
 }

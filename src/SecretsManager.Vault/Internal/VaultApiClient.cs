@@ -51,14 +51,14 @@ internal sealed class VaultApiClient : IVaultApiClient
         if (version.HasValue)
             url += $"?version={version.Value}";
 
-        using var response = await _http.GetAsync(url, cancellationToken);
+        using var response = await _http.GetAsync(url, cancellationToken).ConfigureAwait(false);
 
         if (response.StatusCode == HttpStatusCode.NotFound)
             return null;
 
         EnsureSuccess(response, $"reading secret '{key}'");
 
-        var envelope = await response.Content.ReadFromJsonAsync<GetResponseEnvelope>(JsonOptions, cancellationToken)
+        var envelope = await response.Content.ReadFromJsonAsync<GetResponseEnvelope>(JsonOptions, cancellationToken).ConfigureAwait(false)
             ?? throw new SecretProviderException($"Empty response when reading secret '{key}'.");
 
         var inner = envelope.Data!;
@@ -80,10 +80,10 @@ internal sealed class VaultApiClient : IVaultApiClient
             Data = new Dictionary<string, string> { ["value"] = value }
         };
 
-        using var response = await _http.PutAsJsonAsync(url, payload, JsonOptions, cancellationToken);
+        using var response = await _http.PutAsJsonAsync(url, payload, JsonOptions, cancellationToken).ConfigureAwait(false);
         EnsureSuccess(response, $"writing secret '{key}'");
 
-        var envelope = await response.Content.ReadFromJsonAsync<PutResponseEnvelope>(JsonOptions, cancellationToken)
+        var envelope = await response.Content.ReadFromJsonAsync<PutResponseEnvelope>(JsonOptions, cancellationToken).ConfigureAwait(false)
             ?? throw new SecretProviderException($"Empty response when writing secret '{key}'.");
 
         var meta = envelope.Data!;
@@ -94,7 +94,7 @@ internal sealed class VaultApiClient : IVaultApiClient
     public async Task DeleteSecretAsync(string key, CancellationToken cancellationToken)
     {
         var url = $"{_basePath}/metadata/{Uri.EscapeDataString(key)}";
-        using var response = await _http.DeleteAsync(url, cancellationToken);
+        using var response = await _http.DeleteAsync(url, cancellationToken).ConfigureAwait(false);
 
         if (response.StatusCode == HttpStatusCode.NotFound)
             return;
@@ -106,14 +106,14 @@ internal sealed class VaultApiClient : IVaultApiClient
         string key, CancellationToken cancellationToken)
     {
         var url = $"{_basePath}/metadata/{Uri.EscapeDataString(key)}";
-        using var response = await _http.GetAsync(url, cancellationToken);
+        using var response = await _http.GetAsync(url, cancellationToken).ConfigureAwait(false);
 
         if (response.StatusCode == HttpStatusCode.NotFound)
             return [];
 
         EnsureSuccess(response, $"listing versions for '{key}'");
 
-        var envelope = await response.Content.ReadFromJsonAsync<MetadataEnvelope>(JsonOptions, cancellationToken)
+        var envelope = await response.Content.ReadFromJsonAsync<MetadataEnvelope>(JsonOptions, cancellationToken).ConfigureAwait(false)
             ?? throw new SecretProviderException($"Empty response when listing versions for '{key}'.");
 
         var data = envelope.Data!;
@@ -131,7 +131,7 @@ internal sealed class VaultApiClient : IVaultApiClient
     public async Task<bool> SecretExistsAsync(string key, CancellationToken cancellationToken)
     {
         var url = $"{_basePath}/metadata/{Uri.EscapeDataString(key)}";
-        using var response = await _http.GetAsync(url, cancellationToken);
+        using var response = await _http.GetAsync(url, cancellationToken).ConfigureAwait(false);
 
         if (response.StatusCode == HttpStatusCode.NotFound)
             return false;

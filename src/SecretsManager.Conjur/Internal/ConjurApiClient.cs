@@ -67,31 +67,31 @@ internal sealed class ConjurApiClient : IConjurApiClient
             url += $"?version={version.Value}";
 
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
-        await SetAuthorizationAsync(request, cancellationToken);
+        await SetAuthorizationAsync(request, cancellationToken).ConfigureAwait(false);
 
-        using var response = await _http.SendAsync(request, cancellationToken);
+        using var response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
         if (response.StatusCode == HttpStatusCode.NotFound)
             return null;
 
         EnsureSuccess(response, $"retrieving secret '{key}'");
 
-        return await response.Content.ReadAsStringAsync(cancellationToken);
+        return await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
     }
 
     public async Task PutSecretAsync(
         string key, string value, CancellationToken cancellationToken)
     {
         ValidateKey(key);
-        await EnsureVariableExistsAsync(key, cancellationToken);
+        await EnsureVariableExistsAsync(key, cancellationToken).ConfigureAwait(false);
 
         var url = $"/secrets/{_account}/variable/{Uri.EscapeDataString(key)}";
 
         using var request = new HttpRequestMessage(HttpMethod.Post, url);
         request.Content = new StringContent(value, Encoding.UTF8, "application/octet-stream");
-        await SetAuthorizationAsync(request, cancellationToken);
+        await SetAuthorizationAsync(request, cancellationToken).ConfigureAwait(false);
 
-        using var response = await _http.SendAsync(request, cancellationToken);
+        using var response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
         EnsureSuccess(response, $"setting secret '{key}'");
     }
 
@@ -106,9 +106,9 @@ internal sealed class ConjurApiClient : IConjurApiClient
 
         using var request = new HttpRequestMessage(HttpMethod.Patch, url);
         request.Content = new StringContent(policy, Encoding.UTF8, "text/plain");
-        await SetAuthorizationAsync(request, cancellationToken);
+        await SetAuthorizationAsync(request, cancellationToken).ConfigureAwait(false);
 
-        using var response = await _http.SendAsync(request, cancellationToken);
+        using var response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
         EnsureSuccess(response, $"deleting secret '{key}'");
     }
 
@@ -119,16 +119,16 @@ internal sealed class ConjurApiClient : IConjurApiClient
         var url = $"/resources/{_account}/variable/{Uri.EscapeDataString(key)}";
 
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
-        await SetAuthorizationAsync(request, cancellationToken);
+        await SetAuthorizationAsync(request, cancellationToken).ConfigureAwait(false);
 
-        using var response = await _http.SendAsync(request, cancellationToken);
+        using var response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
         if (response.StatusCode == HttpStatusCode.NotFound)
             return [];
 
         EnsureSuccess(response, $"listing versions for '{key}'");
 
-        var resource = await response.Content.ReadFromJsonAsync<ResourceResponse>(JsonOptions, cancellationToken)
+        var resource = await response.Content.ReadFromJsonAsync<ResourceResponse>(JsonOptions, cancellationToken).ConfigureAwait(false)
             ?? throw new SecretProviderException($"Empty response when listing versions for '{key}'.");
 
         var maxVersion = resource.Secrets.Count > 0 ? resource.Secrets.Max(s => s.Version) : 0;
@@ -149,9 +149,9 @@ internal sealed class ConjurApiClient : IConjurApiClient
         var url = $"/resources/{_account}/variable/{Uri.EscapeDataString(key)}";
 
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
-        await SetAuthorizationAsync(request, cancellationToken);
+        await SetAuthorizationAsync(request, cancellationToken).ConfigureAwait(false);
 
-        using var response = await _http.SendAsync(request, cancellationToken);
+        using var response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
 
         if (response.StatusCode == HttpStatusCode.NotFound)
             return false;
@@ -187,7 +187,7 @@ internal sealed class ConjurApiClient : IConjurApiClient
     private async Task SetAuthorizationAsync(
         HttpRequestMessage request, CancellationToken cancellationToken)
     {
-        var token = await GetTokenAsync(cancellationToken);
+        var token = await GetTokenAsync(cancellationToken).ConfigureAwait(false);
         request.Headers.TryAddWithoutValidation("Authorization", $"Token token=\"{token}\"");
     }
 
@@ -197,8 +197,8 @@ internal sealed class ConjurApiClient : IConjurApiClient
         if (_knownVariables.ContainsKey(key))
             return;
 
-        if (!await SecretExistsAsync(key, cancellationToken))
-            await LoadVariablePolicyAsync(key, cancellationToken);
+        if (!await SecretExistsAsync(key, cancellationToken).ConfigureAwait(false))
+            await LoadVariablePolicyAsync(key, cancellationToken).ConfigureAwait(false);
 
         _knownVariables.TryAdd(key, 0);
     }
@@ -229,9 +229,9 @@ internal sealed class ConjurApiClient : IConjurApiClient
 
         using var request = new HttpRequestMessage(HttpMethod.Post, url);
         request.Content = new StringContent(policy, Encoding.UTF8, "text/plain");
-        await SetAuthorizationAsync(request, cancellationToken);
+        await SetAuthorizationAsync(request, cancellationToken).ConfigureAwait(false);
 
-        using var response = await _http.SendAsync(request, cancellationToken);
+        using var response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
         EnsureSuccess(response, $"creating variable '{key}'");
     }
 
@@ -240,7 +240,7 @@ internal sealed class ConjurApiClient : IConjurApiClient
         if (_token is not null && DateTimeOffset.UtcNow < _tokenExpiry)
             return _token;
 
-        await _tokenLock.WaitAsync(cancellationToken);
+        await _tokenLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             if (_token is not null && DateTimeOffset.UtcNow < _tokenExpiry)
@@ -252,10 +252,10 @@ internal sealed class ConjurApiClient : IConjurApiClient
             request.Content = new StringContent(_apiKey, Encoding.UTF8, "text/plain");
             request.Headers.TryAddWithoutValidation("Accept-Encoding", "base64");
 
-            using var response = await _http.SendAsync(request, cancellationToken);
+            using var response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
             EnsureSuccess(response, "authenticating");
 
-            var token = (await response.Content.ReadAsStringAsync(cancellationToken)).Trim();
+            var token = (await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false)).Trim();
             if (token.Length == 0)
                 throw new SecretProviderException("Conjur API returned an empty access token.");
 

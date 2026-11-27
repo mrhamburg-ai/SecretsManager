@@ -48,7 +48,7 @@ public sealed class AzureKeyVaultSecretProvider : ISecretProvider
     {
         try
         {
-            var result = await _client.GetSecretAsync(key, query?.Version, cancellationToken);
+            var result = await _client.GetSecretAsync(key, query?.Version, cancellationToken).ConfigureAwait(false);
             var value = result.Value;
 
             if (query?.Property is { } property)
@@ -93,7 +93,7 @@ public sealed class AzureKeyVaultSecretProvider : ISecretProvider
         {
             var tags = metadata?.Tags?.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
             var result = await _client.SetSecretAsync(
-                key, value, metadata?.ContentType, tags, cancellationToken);
+                key, value, metadata?.ContentType, tags, cancellationToken).ConfigureAwait(false);
 
             return new SecretValue
             {
@@ -124,7 +124,7 @@ public sealed class AzureKeyVaultSecretProvider : ISecretProvider
     {
         try
         {
-            await _client.DeleteSecretAsync(key, cancellationToken);
+            await _client.DeleteSecretAsync(key, cancellationToken).ConfigureAwait(false);
         }
         catch (RequestFailedException ex) when (ex.Status == 404)
         {
@@ -154,7 +154,7 @@ public sealed class AzureKeyVaultSecretProvider : ISecretProvider
             string? currentVersion;
             try
             {
-                var current = await _client.GetSecretAsync(key, null, cancellationToken);
+                var current = await _client.GetSecretAsync(key, null, cancellationToken).ConfigureAwait(false);
                 currentVersion = current.Version;
             }
             catch (RequestFailedException ex) when (ex.Status == 404)
@@ -163,7 +163,7 @@ public sealed class AzureKeyVaultSecretProvider : ISecretProvider
             }
 
             var versions = new List<SecretVersionInfo>();
-            await foreach (var sp in _client.GetSecretVersionsAsync(key, cancellationToken))
+            await foreach (var sp in _client.GetSecretVersionsAsync(key, cancellationToken).ConfigureAwait(false))
             {
                 versions.Add(new SecretVersionInfo
                 {
@@ -193,7 +193,7 @@ public sealed class AzureKeyVaultSecretProvider : ISecretProvider
     {
         try
         {
-            await _client.GetSecretAsync(key, null, cancellationToken);
+            await _client.GetSecretAsync(key, null, cancellationToken).ConfigureAwait(false);
             return true;
         }
         catch (RequestFailedException ex) when (ex.Status == 404)
@@ -212,7 +212,7 @@ public sealed class AzureKeyVaultSecretProvider : ISecretProvider
     /// </summary>
     public async ValueTask DisposeAsync()
     {
-        await _client.DisposeAsync();
+        await _client.DisposeAsync().ConfigureAwait(false);
     }
 
     private static Azure.Core.TokenCredential CreateCredential(AzureKeyVaultOptions options)

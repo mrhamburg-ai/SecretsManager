@@ -92,14 +92,14 @@ internal sealed class OVHOAuthHttpClient : IOVHApiClient
         string name, CancellationToken cancellationToken)
     {
         var url = $"{BasePath}/secret/{Uri.EscapeDataString(name)}";
-        using var response = await SendAsync(HttpMethod.Get, url, content: null, cancellationToken);
+        using var response = await SendAsync(HttpMethod.Get, url, content: null, cancellationToken).ConfigureAwait(false);
 
         if (response.StatusCode == HttpStatusCode.NotFound)
             return null;
 
         EnsureSuccess(response, "getting secret");
 
-        var body = await response.Content.ReadFromJsonAsync<SecretResponse>(JsonOptions, cancellationToken);
+        var body = await response.Content.ReadFromJsonAsync<SecretResponse>(JsonOptions, cancellationToken).ConfigureAwait(false);
         if (body?.Path is null)
             return null;
 
@@ -121,10 +121,10 @@ internal sealed class OVHOAuthHttpClient : IOVHApiClient
         };
 
         using var response = await SendAsync(
-            HttpMethod.Post, url, JsonContent.Create(payload, options: JsonOptions), cancellationToken);
+            HttpMethod.Post, url, JsonContent.Create(payload, options: JsonOptions), cancellationToken).ConfigureAwait(false);
         EnsureSuccess(response, $"creating secret '{path}'");
 
-        var body = await response.Content.ReadFromJsonAsync<SecretResponse>(JsonOptions, cancellationToken)
+        var body = await response.Content.ReadFromJsonAsync<SecretResponse>(JsonOptions, cancellationToken).ConfigureAwait(false)
             ?? throw new SecretProviderException($"Empty response when creating secret '{path}'.");
 
         return new OVHSecretResult(
@@ -137,7 +137,7 @@ internal sealed class OVHOAuthHttpClient : IOVHApiClient
     public async Task DeleteSecretAsync(string path, CancellationToken cancellationToken)
     {
         var url = $"{BasePath}/secret/{Uri.EscapeDataString(path)}";
-        using var response = await SendAsync(HttpMethod.Delete, url, content: null, cancellationToken);
+        using var response = await SendAsync(HttpMethod.Delete, url, content: null, cancellationToken).ConfigureAwait(false);
         EnsureSuccess(response, $"deleting secret '{path}'");
     }
 
@@ -148,10 +148,10 @@ internal sealed class OVHOAuthHttpClient : IOVHApiClient
         var payload = new VersionCreationRequest { Data = data };
 
         using var response = await SendAsync(
-            HttpMethod.Post, url, JsonContent.Create(payload, options: JsonOptions), cancellationToken);
+            HttpMethod.Post, url, JsonContent.Create(payload, options: JsonOptions), cancellationToken).ConfigureAwait(false);
         EnsureSuccess(response, $"creating version for secret '{path}'");
 
-        var body = await response.Content.ReadFromJsonAsync<VersionResponse>(JsonOptions, cancellationToken)
+        var body = await response.Content.ReadFromJsonAsync<VersionResponse>(JsonOptions, cancellationToken).ConfigureAwait(false)
             ?? throw new SecretProviderException($"Empty response when creating version for secret '{path}'.");
 
         return new OVHVersionResult(body.Id, body.CreatedAt, body.State);
@@ -161,10 +161,10 @@ internal sealed class OVHOAuthHttpClient : IOVHApiClient
         string path, int version, CancellationToken cancellationToken)
     {
         var url = $"{BasePath}/secret/{Uri.EscapeDataString(path)}/version/{version}?includeData=true";
-        using var response = await SendAsync(HttpMethod.Get, url, content: null, cancellationToken);
+        using var response = await SendAsync(HttpMethod.Get, url, content: null, cancellationToken).ConfigureAwait(false);
         EnsureSuccess(response, $"accessing version '{version}' of secret '{path}'");
 
-        var body = await response.Content.ReadFromJsonAsync<VersionResponse>(JsonOptions, cancellationToken)
+        var body = await response.Content.ReadFromJsonAsync<VersionResponse>(JsonOptions, cancellationToken).ConfigureAwait(false)
             ?? throw new SecretProviderException($"Empty response when accessing secret '{path}'.");
 
         return new OVHAccessResult(body.Id, body.CreatedAt, body.State, body.Data ?? "");
@@ -174,10 +174,10 @@ internal sealed class OVHOAuthHttpClient : IOVHApiClient
         string path, CancellationToken cancellationToken)
     {
         var url = $"{BasePath}/secret/{Uri.EscapeDataString(path)}/version";
-        using var response = await SendAsync(HttpMethod.Get, url, content: null, cancellationToken);
+        using var response = await SendAsync(HttpMethod.Get, url, content: null, cancellationToken).ConfigureAwait(false);
         EnsureSuccess(response, $"listing versions for secret '{path}'");
 
-        var versions = await response.Content.ReadFromJsonAsync<List<VersionResponse>>(JsonOptions, cancellationToken);
+        var versions = await response.Content.ReadFromJsonAsync<List<VersionResponse>>(JsonOptions, cancellationToken).ConfigureAwait(false);
         if (versions is null)
             return [];
 
@@ -202,7 +202,7 @@ internal sealed class OVHOAuthHttpClient : IOVHApiClient
     {
         using var request = new HttpRequestMessage(method, path) { Content = content };
         ApplyOAuthHeaders(request, method.Method, path);
-        return await _http.SendAsync(request, cancellationToken);
+        return await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
     }
 
     private void ApplyOAuthHeaders(HttpRequestMessage request, string method, string path)

@@ -39,7 +39,7 @@ internal sealed partial class PostgreSqlSecretStore : IPostgreSqlSecretStore
     {
         if (Volatile.Read(ref _schemaEnsured) || !_autoCreateSchema) return;
 
-        await _schemaLock.WaitAsync(cancellationToken);
+        await _schemaLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             if (Volatile.Read(ref _schemaEnsured)) return;
@@ -69,11 +69,11 @@ internal sealed partial class PostgreSqlSecretStore : IPostgreSqlSecretStore
                     ON {VersionsTable} (secret_id) WHERE is_current = true;
                 """;
 
-            await using var conn = await _dataSource.OpenConnectionAsync(cancellationToken);
+            await using var conn = await _dataSource.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
             await using var cmd = new NpgsqlCommand(ddl, conn);
-            await cmd.ExecuteNonQueryAsync(cancellationToken);
+            await cmd.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
 
-            await VerifyTableOwnershipAsync(conn, cancellationToken);
+            await VerifyTableOwnershipAsync(conn, cancellationToken).ConfigureAwait(false);
 
             Volatile.Write(ref _schemaEnsured, true);
         }
@@ -104,8 +104,8 @@ internal sealed partial class PostgreSqlSecretStore : IPostgreSqlSecretStore
             Value = new[] { $"{_tablePrefix}secrets", $"{_tablePrefix}secret_versions" }
         });
 
-        await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
-        while (await reader.ReadAsync(cancellationToken))
+        await using var reader = await cmd.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+        while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
         {
             var table = reader.GetString(0);
             var owner = reader.GetString(1);
@@ -123,16 +123,16 @@ internal sealed partial class PostgreSqlSecretStore : IPostgreSqlSecretStore
 
     public async Task<PostgreSqlSecretRow?> GetSecretByKeyAsync(string key, CancellationToken cancellationToken)
     {
-        await EnsureSchemaAsync(cancellationToken);
+        await EnsureSchemaAsync(cancellationToken).ConfigureAwait(false);
 
         var sql = $"SELECT id, key, content_type, tags, created_at, updated_at FROM {SecretsTable} WHERE key = $1";
 
-        await using var conn = await _dataSource.OpenConnectionAsync(cancellationToken);
+        await using var conn = await _dataSource.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
         await using var cmd = new NpgsqlCommand(sql, conn);
         cmd.Parameters.Add(new NpgsqlParameter { Value = key });
 
-        await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
-        if (!await reader.ReadAsync(cancellationToken))
+        await using var reader = await cmd.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+        if (!await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
             return null;
 
         return ReadSecretRow(reader);
@@ -140,10 +140,10 @@ internal sealed partial class PostgreSqlSecretStore : IPostgreSqlSecretStore
 
     public async Task<PostgreSqlVersionRow?> GetVersionAsync(int secretId, int? version, CancellationToken cancellationToken)
     {
-        await EnsureSchemaAsync(cancellationToken);
+        await EnsureSchemaAsync(cancellationToken).ConfigureAwait(false);
 
         string sql;
-        await using var conn = await _dataSource.OpenConnectionAsync(cancellationToken);
+        await using var conn = await _dataSource.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
         NpgsqlCommand cmd;
 
         if (version.HasValue)
@@ -162,8 +162,8 @@ internal sealed partial class PostgreSqlSecretStore : IPostgreSqlSecretStore
 
         await using (cmd)
         {
-            await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
-            if (!await reader.ReadAsync(cancellationToken))
+            await using var reader = await cmd.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+            if (!await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
                 return null;
 
             return ReadVersionRow(reader);
@@ -174,10 +174,10 @@ internal sealed partial class PostgreSqlSecretStore : IPostgreSqlSecretStore
         string key, string value, bool encrypted, string? contentType,
         IReadOnlyDictionary<string, string>? tags, CancellationToken cancellationToken)
     {
-        await EnsureSchemaAsync(cancellationToken);
+        await EnsureSchemaAsync(cancellationToken).ConfigureAwait(false);
 
-        await using var conn = await _dataSource.OpenConnectionAsync(cancellationToken);
-        await using var tx = await conn.BeginTransactionAsync(cancellationToken);
+        await using var conn = await _dataSource.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
+        await using var tx = await conn.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
 
         // Serialize concurrent writes for the same key. Without this lock, two transactions can
         // both read the same MAX(version) and one of them fails on the UNIQUE(secret_id, version)
@@ -186,7 +186,7 @@ internal sealed partial class PostgreSqlSecretStore : IPostgreSqlSecretStore
             "SELECT pg_advisory_xact_lock(hashtext($1))", conn, tx))
         {
             lockCommand.Parameters.Add(new NpgsqlParameter { Value = key });
-            await lockCommand.ExecuteNonQueryAsync(cancellationToken);
+            await lockCommand.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }
 
         // Upsert secret row
@@ -211,8 +211,8 @@ internal sealed partial class PostgreSqlSecretStore : IPostgreSqlSecretStore
                 NpgsqlDbType = NpgsqlDbType.Jsonb
             });
 
-            await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
-            await reader.ReadAsync(cancellationToken);
+            await using var reader = await cmd.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+            await reader.ReadAsync(cancellationToken).ConfigureAwait(false);
             secretRow = ReadSecretRow(reader);
         }
 
@@ -221,7 +221,7 @@ internal sealed partial class PostgreSqlSecretStore : IPostgreSqlSecretStore
         await using (var cmd = new NpgsqlCommand(unmarkSql, conn, tx))
         {
             cmd.Parameters.Add(new NpgsqlParameter { Value = secretRow.Id });
-            await cmd.ExecuteNonQueryAsync(cancellationToken);
+            await cmd.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         }
 
         // Insert new version
@@ -240,43 +240,43 @@ internal sealed partial class PostgreSqlSecretStore : IPostgreSqlSecretStore
             cmd.Parameters.Add(new NpgsqlParameter { Value = value });
             cmd.Parameters.Add(new NpgsqlParameter { Value = encrypted });
 
-            await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
-            await reader.ReadAsync(cancellationToken);
+            await using var reader = await cmd.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
+            await reader.ReadAsync(cancellationToken).ConfigureAwait(false);
             versionRow = ReadVersionRow(reader);
         }
 
-        await tx.CommitAsync(cancellationToken);
+        await tx.CommitAsync(cancellationToken).ConfigureAwait(false);
 
         return (secretRow, versionRow);
     }
 
     public async Task<bool> DeleteSecretAsync(string key, CancellationToken cancellationToken)
     {
-        await EnsureSchemaAsync(cancellationToken);
+        await EnsureSchemaAsync(cancellationToken).ConfigureAwait(false);
 
         var sql = $"DELETE FROM {SecretsTable} WHERE key = $1";
 
-        await using var conn = await _dataSource.OpenConnectionAsync(cancellationToken);
+        await using var conn = await _dataSource.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
         await using var cmd = new NpgsqlCommand(sql, conn);
         cmd.Parameters.Add(new NpgsqlParameter { Value = key });
 
-        var affected = await cmd.ExecuteNonQueryAsync(cancellationToken);
+        var affected = await cmd.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
         return affected > 0;
     }
 
     public async Task<List<PostgreSqlVersionRow>> ListVersionsAsync(int secretId, CancellationToken cancellationToken)
     {
-        await EnsureSchemaAsync(cancellationToken);
+        await EnsureSchemaAsync(cancellationToken).ConfigureAwait(false);
 
         var sql = $"SELECT id, secret_id, version, value, encrypted, created_at, is_current FROM {VersionsTable} WHERE secret_id = $1 ORDER BY version ASC";
 
-        await using var conn = await _dataSource.OpenConnectionAsync(cancellationToken);
+        await using var conn = await _dataSource.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
         await using var cmd = new NpgsqlCommand(sql, conn);
         cmd.Parameters.Add(new NpgsqlParameter { Value = secretId });
 
-        await using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+        await using var reader = await cmd.ExecuteReaderAsync(cancellationToken).ConfigureAwait(false);
         var results = new List<PostgreSqlVersionRow>();
-        while (await reader.ReadAsync(cancellationToken))
+        while (await reader.ReadAsync(cancellationToken).ConfigureAwait(false))
             results.Add(ReadVersionRow(reader));
 
         return results;
@@ -284,22 +284,22 @@ internal sealed partial class PostgreSqlSecretStore : IPostgreSqlSecretStore
 
     public async Task<bool> SecretExistsAsync(string key, CancellationToken cancellationToken)
     {
-        await EnsureSchemaAsync(cancellationToken);
+        await EnsureSchemaAsync(cancellationToken).ConfigureAwait(false);
 
         var sql = $"SELECT EXISTS (SELECT 1 FROM {SecretsTable} WHERE key = $1)";
 
-        await using var conn = await _dataSource.OpenConnectionAsync(cancellationToken);
+        await using var conn = await _dataSource.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
         await using var cmd = new NpgsqlCommand(sql, conn);
         cmd.Parameters.Add(new NpgsqlParameter { Value = key });
 
-        var result = await cmd.ExecuteScalarAsync(cancellationToken);
+        var result = await cmd.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
         return result is true;
     }
 
     public async ValueTask DisposeAsync()
     {
         _schemaLock.Dispose();
-        await _dataSource.DisposeAsync();
+        await _dataSource.DisposeAsync().ConfigureAwait(false);
     }
 
     private static PostgreSqlSecretRow ReadSecretRow(NpgsqlDataReader reader)

@@ -70,7 +70,7 @@ public sealed class LoggingLayer : ISecretProviderLayer, IProviderNameAwareLayer
                 () => _inner.GetSecretAsync(key, query, cancellationToken),
                 (timestamp, outcome) => CreateContext(
                     "GetSecretAsync", key, isMetadataWrite: false, timestamp, outcome),
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
         }
 
         public async Task<SecretValue> PutSecretAsync(
@@ -84,7 +84,7 @@ public sealed class LoggingLayer : ISecretProviderLayer, IProviderNameAwareLayer
                 (timestamp, outcome) => CreateContext(
                     "PutSecretAsync", key, metadata is not null, timestamp, outcome),
                 cancellationToken,
-                secretValue: value);
+                secretValue: value).ConfigureAwait(false);
         }
 
         public async Task DeleteSecretAsync(string key, CancellationToken cancellationToken = default)
@@ -93,7 +93,7 @@ public sealed class LoggingLayer : ISecretProviderLayer, IProviderNameAwareLayer
                 () => _inner.DeleteSecretAsync(key, cancellationToken),
                 (timestamp, outcome) => CreateContext(
                     "DeleteSecretAsync", key, isMetadataWrite: false, timestamp, outcome),
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
         }
 
         public async Task<IReadOnlyList<SecretVersionInfo>> GetSecretVersionsAsync(
@@ -104,7 +104,7 @@ public sealed class LoggingLayer : ISecretProviderLayer, IProviderNameAwareLayer
                 () => _inner.GetSecretVersionsAsync(key, cancellationToken),
                 (timestamp, outcome) => CreateContext(
                     "GetSecretVersionsAsync", key, isMetadataWrite: false, timestamp, outcome),
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
         }
 
         public async Task<bool> SecretExistsAsync(string key, CancellationToken cancellationToken = default)
@@ -113,7 +113,7 @@ public sealed class LoggingLayer : ISecretProviderLayer, IProviderNameAwareLayer
                 () => _inner.SecretExistsAsync(key, cancellationToken),
                 (timestamp, outcome) => CreateContext(
                     "SecretExistsAsync", key, isMetadataWrite: false, timestamp, outcome),
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
         }
 
         public ValueTask DisposeAsync() => _inner.DisposeAsync();

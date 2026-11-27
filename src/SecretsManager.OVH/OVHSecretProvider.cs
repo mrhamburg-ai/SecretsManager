@@ -50,12 +50,12 @@ public sealed class OVHSecretProvider : ISecretProvider
     {
         try
         {
-            var secret = await _client.FindSecretByNameAsync(key, cancellationToken)
+            var secret = await _client.FindSecretByNameAsync(key, cancellationToken).ConfigureAwait(false)
                 ?? throw new SecretNotFoundException(key);
 
             var currentVersion = GetCurrentVersion(secret, query?.Version);
 
-            var access = await _client.AccessVersionAsync(key, currentVersion, cancellationToken);
+            var access = await _client.AccessVersionAsync(key, currentVersion, cancellationToken).ConfigureAwait(false);
             var value = access.Data;
 
             if (query?.Property is { } property)
@@ -92,11 +92,11 @@ public sealed class OVHSecretProvider : ISecretProvider
     {
         try
         {
-            var existing = await _client.FindSecretByNameAsync(key, cancellationToken);
+            var existing = await _client.FindSecretByNameAsync(key, cancellationToken).ConfigureAwait(false);
 
             if (existing is null)
             {
-                var created = await _client.CreateSecretAsync(key, value, cancellationToken);
+                var created = await _client.CreateSecretAsync(key, value, cancellationToken).ConfigureAwait(false);
 
                 return new SecretValue
                 {
@@ -109,7 +109,7 @@ public sealed class OVHSecretProvider : ISecretProvider
             }
             else
             {
-                var version = await _client.CreateVersionAsync(key, value, cancellationToken);
+                var version = await _client.CreateVersionAsync(key, value, cancellationToken).ConfigureAwait(false);
 
                 return new SecretValue
                 {
@@ -138,8 +138,8 @@ public sealed class OVHSecretProvider : ISecretProvider
     {
         try
         {
-            await this.EnsureSecretExistsAsync(key, cancellationToken);
-            await _client.DeleteSecretAsync(key, cancellationToken);
+            await this.EnsureSecretExistsAsync(key, cancellationToken).ConfigureAwait(false);
+            await _client.DeleteSecretAsync(key, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
@@ -160,7 +160,7 @@ public sealed class OVHSecretProvider : ISecretProvider
     {
         try
         {
-            var versions = await _client.ListVersionsAsync(key, cancellationToken);
+            var versions = await _client.ListVersionsAsync(key, cancellationToken).ConfigureAwait(false);
 
             var latest = versions.OrderByDescending(v => v.Id).FirstOrDefault();
 
@@ -192,7 +192,7 @@ public sealed class OVHSecretProvider : ISecretProvider
     {
         try
         {
-            var secret = await _client.FindSecretByNameAsync(key, cancellationToken);
+            var secret = await _client.FindSecretByNameAsync(key, cancellationToken).ConfigureAwait(false);
             return secret is not null;
         }
         catch (Exception ex) when (ex is not SecretProviderException)
@@ -207,7 +207,7 @@ public sealed class OVHSecretProvider : ISecretProvider
     /// </summary>
     public async ValueTask DisposeAsync()
     {
-        await _client.DisposeAsync();
+        await _client.DisposeAsync().ConfigureAwait(false);
     }
 
     private static int GetCurrentVersion(OVHSecretResult secret, string? requestedVersion)

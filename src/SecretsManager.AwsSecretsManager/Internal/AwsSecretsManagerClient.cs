@@ -49,7 +49,7 @@ internal sealed class AwsSecretsManagerClient : IAwsSecretsManagerClient
         else if (versionStage is not null)
             request.VersionStage = versionStage;
 
-        var response = await _client.GetSecretValueAsync(request, cancellationToken);
+        var response = await _client.GetSecretValueAsync(request, cancellationToken).ConfigureAwait(false);
 
         var value = response.SecretString
             ?? Encoding.UTF8.GetString(response.SecretBinary.ToArray());
@@ -76,7 +76,7 @@ internal sealed class AwsSecretsManagerClient : IAwsSecretsManagerClient
             SecretString = value,
         };
 
-        var response = await _client.PutSecretValueAsync(request, cancellationToken);
+        var response = await _client.PutSecretValueAsync(request, cancellationToken).ConfigureAwait(false);
 
         return new AwsSecretResult(
             response.Name,
@@ -94,7 +94,7 @@ internal sealed class AwsSecretsManagerClient : IAwsSecretsManagerClient
             SecretId = secretId,
         };
 
-        await _client.DeleteSecretAsync(request, cancellationToken);
+        await _client.DeleteSecretAsync(request, cancellationToken).ConfigureAwait(false);
     }
 
     public async IAsyncEnumerable<AwsSecretVersionInfo> ListSecretVersionsAsync(
@@ -107,7 +107,7 @@ internal sealed class AwsSecretsManagerClient : IAwsSecretsManagerClient
             {
                 SecretId = secretId,
                 VersionStage = "AWSCURRENT",
-            }, cancellationToken);
+            }, cancellationToken).ConfigureAwait(false);
             currentVersionId = current.VersionId;
         }
         catch (ResourceNotFoundException)
@@ -124,7 +124,7 @@ internal sealed class AwsSecretsManagerClient : IAwsSecretsManagerClient
         ListSecretVersionIdsResponse response;
         do
         {
-            response = await _client.ListSecretVersionIdsAsync(request, cancellationToken);
+            response = await _client.ListSecretVersionIdsAsync(request, cancellationToken).ConfigureAwait(false);
 
             foreach (var version in response.Versions)
             {
@@ -146,7 +146,7 @@ internal sealed class AwsSecretsManagerClient : IAwsSecretsManagerClient
             await _client.DescribeSecretAsync(new DescribeSecretRequest
             {
                 SecretId = secretId,
-            }, cancellationToken);
+            }, cancellationToken).ConfigureAwait(false);
             return true;
         }
         catch (ResourceNotFoundException)

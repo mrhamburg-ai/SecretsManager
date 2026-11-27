@@ -45,14 +45,14 @@ public sealed class FileSystemSecretProvider : ISecretProvider
         string key, SecretQuery? query = null, CancellationToken cancellationToken = default)
     {
         var semaphore = _store.GetLock(key);
-        await semaphore.WaitAsync(cancellationToken);
+        await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             var version = query?.Version
-                ?? await _store.ReadCurrentVersionAsync(key, cancellationToken);
+                ?? await _store.ReadCurrentVersionAsync(key, cancellationToken).ConfigureAwait(false);
 
-            var envelope = await _store.ReadEnvelopeAsync(key, version, cancellationToken);
-            var value = await DecryptValueAsync(key, envelope, cancellationToken);
+            var envelope = await _store.ReadEnvelopeAsync(key, version, cancellationToken).ConfigureAwait(false);
+            var value = await DecryptValueAsync(key, envelope, cancellationToken).ConfigureAwait(false);
 
             if (query?.Property is { } property)
                 value = JsonPropertyExtractor.Extract(value, property);
@@ -85,7 +85,7 @@ public sealed class FileSystemSecretProvider : ISecretProvider
         string key, string value, SecretMetadata? metadata = null, CancellationToken cancellationToken = default)
     {
         var semaphore = _store.GetLock(key);
-        await semaphore.WaitAsync(cancellationToken);
+        await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             var version = _store.GetNextVersion(key);
@@ -99,7 +99,7 @@ public sealed class FileSystemSecretProvider : ISecretProvider
                 Tags = metadata?.Tags?.ToDictionary(kvp => kvp.Key, kvp => kvp.Value)
             };
 
-            var (encryptor, keyId) = await _keys.GetCurrentAsync(cancellationToken);
+            var (encryptor, keyId) = await _keys.GetCurrentAsync(cancellationToken).ConfigureAwait(false);
 
             if (encryptor.IsEnabled)
             {
@@ -120,8 +120,8 @@ public sealed class FileSystemSecretProvider : ISecretProvider
                 envelope.Value = value;
             }
 
-            await _store.WriteEnvelopeAsync(key, envelope, cancellationToken);
-            await _store.WriteCurrentVersionAsync(key, version, cancellationToken);
+            await _store.WriteEnvelopeAsync(key, envelope, cancellationToken).ConfigureAwait(false);
+            await _store.WriteCurrentVersionAsync(key, version, cancellationToken).ConfigureAwait(false);
 
             return new SecretValue
             {
@@ -148,7 +148,7 @@ public sealed class FileSystemSecretProvider : ISecretProvider
     public async Task DeleteSecretAsync(string key, CancellationToken cancellationToken = default)
     {
         var semaphore = _store.GetLock(key);
-        await semaphore.WaitAsync(cancellationToken);
+        await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             if (!_store.SecretExists(key))
@@ -173,19 +173,19 @@ public sealed class FileSystemSecretProvider : ISecretProvider
         string key, CancellationToken cancellationToken = default)
     {
         var semaphore = _store.GetLock(key);
-        await semaphore.WaitAsync(cancellationToken);
+        await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             if (!_store.SecretExists(key))
                 throw new SecretNotFoundException(key);
 
-            var currentVersion = await _store.ReadCurrentVersionAsync(key, cancellationToken);
+            var currentVersion = await _store.ReadCurrentVersionAsync(key, cancellationToken).ConfigureAwait(false);
             var versions = _store.GetVersions(key);
             var result = new List<SecretVersionInfo>();
 
             foreach (var version in versions)
             {
-                var envelope = await _store.ReadEnvelopeAsync(key, version, cancellationToken);
+                var envelope = await _store.ReadEnvelopeAsync(key, version, cancellationToken).ConfigureAwait(false);
                 result.Add(new SecretVersionInfo
                 {
                     Version = envelope.Version,

@@ -59,7 +59,7 @@ public sealed class OracleVaultSecretProvider : ISecretProvider
     {
         try
         {
-            var result = await _client.GetSecretBundleAsync(key, query?.Version != null ? long.Parse(query.Version) : null, cancellationToken);
+            var result = await _client.GetSecretBundleAsync(key, query?.Version is not null ? long.Parse(query.Version) : null, cancellationToken).ConfigureAwait(false);
             var value = result.Value;
 
             if (query?.Property is { } property)
@@ -105,20 +105,20 @@ public sealed class OracleVaultSecretProvider : ISecretProvider
         {
             var tags = metadata?.Tags?.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
-            var summary = await _client.GetSecretSummaryAsync(key, cancellationToken);
+            var summary = await _client.GetSecretSummaryAsync(key, cancellationToken).ConfigureAwait(false);
 
             OracleSecretResult result;
 
-            if (summary != null)
+            if (summary is not null)
             {
-                var currentVersion = await _client.GetSecretBundleAsync(key, null, cancellationToken);
+                var currentVersion = await _client.GetSecretBundleAsync(key, null, cancellationToken).ConfigureAwait(false);
                 result = await _client.UpdateSecretAsync(
                     key,
                     currentVersion.VersionNumber ?? 0,
                     value,
                     metadata?.ContentType,
                     tags,
-                    cancellationToken);
+                    cancellationToken).ConfigureAwait(false);
             }
             else
             {
@@ -136,7 +136,7 @@ public sealed class OracleVaultSecretProvider : ISecretProvider
                     value,
                     metadata?.ContentType,
                     tags,
-                    cancellationToken);
+                    cancellationToken).ConfigureAwait(false);
             }
 
             return new SecretValue
@@ -172,7 +172,7 @@ public sealed class OracleVaultSecretProvider : ISecretProvider
     {
         try
         {
-            await _client.DeleteSecretAsync(key, cancellationToken);
+            await _client.DeleteSecretAsync(key, cancellationToken).ConfigureAwait(false);
         }
         catch (OciException ex) when (ex.Message.Contains("404") || ex.Message.Contains("not found"))
         {
@@ -198,12 +198,12 @@ public sealed class OracleVaultSecretProvider : ISecretProvider
     {
         try
         {
-            var summary = await _client.GetSecretSummaryAsync(key, cancellationToken);
-            if (summary == null)
+            var summary = await _client.GetSecretSummaryAsync(key, cancellationToken).ConfigureAwait(false);
+            if (summary is null)
                 throw new SecretNotFoundException(key);
 
             var versions = new List<SecretVersionInfo>();
-            await foreach (var version in _client.GetSecretVersionsAsync(key, cancellationToken))
+            await foreach (var version in _client.GetSecretVersionsAsync(key, cancellationToken).ConfigureAwait(false))
             {
                 versions.Add(new SecretVersionInfo
                 {
@@ -237,8 +237,8 @@ public sealed class OracleVaultSecretProvider : ISecretProvider
     {
         try
         {
-            var summary = await _client.GetSecretSummaryAsync(key, cancellationToken);
-            return summary != null;
+            var summary = await _client.GetSecretSummaryAsync(key, cancellationToken).ConfigureAwait(false);
+            return summary is not null;
         }
         catch (OciException ex) when (ex.Message.Contains("404") || ex.Message.Contains("not found"))
         {
@@ -256,7 +256,7 @@ public sealed class OracleVaultSecretProvider : ISecretProvider
     /// </summary>
     public async ValueTask DisposeAsync()
     {
-        await _client.DisposeAsync();
+        await _client.DisposeAsync().ConfigureAwait(false);
     }
 
     private static IBasicAuthenticationDetailsProvider CreateAuthProvider(OracleVaultOptions options)

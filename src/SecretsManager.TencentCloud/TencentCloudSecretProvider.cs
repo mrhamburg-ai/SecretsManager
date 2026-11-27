@@ -50,7 +50,7 @@ public sealed class TencentCloudSecretProvider : ISecretProvider
             var result = await _client.GetSecretValueAsync(
                 key,
                 versionId: query?.Version,
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
 
             if (result is null)
                 throw new SecretNotFoundException(key);
@@ -94,17 +94,17 @@ public sealed class TencentCloudSecretProvider : ISecretProvider
             var versionId = $"v-{Guid.NewGuid():N}";
 
             var existing = await _client.GetSecretValueAsync(
-                key, versionId: null, cancellationToken);
+                key, versionId: null, cancellationToken).ConfigureAwait(false);
 
             TencentCloudSecretResult result;
 
             if (existing is null)
             {
-                result = await _client.CreateSecretAsync(key, value, versionId, cancellationToken);
+                result = await _client.CreateSecretAsync(key, value, versionId, cancellationToken).ConfigureAwait(false);
             }
             else
             {
-                result = await _client.PutSecretValueAsync(key, value, versionId, cancellationToken);
+                result = await _client.PutSecretValueAsync(key, value, versionId, cancellationToken).ConfigureAwait(false);
             }
 
             return new SecretValue
@@ -134,8 +134,8 @@ public sealed class TencentCloudSecretProvider : ISecretProvider
     {
         try
         {
-            await this.EnsureSecretExistsAsync(key, cancellationToken);
-            await _client.DeleteSecretAsync(key, cancellationToken);
+            await this.EnsureSecretExistsAsync(key, cancellationToken).ConfigureAwait(false);
+            await _client.DeleteSecretAsync(key, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
@@ -156,7 +156,7 @@ public sealed class TencentCloudSecretProvider : ISecretProvider
     {
         try
         {
-            var versions = await _client.ListSecretVersionIdsAsync(key, cancellationToken);
+            var versions = await _client.ListSecretVersionIdsAsync(key, cancellationToken).ConfigureAwait(false);
 
             return versions
                 .OrderByDescending(v => v.CreateTime)
@@ -189,7 +189,7 @@ public sealed class TencentCloudSecretProvider : ISecretProvider
         try
         {
             var result = await _client.GetSecretValueAsync(
-                key, versionId: null, cancellationToken);
+                key, versionId: null, cancellationToken).ConfigureAwait(false);
             return result is not null;
         }
         catch (Exception ex) when (ex is not SecretProviderException)
@@ -204,6 +204,6 @@ public sealed class TencentCloudSecretProvider : ISecretProvider
     /// </summary>
     public async ValueTask DisposeAsync()
     {
-        await _client.DisposeAsync();
+        await _client.DisposeAsync().ConfigureAwait(false);
     }
 }

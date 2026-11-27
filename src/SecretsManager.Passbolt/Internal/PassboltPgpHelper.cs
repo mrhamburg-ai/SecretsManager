@@ -28,7 +28,7 @@ internal static class PassboltPgpHelper
         var factory = new PgpObjectFactory(decoderStream);
 
         PgpPublicKeyRing? keyRing = null;
-        while (keyRing == null)
+        while (keyRing is null)
         {
             var obj = factory.NextPgpObject();
             if (obj is null)
@@ -57,7 +57,7 @@ internal static class PassboltPgpHelper
         var factory = new PgpObjectFactory(decoderStream);
 
         PgpSecretKeyRing? keyRing = null;
-        while (keyRing == null)
+        while (keyRing is null)
         {
             var obj = factory.NextPgpObject();
             if (obj is null)

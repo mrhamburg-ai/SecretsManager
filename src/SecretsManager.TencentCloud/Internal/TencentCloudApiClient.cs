@@ -62,18 +62,18 @@ internal sealed class TencentCloudApiClient : ITencentCloudApiClient
         if (!string.IsNullOrEmpty(versionId))
             parameters["VersionId"] = versionId;
 
-        using var response = await PostAsync("GetSecretValue", parameters, cancellationToken);
+        using var response = await PostAsync("GetSecretValue", parameters, cancellationToken).ConfigureAwait(false);
 
         if (response.StatusCode == HttpStatusCode.NotFound)
             return null;
 
-        var error = await TryParseErrorAsync(response, cancellationToken);
+        var error = await TryParseErrorAsync(response, cancellationToken).ConfigureAwait(false);
         if (error?.Code == "ResourceNotFound")
             return null;
 
         EnsureSuccess(response, "getting secret value");
 
-        var body = await response.Content.ReadFromJsonAsync<TencentCloudGetSecretValueResponse>(JsonOptions, cancellationToken)
+        var body = await response.Content.ReadFromJsonAsync<TencentCloudGetSecretValueResponse>(JsonOptions, cancellationToken).ConfigureAwait(false)
             ?? throw new SecretProviderException("Empty response when getting secret value.");
 
         return new TencentCloudSecretValueResult(
@@ -97,9 +97,9 @@ internal sealed class TencentCloudApiClient : ITencentCloudApiClient
             ["VersionId"] = versionId
         };
 
-        using var response = await PostAsync("CreateSecret", parameters, cancellationToken);
+        using var response = await PostAsync("CreateSecret", parameters, cancellationToken).ConfigureAwait(false);
 
-        var error = await TryParseErrorAsync(response, cancellationToken);
+        var error = await TryParseErrorAsync(response, cancellationToken).ConfigureAwait(false);
         if (error?.Code == "ResourceInUse")
         {
             throw new SecretProviderException($"Secret '{secretName}' already exists.");
@@ -107,7 +107,7 @@ internal sealed class TencentCloudApiClient : ITencentCloudApiClient
 
         EnsureSuccess(response, $"creating secret '{secretName}'");
 
-        var body = await response.Content.ReadFromJsonAsync<TencentCloudCreateSecretResponse>(JsonOptions, cancellationToken)
+        var body = await response.Content.ReadFromJsonAsync<TencentCloudCreateSecretResponse>(JsonOptions, cancellationToken).ConfigureAwait(false)
             ?? throw new SecretProviderException("Empty response when creating secret.");
 
         return new TencentCloudSecretResult(body.SecretId, body.VersionId);
@@ -126,10 +126,10 @@ internal sealed class TencentCloudApiClient : ITencentCloudApiClient
             ["VersionId"] = versionId
         };
 
-        using var response = await PostAsync("PutSecretValue", parameters, cancellationToken);
+        using var response = await PostAsync("PutSecretValue", parameters, cancellationToken).ConfigureAwait(false);
         EnsureSuccess(response, $"putting secret value for '{secretName}'");
 
-        var body = await response.Content.ReadFromJsonAsync<TencentCloudPutSecretValueResponse>(JsonOptions, cancellationToken)
+        var body = await response.Content.ReadFromJsonAsync<TencentCloudPutSecretValueResponse>(JsonOptions, cancellationToken).ConfigureAwait(false)
             ?? throw new SecretProviderException("Empty response when putting secret value.");
 
         return new TencentCloudSecretResult(body.SecretId, body.VersionId);
@@ -145,9 +145,9 @@ internal sealed class TencentCloudApiClient : ITencentCloudApiClient
             ["SecretName"] = secretName
         };
 
-        using var response = await PostAsync("DeleteSecret", parameters, cancellationToken);
+        using var response = await PostAsync("DeleteSecret", parameters, cancellationToken).ConfigureAwait(false);
 
-        var error = await TryParseErrorAsync(response, cancellationToken);
+        var error = await TryParseErrorAsync(response, cancellationToken).ConfigureAwait(false);
         if (error?.Code == "ResourceNotFound")
             return;
 
@@ -172,10 +172,10 @@ internal sealed class TencentCloudApiClient : ITencentCloudApiClient
                 ["Limit"] = limit
             };
 
-            using var response = await PostAsync("ListSecretVersionIds", parameters, cancellationToken);
+            using var response = await PostAsync("ListSecretVersionIds", parameters, cancellationToken).ConfigureAwait(false);
             EnsureSuccess(response, $"listing versions for '{secretName}'");
 
-            var body = await response.Content.ReadFromJsonAsync<TencentCloudListSecretVersionIdsResponse>(JsonOptions, cancellationToken)
+            var body = await response.Content.ReadFromJsonAsync<TencentCloudListSecretVersionIdsResponse>(JsonOptions, cancellationToken).ConfigureAwait(false)
                 ?? throw new SecretProviderException("Empty response when listing versions.");
 
             if (body.Versions is not null)
@@ -232,7 +232,7 @@ internal sealed class TencentCloudApiClient : ITencentCloudApiClient
         request.Headers.TryAddWithoutValidation("X-TC-Nonce", nonce);
         request.Headers.TryAddWithoutValidation("X-TC-Region", _region);
 
-        return await _http.SendAsync(request, cancellationToken);
+        return await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
     }
 
     private string BuildCanonicalRequest(string action, string requestBody, long timestamp, string nonce)
@@ -315,7 +315,7 @@ internal sealed class TencentCloudApiClient : ITencentCloudApiClient
 
         try
         {
-            var content = await response.Content.ReadAsStringAsync(cancellationToken);
+            var content = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
             var json = JsonSerializer.Deserialize<Dictionary<string, object>>(content, JsonOptions);
 
             if (json?.TryGetValue("Error", out var errorObj) == true)

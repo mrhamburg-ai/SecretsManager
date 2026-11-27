@@ -52,7 +52,7 @@ public sealed class AliyunKmsSecretProvider : ISecretProvider
                 key,
                 versionStage: null,
                 versionId: query?.Version,
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
 
             if (result is null)
                 throw new SecretNotFoundException(key);
@@ -97,17 +97,17 @@ public sealed class AliyunKmsSecretProvider : ISecretProvider
             var versionId = $"v-{Guid.NewGuid():N}";
 
             var existing = await _client.GetSecretValueAsync(
-                key, versionStage: null, versionId: null, cancellationToken);
+                key, versionStage: null, versionId: null, cancellationToken).ConfigureAwait(false);
 
             AliyunSecretResult result;
 
             if (existing is null)
             {
-                result = await _client.CreateSecretAsync(key, value, versionId, cancellationToken);
+                result = await _client.CreateSecretAsync(key, value, versionId, cancellationToken).ConfigureAwait(false);
             }
             else
             {
-                result = await _client.PutSecretValueAsync(key, value, versionId, cancellationToken);
+                result = await _client.PutSecretValueAsync(key, value, versionId, cancellationToken).ConfigureAwait(false);
             }
 
             return new SecretValue
@@ -137,8 +137,8 @@ public sealed class AliyunKmsSecretProvider : ISecretProvider
     {
         try
         {
-            await this.EnsureSecretExistsAsync(key, cancellationToken);
-            await _client.DeleteSecretAsync(key, cancellationToken);
+            await this.EnsureSecretExistsAsync(key, cancellationToken).ConfigureAwait(false);
+            await _client.DeleteSecretAsync(key, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not SecretProviderException)
         {
@@ -159,7 +159,7 @@ public sealed class AliyunKmsSecretProvider : ISecretProvider
     {
         try
         {
-            var versions = await _client.ListSecretVersionIdsAsync(key, cancellationToken);
+            var versions = await _client.ListSecretVersionIdsAsync(key, cancellationToken).ConfigureAwait(false);
 
             return versions
                 .OrderByDescending(v => v.CreateTime)
@@ -192,7 +192,7 @@ public sealed class AliyunKmsSecretProvider : ISecretProvider
         try
         {
             var result = await _client.GetSecretValueAsync(
-                key, versionStage: null, versionId: null, cancellationToken);
+                key, versionStage: null, versionId: null, cancellationToken).ConfigureAwait(false);
             return result is not null;
         }
         catch (Exception ex) when (ex is not SecretProviderException)
@@ -207,6 +207,6 @@ public sealed class AliyunKmsSecretProvider : ISecretProvider
     /// </summary>
     public async ValueTask DisposeAsync()
     {
-        await _client.DisposeAsync();
+        await _client.DisposeAsync().ConfigureAwait(false);
     }
 }

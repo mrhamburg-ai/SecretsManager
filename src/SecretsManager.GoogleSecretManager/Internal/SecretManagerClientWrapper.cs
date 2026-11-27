@@ -23,10 +23,10 @@ internal sealed class SecretManagerClientWrapper : ISecretManagerClientWrapper
     {
         var versionId = version ?? "latest";
         var secretVersionName = SecretVersionName.FromProjectSecretSecretVersion(_projectId, secretId, versionId);
-        var response = await _client.AccessSecretVersionAsync(secretVersionName, cancellationToken: cancellationToken);
+        var response = await _client.AccessSecretVersionAsync(secretVersionName, cancellationToken: cancellationToken).ConfigureAwait(false);
 
         var secretName = SecretName.FromProjectSecret(_projectId, secretId);
-        var secret = await _client.GetSecretAsync(secretName, cancellationToken: cancellationToken);
+        var secret = await _client.GetSecretAsync(secretName, cancellationToken: cancellationToken).ConfigureAwait(false);
 
         return new SecretManagerSecretResult(
             secretId,
@@ -44,10 +44,10 @@ internal sealed class SecretManagerClientWrapper : ISecretManagerClientWrapper
     {
         var parent = SecretName.FromProjectSecret(_projectId, secretId);
         var payload = new SecretPayload { Data = Google.Protobuf.ByteString.CopyFromUtf8(value) };
-        var response = await _client.AddSecretVersionAsync(parent, payload, cancellationToken: cancellationToken);
+        var response = await _client.AddSecretVersionAsync(parent, payload, cancellationToken: cancellationToken).ConfigureAwait(false);
 
         var secretName = SecretName.FromProjectSecret(_projectId, secretId);
-        var secret = await _client.GetSecretAsync(secretName, cancellationToken: cancellationToken);
+        var secret = await _client.GetSecretAsync(secretName, cancellationToken: cancellationToken).ConfigureAwait(false);
 
         return new SecretManagerSecretResult(
             secretId,
@@ -75,13 +75,13 @@ internal sealed class SecretManagerClientWrapper : ISecretManagerClientWrapper
                 secret.Labels[kvp.Key] = kvp.Value;
         }
 
-        await _client.CreateSecretAsync(parentAsProject, secretId, secret, cancellationToken: cancellationToken);
+        await _client.CreateSecretAsync(parentAsProject, secretId, secret, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
     public async Task DeleteSecretAsync(string secretId, CancellationToken cancellationToken)
     {
         var secretName = SecretName.FromProjectSecret(_projectId, secretId);
-        await _client.DeleteSecretAsync(secretName, cancellationToken: cancellationToken);
+        await _client.DeleteSecretAsync(secretName, cancellationToken: cancellationToken).ConfigureAwait(false);
     }
 
     public async IAsyncEnumerable<SecretVersionProperties> ListSecretVersionsAsync(
@@ -104,7 +104,7 @@ internal sealed class SecretManagerClientWrapper : ISecretManagerClientWrapper
             }
         }
 
-        await Task.CompletedTask;
+        await Task.CompletedTask.ConfigureAwait(false);
     }
 
     public async Task<bool> SecretExistsAsync(string secretId, CancellationToken cancellationToken)
@@ -112,7 +112,7 @@ internal sealed class SecretManagerClientWrapper : ISecretManagerClientWrapper
         try
         {
             var secretName = SecretName.FromProjectSecret(_projectId, secretId);
-            await _client.GetSecretAsync(secretName, cancellationToken: cancellationToken);
+            await _client.GetSecretAsync(secretName, cancellationToken: cancellationToken).ConfigureAwait(false);
             return true;
         }
         catch (RpcException ex) when (ex.StatusCode == StatusCode.NotFound)
